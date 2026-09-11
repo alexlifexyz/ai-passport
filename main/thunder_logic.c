@@ -1,6 +1,7 @@
 #include "thunder_logic.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 void thunder_init(thunder_game_t *g)
 {
@@ -17,6 +18,15 @@ void thunder_init(thunder_game_t *g)
     g->weapon_level = 1;
     g->score = 0;
     g->game_over = false;
+
+    // 初始化星空粒子
+    for (int i = 0; i < THUNDER_MAX_STARS; i++) {
+        g->stars[i].x = (float)(rand() % SCREEN_W);
+        g->stars[i].y = (float)(rand() % SCREEN_H);
+        g->stars[i].speed = 0.8f + (rand() % 100) / 40.0f; // 0.8 ~ 3.3
+        g->stars[i].size = (rand() % 10 > 7) ? 2 : 1;
+        g->stars[i].color = (rand() % 2 == 0) ? 0x00E5FF : 0xFFFFFF;
+    }
 }
 
 void thunder_move_left(thunder_game_t *g)
@@ -35,11 +45,34 @@ void thunder_move_right(thunder_game_t *g)
     }
 }
 
+static void create_explosion(thunder_game_t *g, float x, float y, uint32_t color, int count)
+{
+    for (int i = 0; i < count; i++) {
+        for (int p = 0; p < THUNDER_MAX_PARTICLES; p++) {
+            if (g->particles[p].life <= 0) {
+                float angle = (float)(rand() % 628) / 100.0f;
+                float spd = 1.0f + (rand() % 30) / 10.0f;
+                g->particles[p].x = x;
+                g->particles[p].y = y;
+                g->particles[p].vx = cosf(angle) * spd;
+                g->particles[p].vy = sinf(angle) * spd;
+                g->particles[p].life = 10 + (rand() % 10);
+                g->particles[p].max_life = 20;
+                g->particles[p].size = (rand() % 2 == 0) ? 2 : 3;
+                g->particles[p].color = (i % 3 == 0) ? 0xFFFFFF : ((i % 2 == 0) ? 0xFFEA00 : color);
+                break;
+            }
+        }
+    }
+}
+
 bool thunder_use_bomb(thunder_game_t *g)
 {
     if (!g || g->game_over || g->bombs <= 0) return false;
     g->bombs--;
     g->bomb_triggered = true;
+    g->screen_shake = 16;
+    g->snd_bomb = true;
 
     // 清空所有敌机弹幕
     for (int i = 0; i < THUNDER_MAX_ENEMY_BULLETS; i++) {
@@ -50,6 +83,7 @@ bool thunder_use_bomb(thunder_game_t *g)
     for (int i = 0; i < THUNDER_MAX_ENEMIES; i++) {
         if (g->enemies[i].active) {
             g->enemies[i].hp -= 10;
+            create_explosion(g, g->enemies[i].x + g->enemies[i].w / 2.0f, g->enemies[i].y + g->enemies[i].h / 2.0f, 0xFF3344, 12);
             if (g->enemies[i].hp <= 0) {
                 g->enemies[i].active = false;
                 g->score += (g->enemies[i].type == ENEMY_BOSS) ? 200 : 20;
@@ -98,10 +132,37 @@ void thunder_step(thunder_game_t *g)
     g->wave_tick++;
     if (g->invincible_timer > 0) g->invincible_timer--;
 
+    // 清空瞬时音效触发标记
+    g->snd_laser = false;
+    g->snd_hit = false;
+    g->snd_explode = false;
+    g->snd_explode_big = false;
+    g->snd_bomb = false;
+    g->snd_powerup = false;
+    g->snd_gameover = false;
+
+    // 0. 星空背景与粒子更新
+    for (int i = 0; i < THUNDER_MAX_STARS; i++) {
+        g->stars[i].y += g->stars[i].speed;
+        if (g->stars[i].y >= SCREEN_H) {
+            g->stars[i].y = 0;
+            g->stars[i].x = (float)(rand() % SCREEN_W);
+        }
+    }
+    for (int i = 0; i < THUNDER_MAX_PARTICLES; i++) {
+        if (g->particles[i].life > 0) {
+            g->particles[i].x += g->particles[i].vx;
+            g->particles[i].y += g->particles[i].vy;
+            g->particles[i].life--;
+        }
+    }
+    if (g->screen_shake > 0) g->screen_shake--;
+
     // 1. 玩家自动开火
     g->shoot_timer++;
     if (g->shoot_timer >= 12) {
         g->shoot_timer = 0;
+        g->snd_laser = true;
         if (g->weapon_level == 1) {
             spawn_bullet(g, g->player_x + 4, g->player_y, 0, -8.0f, 4, 10, 0x00E5FF);
             spawn_bullet(g, g->player_x + 22, g->player_y, 0, -8.0f, 4, 10, 0x00E5FF);
@@ -144,8 +205,11 @@ void thunder_step(thunder_game_t *g)
                     eb->active = false;
                     g->player_hp--;
                     g->invincible_timer = 40;
+                    g->snd_hit = true;
+                    create_explosion(g, g->player_x + g->player_w / 2.0f, g->player_y + g->player_h / 2.0f, 0xFF3344, 14);
                     if (g->player_hp <= 0) {
                         g->game_over = true;
+                        g->snd_gameover = true;
                     }
                 }
             }
@@ -163,6 +227,7 @@ void thunder_step(thunder_game_t *g)
             // 拾取
             if (g->items[i].x < g->player_x + g->player_w && g->items[i].x + g->items[i].w > g->player_x &&
                 g->items[i].y < g->player_y + g->player_h && g->items[i].y + g->items[i].h > g->player_y) {
+                g->snd_powerup = true;
                 if (g->items[i].type == ITEM_TYPE_POWER && g->weapon_level < 3) {
                     g->weapon_level++;
                 } else if (g->items[i].type == ITEM_TYPE_BOMB) {
@@ -184,7 +249,7 @@ void thunder_step(thunder_game_t *g)
                 g->enemies[i].active = true;
                 g->enemies[i].type = is_bomber ? ENEMY_BOMBER : ENEMY_SCOUT;
                 g->enemies[i].w = is_bomber ? 32 : 24;
-                g->enemies[i].h = is_bomber ? 28 : 20;
+                g->enemies[i].h = is_bomber ? 28 : 22;
                 g->enemies[i].x = 10 + (rand() % (SCREEN_W - g->enemies[i].w - 20));
                 g->enemies[i].y = -30.0f;
                 g->enemies[i].vx = ((rand() % 100) - 50) / 40.0f;
@@ -240,17 +305,36 @@ void thunder_step(thunder_game_t *g)
             // 敌机射击
             e->shoot_timer--;
             if (e->shoot_timer <= 0 && e->y > 10.0f && e->y < 220.0f) {
-                e->shoot_timer = (e->type == ENEMY_BOSS) ? 40 : 60;
-                for (int b = 0; b < THUNDER_MAX_ENEMY_BULLETS; b++) {
-                    if (!g->enemy_bullets[b].active) {
-                        g->enemy_bullets[b].active = true;
-                        g->enemy_bullets[b].x = e->x + e->w / 2.0f - 2;
-                        g->enemy_bullets[b].y = e->y + e->h;
-                        g->enemy_bullets[b].w = 5;
-                        g->enemy_bullets[b].h = 5;
-                        g->enemy_bullets[b].vx = 0;
-                        g->enemy_bullets[b].vy = 2.5f;
-                        break;
+                if (e->type == ENEMY_BOSS) {
+                    e->shoot_timer = 40;
+                    float spreads[3] = { -0.8f, 0.0f, 0.8f };
+                    for (int s = 0; s < 3; s++) {
+                        for (int b = 0; b < THUNDER_MAX_ENEMY_BULLETS; b++) {
+                            if (!g->enemy_bullets[b].active) {
+                                g->enemy_bullets[b].active = true;
+                                g->enemy_bullets[b].x = e->x + e->w / 2.0f - 3;
+                                g->enemy_bullets[b].y = e->y + e->h;
+                                g->enemy_bullets[b].w = 6;
+                                g->enemy_bullets[b].h = 6;
+                                g->enemy_bullets[b].vx = spreads[s];
+                                g->enemy_bullets[b].vy = 2.8f;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    e->shoot_timer = 60;
+                    for (int b = 0; b < THUNDER_MAX_ENEMY_BULLETS; b++) {
+                        if (!g->enemy_bullets[b].active) {
+                            g->enemy_bullets[b].active = true;
+                            g->enemy_bullets[b].x = e->x + e->w / 2.0f - 2;
+                            g->enemy_bullets[b].y = e->y + e->h;
+                            g->enemy_bullets[b].w = 5;
+                            g->enemy_bullets[b].h = 5;
+                            g->enemy_bullets[b].vx = 0;
+                            g->enemy_bullets[b].vy = 2.5f;
+                            break;
+                        }
                     }
                 }
             }
@@ -263,10 +347,21 @@ void thunder_step(thunder_game_t *g)
                         pb->y < e->y + e->h && pb->y + pb->h > e->y) {
                         pb->active = false;
                         e->hp--;
+                        g->snd_hit = true;
                         if (e->hp <= 0) {
                             e->active = false;
                             g->score += (e->type == ENEMY_BOMBER ? 30 : (e->type == ENEMY_BOSS ? 200 : 10));
-                            if (e->type == ENEMY_BOSS) g->boss_active = false;
+                            if (e->type == ENEMY_BOSS) {
+                                g->boss_active = false;
+                                g->snd_explode_big = true;
+                                create_explosion(g, e->x + e->w / 2.0f, e->y + e->h / 2.0f, 0xFF0055, 20);
+                            } else if (e->type == ENEMY_BOMBER) {
+                                g->snd_explode_big = true;
+                                create_explosion(g, e->x + e->w / 2.0f, e->y + e->h / 2.0f, 0xFF6600, 16);
+                            } else {
+                                g->snd_explode = true;
+                                create_explosion(g, e->x + e->w / 2.0f, e->y + e->h / 2.0f, 0x88FF33, 10);
+                            }
                             if (rand() % 100 < 30) {
                                 spawn_item(g, e->x + e->w / 2.0f - 7, e->y);
                             }
@@ -282,12 +377,16 @@ void thunder_step(thunder_game_t *g)
                     g->player_y < e->y + e->h && g->player_y + g->player_h > e->y) {
                     g->player_hp--;
                     g->invincible_timer = 40;
+                    g->snd_hit = true;
+                    create_explosion(g, g->player_x + g->player_w / 2.0f, g->player_y + g->player_h / 2.0f, 0xFF3344, 14);
                     if (e->type != ENEMY_BOSS) e->active = false;
                     if (g->player_hp <= 0) {
                         g->game_over = true;
+                        g->snd_gameover = true;
                     }
                 }
             }
         }
     }
 }
+

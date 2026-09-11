@@ -10,11 +10,13 @@
 #define THUNDER_MAX_ENEMY_BULLETS 16
 #define THUNDER_MAX_ENEMIES       8
 #define THUNDER_MAX_ITEMS         4
+#define THUNDER_MAX_STARS         32
+#define THUNDER_MAX_PARTICLES     24
 
 typedef enum {
-    ENEMY_SCOUT = 0,  // 绿蜂快艇 (24x20)
+    ENEMY_SCOUT = 0,  // 绿蜂快艇 (24x22)
     ENEMY_BOMBER = 1, // 红煞轰炸机 (32x28)
-    ENEMY_BOSS = 2,   // 巨型战列舰 (64x44)
+    ENEMY_BOSS = 2,   // 巨型战列要塞 (64x44)
 } enemy_type_t;
 
 typedef enum {
@@ -50,6 +52,22 @@ typedef struct {
 } thunder_item_t;
 
 typedef struct {
+    float x, y;
+    float speed;
+    uint8_t size;
+    uint32_t color;
+} star_t;
+
+typedef struct {
+    float x, y;
+    float vx, vy;
+    int life;
+    int max_life;
+    int size;
+    uint32_t color;
+} particle_t;
+
+typedef struct {
     // 玩家数据
     float player_x;
     float player_y;
@@ -68,6 +86,11 @@ typedef struct {
     enemy_t enemies[THUNDER_MAX_ENEMIES];
     thunder_item_t items[THUNDER_MAX_ITEMS];
 
+    // 星空与爆炸粒子
+    star_t stars[THUNDER_MAX_STARS];
+    particle_t particles[THUNDER_MAX_PARTICLES];
+    int screen_shake;
+
     // BOSS
     bool boss_active;
     int boss_idx;
@@ -77,6 +100,15 @@ typedef struct {
     int wave_tick;
     bool game_over;
     bool bomb_triggered; // 用于触发屏幕全屏白光
+
+    // 音效触发事件
+    bool snd_laser;
+    bool snd_hit;
+    bool snd_explode;
+    bool snd_explode_big;
+    bool snd_bomb;
+    bool snd_powerup;
+    bool snd_gameover;
 } thunder_game_t;
 
 void thunder_init(thunder_game_t *g);
@@ -84,3 +116,4 @@ void thunder_move_left(thunder_game_t *g);
 void thunder_move_right(thunder_game_t *g);
 bool thunder_use_bomb(thunder_game_t *g);
 void thunder_step(thunder_game_t *g);
+
