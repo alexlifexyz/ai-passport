@@ -318,9 +318,9 @@ void roulette_dealer_ai_step(roulette_game_t *g, shot_result_t *out_shot, char *
     if (out_shot) *out_shot = res;
     if (out_action) {
         if (target == TARGET_SELF) {
-            snprintf(out_action, 64, "DEMON SHOOTS ITSELF: %s", res.detail);
+            snprintf(out_action, 64, "DEMON SHOOTS ITSELF: %.40s", res.detail);
         } else {
-            snprintf(out_action, 64, "DEMON SHOOTS YOU: %s", res.detail);
+            snprintf(out_action, 64, "DEMON SHOOTS YOU: %.40s", res.detail);
         }
     }
 }
