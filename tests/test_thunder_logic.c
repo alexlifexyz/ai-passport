@@ -26,9 +26,9 @@ int main(void)
     printf("  ✓ Movement & Screen Clamping OK\n");
 
     // 3. 验证自动开火与子弹生成
-    g.shoot_timer = 11;
+    g.shoot_timer = THUNDER_SHOOT_INTERVAL - 1;
     thunder_step(&g);
-    // 应在 shoot_timer==12 时生成双路激光 (至少 2 发活跃子弹)
+    // 应在 shoot_timer >= THUNDER_SHOOT_INTERVAL 时生成双路激光 (至少 2 发活跃子弹)
     int bullet_count = 0;
     for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
         if (g.bullets[i].active) bullet_count++;

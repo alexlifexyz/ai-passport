@@ -32,14 +32,14 @@ void thunder_init(thunder_game_t *g)
 void thunder_move_left(thunder_game_t *g)
 {
     if (!g || g->game_over) return;
-    g->player_x -= 12.0f;
+    g->player_x -= 16.0f;
     if (g->player_x < 4.0f) g->player_x = 4.0f;
 }
 
 void thunder_move_right(thunder_game_t *g)
 {
     if (!g || g->game_over) return;
-    g->player_x += 12.0f;
+    g->player_x += 16.0f;
     if (g->player_x > SCREEN_W - g->player_w - 4.0f) {
         g->player_x = SCREEN_W - g->player_w - 4.0f;
     }
@@ -137,7 +137,6 @@ void thunder_step(thunder_game_t *g)
     g->snd_hit = false;
     g->snd_explode = false;
     g->snd_explode_big = false;
-    g->snd_bomb = false;
     g->snd_powerup = false;
     g->snd_gameover = false;
 
@@ -160,20 +159,20 @@ void thunder_step(thunder_game_t *g)
 
     // 1. 玩家自动开火
     g->shoot_timer++;
-    if (g->shoot_timer >= 12) {
+    if (g->shoot_timer >= THUNDER_SHOOT_INTERVAL) {
         g->shoot_timer = 0;
         g->snd_laser = true;
         if (g->weapon_level == 1) {
-            spawn_bullet(g, g->player_x + 4, g->player_y, 0, -8.0f, 4, 10, 0x00E5FF);
-            spawn_bullet(g, g->player_x + 22, g->player_y, 0, -8.0f, 4, 10, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 4, g->player_y, 0, -12.0f, 4, 12, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 22, g->player_y, 0, -12.0f, 4, 12, 0x00E5FF);
         } else if (g->weapon_level == 2) {
-            spawn_bullet(g, g->player_x + 13, g->player_y - 2, 0, -8.5f, 4, 12, 0xFFD928);
-            spawn_bullet(g, g->player_x + 2, g->player_y, -1.5f, -8.0f, 4, 10, 0x00E5FF);
-            spawn_bullet(g, g->player_x + 24, g->player_y, 1.5f, -8.0f, 4, 10, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 13, g->player_y - 2, 0, -13.0f, 4, 14, 0xFFD928);
+            spawn_bullet(g, g->player_x + 2, g->player_y, -2.0f, -12.0f, 4, 12, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 24, g->player_y, 2.0f, -12.0f, 4, 12, 0x00E5FF);
         } else {
-            spawn_bullet(g, g->player_x + 12, g->player_y - 4, 0, -9.0f, 6, 14, 0xFF00BB);
-            spawn_bullet(g, g->player_x + 1, g->player_y, -2.0f, -8.0f, 4, 10, 0xFFD928);
-            spawn_bullet(g, g->player_x + 25, g->player_y, 2.0f, -8.0f, 4, 10, 0xFFD928);
+            spawn_bullet(g, g->player_x + 12, g->player_y - 4, 0, -14.0f, 6, 16, 0xFF00BB);
+            spawn_bullet(g, g->player_x + 1, g->player_y, -2.5f, -12.0f, 4, 12, 0xFFD928);
+            spawn_bullet(g, g->player_x + 25, g->player_y, 2.5f, -12.0f, 4, 12, 0xFFD928);
         }
     }
 

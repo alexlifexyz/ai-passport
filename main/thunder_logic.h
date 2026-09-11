@@ -12,6 +12,7 @@
 #define THUNDER_MAX_ITEMS         4
 #define THUNDER_MAX_STARS         32
 #define THUNDER_MAX_PARTICLES     24
+#define THUNDER_SHOOT_INTERVAL    5
 
 typedef enum {
     ENEMY_SCOUT = 0,  // 绿蜂快艇 (24x22)

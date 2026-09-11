@@ -1,5 +1,5 @@
 // main/demo_thunder.c —— 《雷霆战机：大像素街机版》(Thunder Striker Arcade)
-// 100% 还原 simulator/index.html 的全屏复古大像素画风、星空、战机火焰、光刃激光、粒子爆炸与街机音效。
+// 100% 还原 simulator/index.html 的全屏复古大像素画风、极速连发、浓郁16kHz街机音效与底部操作指引。
 #include "demo.h"
 #include "thunder_logic.h"
 #include "bsp_display.h"
@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 static const char *TAG __attribute__((unused)) = "demo_thunder";
 
@@ -33,9 +34,14 @@ static lv_obj_t *s_playfield;
 static lv_obj_t *s_hud_score;
 static lv_obj_t *s_hud_bomb;
 static lv_obj_t *s_hud_boss;
+static lv_obj_t *s_hud_hints;
 static lv_obj_t *s_gameover_box;
 static lv_obj_t *s_gameover_score;
 static lv_timer_t *s_game_timer;
+
+static int s_last_score = -1;
+static int s_last_bomb = -1;
+static bool s_last_boss = false;
 
 static QueueHandle_t s_snd_queue;
 static TaskHandle_t s_snd_task;
@@ -48,80 +54,129 @@ static void send_sound(thunder_snd_t snd)
     }
 }
 
+// 独立后台音效合成任务 (16kHz 8-bit/16-bit 浓郁街机音色，无杂音阻塞)
 static void thunder_audio_task(void *arg)
 {
     (void)arg;
     thunder_snd_t snd;
     int16_t buf[256];
 
+    // 初始化一次 Codec 模式与音量，避免在音频循环中反复进行 I2C 通信拖慢 CPU
+    bsp_audio_set_format(16000, 16, 1);
+    bsp_audio_set_volume(95);
+
     while (1) {
         if (xQueueReceive(s_snd_queue, &snd, portMAX_DELAY) == pdTRUE) {
             if (snd == SND_NONE) continue;
-            bsp_audio_set_format(16000, 16, 1);
-            bsp_audio_set_volume(90);
 
             if (snd == SND_LASER) {
-                for (int i = 0; i < 180; i++) {
-                    int period = 8 + (i * 24 / 180);
-                    buf[i] = (i % period < period / 2) ? 5000 : -5000;
+                // 经典街机激光扫频 (880Hz 指数衰减至 180Hz，长 80ms，清脆有力)
+                const int total = 1280; // 80ms at 16kHz
+                float phase = 0.0f;
+                for (int i = 0; i < total; i++) {
+                    float t = (float)i / (float)total;
+                    float freq = 880.0f * powf(180.0f / 880.0f, t);
+                    phase += (freq / 16000.0f);
+                    if (phase >= 1.0f) phase -= 1.0f;
+                    float amp = (1.0f - t) * 7500.0f;
+                    buf[i % 256] = (int16_t)((2.0f * phase - 1.0f) * amp);
+                    if ((i % 256) == 255 || i == total - 1) {
+                        bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
+                    }
                 }
-                bsp_audio_write(buf, 180 * sizeof(int16_t));
             } else if (snd == SND_HIT) {
-                for (int i = 0; i < 80; i++) buf[i] = (i % 6 < 3) ? 4000 : -4000;
-                bsp_audio_write(buf, 80 * sizeof(int16_t));
-            } else if (snd == SND_EXPLODE) {
-                for (int c = 0; c < 8; c++) {
-                    int amp = 7000 - c * 800;
-                    for (int i = 0; i < 256; i++) {
-                        buf[i] = (int16_t)(((rand() % 65536) - 32768) * amp / 32768);
+                // 击中金属短鸣 (三角波 400Hz 快速衰减至 100Hz，长 40ms)
+                const int total = 640;
+                float phase = 0.0f;
+                for (int i = 0; i < total; i++) {
+                    float t = (float)i / (float)total;
+                    float freq = 400.0f - t * 300.0f;
+                    phase += (freq / 16000.0f);
+                    if (phase >= 1.0f) phase -= 1.0f;
+                    float amp = (1.0f - t) * 6500.0f;
+                    float tri = (phase < 0.5f) ? (4.0f * phase - 1.0f) : (3.0f - 4.0f * phase);
+                    buf[i % 256] = (int16_t)(tri * amp);
+                    if ((i % 256) == 255 || i == total - 1) {
+                        bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                     }
-                    bsp_audio_write(buf, 256 * sizeof(int16_t));
                 }
-            } else if (snd == SND_EXPLODE_BIG) {
-                for (int c = 0; c < 16; c++) {
-                    int amp = 9000 - c * 500;
-                    for (int i = 0; i < 256; i++) {
-                        buf[i] = (int16_t)(((rand() % 65536) - 32768) * amp / 32768);
+            } else if (snd == SND_EXPLODE || snd == SND_EXPLODE_BIG) {
+                // 真实街机低通滤波白噪声爆炸 (拳拳到肉的轰鸣，小怪 220ms，大怪/Boss 400ms)
+                bool is_big = (snd == SND_EXPLODE_BIG);
+                const int total = is_big ? 5600 : 3200;
+                int16_t last_sample = 0;
+                for (int i = 0; i < total; i++) {
+                    float t = (float)i / (float)total;
+                    float amp = (1.0f - t) * (1.0f - t) * (is_big ? 11000.0f : 8000.0f);
+                    int16_t raw_noise = (int16_t)(((rand() % 65536) - 32768) * amp / 32768.0f);
+                    // 单极点低通滤波器，过滤刺耳高频，留下饱满浑厚的重低音
+                    last_sample = (int16_t)((last_sample * 3 + raw_noise) / 4);
+                    buf[i % 256] = last_sample;
+                    if ((i % 256) == 255 || i == total - 1) {
+                        bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                     }
-                    bsp_audio_write(buf, 256 * sizeof(int16_t));
                 }
             } else if (snd == SND_BOMB) {
+                // 全屏核弹毁天灭地三重连环大爆炸 (连续 3 段低频震爆)
                 for (int round = 0; round < 3; round++) {
-                    for (int c = 0; c < 12; c++) {
-                        int amp = 9500 - c * 700;
-                        for (int i = 0; i < 256; i++) {
-                            buf[i] = (int16_t)(((rand() % 65536) - 32768) * amp / 32768);
+                    const int total = 3600;
+                    int16_t last_sample = 0;
+                    for (int i = 0; i < total; i++) {
+                        float t = (float)i / (float)total;
+                        float amp = (1.0f - t) * (1.0f - t) * 12000.0f;
+                        int16_t raw_noise = (int16_t)(((rand() % 65536) - 32768) * amp / 32768.0f);
+                        last_sample = (int16_t)((last_sample * 2 + raw_noise) / 3);
+                        buf[i % 256] = last_sample;
+                        if ((i % 256) == 255 || i == total - 1) {
+                            bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                         }
-                        bsp_audio_write(buf, 256 * sizeof(int16_t));
                     }
-                    vTaskDelay(pdMS_TO_TICKS(40));
-                }
-            } else if (snd == SND_POWERUP) {
-                int freqs[] = { 440, 554, 659, 880 };
-                for (int f = 0; f < 4; f++) {
-                    int period = 16000 / freqs[f];
-                    for (int i = 0; i < 180; i++) {
-                        buf[i] = (i % period < period / 2) ? 5000 : -5000;
-                    }
-                    bsp_audio_write(buf, 180 * sizeof(int16_t));
                     vTaskDelay(pdMS_TO_TICKS(35));
                 }
-            } else if (snd == SND_GAMEOVER) {
-                int freqs[] = { 392, 349, 311, 261 };
+            } else if (snd == SND_POWERUP) {
+                // 欢快 4 音阶连击拾取声 (440, 554, 659, 880Hz)
+                const int freqs[] = { 440, 554, 659, 880 };
                 for (int f = 0; f < 4; f++) {
-                    int period = 16000 / freqs[f];
-                    for (int i = 0; i < 220; i++) {
-                        buf[i] = (i % period < period / 2) ? 6000 : -6000;
+                    const int total = 800; // 50ms
+                    float phase = 0.0f;
+                    float freq = (float)freqs[f];
+                    for (int i = 0; i < total; i++) {
+                        float t = (float)i / (float)total;
+                        phase += (freq / 16000.0f);
+                        if (phase >= 1.0f) phase -= 1.0f;
+                        float amp = (1.0f - t) * 7000.0f;
+                        buf[i % 256] = (phase < 0.5f) ? (int16_t)amp : -(int16_t)amp;
+                        if ((i % 256) == 255 || i == total - 1) {
+                            bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
+                        }
                     }
-                    bsp_audio_write(buf, 220 * sizeof(int16_t));
-                    vTaskDelay(pdMS_TO_TICKS(60));
+                    vTaskDelay(pdMS_TO_TICKS(15));
+                }
+            } else if (snd == SND_GAMEOVER) {
+                // 战机坠落哀鸣音阶 (392, 349, 311, 261Hz)
+                const int freqs[] = { 392, 349, 311, 261 };
+                for (int f = 0; f < 4; f++) {
+                    const int total = 1600; // 100ms
+                    float phase = 0.0f;
+                    float freq = (float)freqs[f];
+                    for (int i = 0; i < total; i++) {
+                        float t = (float)i / (float)total;
+                        phase += (freq / 16000.0f);
+                        if (phase >= 1.0f) phase -= 1.0f;
+                        float amp = (1.0f - t) * 7500.0f;
+                        buf[i % 256] = (int16_t)((2.0f * phase - 1.0f) * amp);
+                        if ((i % 256) == 255 || i == total - 1) {
+                            bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
+                        }
+                    }
+                    vTaskDelay(pdMS_TO_TICKS(30));
                 }
             }
         }
     }
 }
 
-// 快速屏幕像素色块填充 (基于 LVGL v9 渲染上下文，零额外堆内存消耗)
+// 快速色块光栅化填充 (直连 LVGL 当前渲染切片，0 额外内存消耗)
 static inline void draw_box(lv_layer_t *layer, int x, int y, int w, int h, uint32_t hex_color)
 {
     if (x >= SCREEN_W || y >= SCREEN_H || x + w <= 0 || y + h <= 0) return;
@@ -131,12 +186,7 @@ static inline void draw_box(lv_layer_t *layer, int x, int y, int w, int h, uint3
     if (y + h > SCREEN_H) h = SCREEN_H - y;
     if (w <= 0 || h <= 0) return;
 
-    lv_area_t coords;
-    coords.x1 = x;
-    coords.y1 = y;
-    coords.x2 = x + w - 1;
-    coords.y2 = y + h - 1;
-
+    lv_area_t coords = { x, y, x + w - 1, y + h - 1 };
     lv_draw_fill_dsc_t dsc;
     lv_draw_fill_dsc_init(&dsc);
     dsc.color = lv_color_hex(hex_color);
@@ -157,7 +207,7 @@ static void draw_heart(lv_layer_t *layer, int x, int y, bool filled)
     draw_box(layer, x + 3, y + 5, 1, 1, col);
 }
 
-// 游戏画布主绘制回调 (每帧直接渲染)
+// 游戏画布主绘制回调 (每帧直接光栅化渲染)
 static void on_playfield_draw(lv_event_t *e)
 {
     lv_layer_t *layer = lv_event_get_layer(e);
@@ -169,7 +219,7 @@ static void on_playfield_draw(lv_event_t *e)
         oy = (rand() % s_game.screen_shake) - (s_game.screen_shake / 2);
     }
 
-    // 0. 全屏核弹白光
+    // 0. 全屏核弹白光闪烁
     if (s_flash_timer > 0) {
         draw_box(layer, 0, 0, SCREEN_W, SCREEN_H, 0xFFFFFF);
         return;
@@ -214,7 +264,7 @@ static void on_playfield_draw(lv_event_t *e)
         }
     }
 
-    // 3. 玩家子弹 (高能激光与等离子火球)
+    // 3. 玩家子弹 (高能极速光刃与等离子火球)
     for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
         if (s_game.bullets[i].active) {
             int bx = (int)s_game.bullets[i].x + ox;
@@ -334,6 +384,9 @@ static void on_playfield_draw(lv_event_t *e)
             if (bar_w > 0) draw_box(layer, 22, 28, bar_w, 4, 0xFF0055);
         }
     }
+
+    // 9. 底部半透明操作提示栏
+    draw_box(layer, 0, 302, SCREEN_W, 18, 0x050812);
 }
 
 static void game_timer_cb(lv_timer_t *timer)
@@ -346,10 +399,7 @@ static void game_timer_cb(lv_timer_t *timer)
         if (s_flash_timer > 0) s_flash_timer--;
 
         // 音频事件派发
-        if (s_game.snd_bomb) {
-            s_flash_timer = 3;
-            send_sound(SND_BOMB);
-        } else if (s_game.snd_explode_big) {
+        if (s_game.snd_explode_big) {
             send_sound(SND_EXPLODE_BIG);
         } else if (s_game.snd_explode) {
             send_sound(SND_EXPLODE);
@@ -359,14 +409,23 @@ static void game_timer_cb(lv_timer_t *timer)
         if (s_game.snd_hit) send_sound(SND_HIT);
         if (s_game.snd_powerup) send_sound(SND_POWERUP);
 
-        // 刷新 HUD 文本
-        lv_label_set_text_fmt(s_hud_score, "SCORE:%d", s_game.score);
-        lv_label_set_text_fmt(s_hud_bomb, "BOMB:x%d", s_game.bombs);
+        // 仅在值变动时刷新 HUD 文本，消除不必要的布局开销
+        if (s_game.score != s_last_score) {
+            s_last_score = s_game.score;
+            lv_label_set_text_fmt(s_hud_score, "SCORE:%d", s_game.score);
+        }
+        if (s_game.bombs != s_last_bomb) {
+            s_last_bomb = s_game.bombs;
+            lv_label_set_text_fmt(s_hud_bomb, "BOMB:x%d", s_game.bombs);
+        }
 
-        if (s_game.boss_active) {
-            lv_obj_remove_flag(s_hud_boss, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(s_hud_boss, LV_OBJ_FLAG_HIDDEN);
+        if (s_game.boss_active != s_last_boss) {
+            s_last_boss = s_game.boss_active;
+            if (s_game.boss_active) {
+                lv_obj_remove_flag(s_hud_boss, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(s_hud_boss, LV_OBJ_FLAG_HIDDEN);
+            }
         }
 
         if (s_game.game_over) {
@@ -386,6 +445,9 @@ void demo_thunder_enter(void)
 {
     thunder_init(&s_game);
     s_flash_timer = 0;
+    s_last_score = -1;
+    s_last_bomb = -1;
+    s_last_boss = false;
 
     // 音频任务与队列
     if (!s_snd_queue) {
@@ -426,7 +488,16 @@ void demo_thunder_enter(void)
     lv_obj_set_style_text_color(s_hud_boss, lv_color_hex(0xFF0055), 0);
     lv_obj_add_flag(s_hud_boss, LV_OBJ_FLAG_HIDDEN);
 
-    // 3. GAME OVER 结算遮罩容器
+    // 3. 底部按键操作提示 (清晰明了)
+    s_hud_hints = lv_label_create(s_scr);
+    lv_obj_set_pos(s_hud_hints, 0, 303);
+    lv_obj_set_size(s_hud_hints, 240, 16);
+    lv_obj_set_style_text_align(s_hud_hints, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(s_hud_hints, "UP:左移  DOWN:右移  OK:💣核弹");
+    lv_obj_set_style_text_font(s_hud_hints, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(s_hud_hints, lv_color_hex(0xFFD928), 0);
+
+    // 4. GAME OVER 结算遮罩容器
     s_gameover_box = lv_obj_create(s_scr);
     lv_obj_remove_flag(s_gameover_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(s_gameover_box, 200, 140);
@@ -457,7 +528,7 @@ void demo_thunder_enter(void)
 
     lv_obj_add_flag(s_gameover_box, LV_OBJ_FLAG_HIDDEN);
 
-    s_game_timer = lv_timer_create(game_timer_cb, 35, NULL);
+    s_game_timer = lv_timer_create(game_timer_cb, 30, NULL);
     lv_screen_load(s_scr);
 }
 
@@ -478,7 +549,7 @@ void demo_thunder_exit(void)
     if (s_scr) {
         lv_obj_delete(s_scr);
         s_scr = NULL;
-        s_playfield = s_hud_score = s_hud_bomb = s_hud_boss = s_gameover_box = s_gameover_score = NULL;
+        s_playfield = s_hud_score = s_hud_bomb = s_hud_boss = s_hud_hints = s_gameover_box = s_gameover_score = NULL;
     }
 }
 
@@ -490,6 +561,9 @@ void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev)
         if (btn == BSP_BTN_OK) {
             thunder_init(&s_game);
             s_flash_timer = 0;
+            s_last_score = -1;
+            s_last_bomb = -1;
+            s_last_boss = false;
             if (s_gameover_box) {
                 lv_obj_add_flag(s_gameover_box, LV_OBJ_FLAG_HIDDEN);
             }
@@ -502,6 +576,10 @@ void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev)
     } else if (btn == BSP_BTN_DOWN) {
         thunder_move_right(&s_game);
     } else if (btn == BSP_BTN_OK) {
-        thunder_use_bomb(&s_game);
+        // 立即触发全屏核弹与专属强震轰炸音效
+        if (thunder_use_bomb(&s_game)) {
+            s_flash_timer = 3;
+            send_sound(SND_BOMB);
+        }
     }
 }
