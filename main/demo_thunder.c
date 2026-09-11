@@ -30,18 +30,20 @@ static lv_obj_t *s_scr;
 static lv_obj_t *s_hud_score;
 static lv_obj_t *s_hud_hp;
 static lv_obj_t *s_hud_bomb;
-static lv_obj_t *s_canvas;
+static lv_obj_t *s_playfield;
 static lv_obj_t *s_guide_label;
 static lv_timer_t *s_game_timer;
+
+static lv_obj_t *s_player_obj;
+static lv_obj_t *s_player_flame;
+static lv_obj_t *s_bullets[THUNDER_MAX_BULLETS];
+static lv_obj_t *s_ebullets[THUNDER_MAX_ENEMY_BULLETS];
+static lv_obj_t *s_enemies[THUNDER_MAX_ENEMIES];
+static lv_obj_t *s_items[THUNDER_MAX_ITEMS];
 
 static QueueHandle_t s_snd_queue;
 static TaskHandle_t s_snd_task;
 static int s_flash_timer = 0;
-
-#define CANVAS_W 240
-#define CANVAS_H 250
-#define CANVAS_BUF_SIZE (CANVAS_W * CANVAS_H * 2)
-static uint8_t s_canvas_buf[CANVAS_BUF_SIZE];
 
 static void send_sound(thunder_snd_t snd)
 {
@@ -119,109 +121,87 @@ static void thunder_audio_task(void *arg)
     }
 }
 
-static void draw_rect_canvas(int x, int y, int w, int h, lv_color_t color)
+static void update_render(void)
 {
-    lv_layer_t layer;
-    lv_canvas_init_layer(s_canvas, &layer);
-    lv_draw_rect_dsc_t dsc;
-    lv_draw_rect_dsc_init(&dsc);
-    dsc.bg_color = color;
-    dsc.border_width = 0;
-    dsc.radius = 0;
+    if (!s_playfield) return;
 
-    lv_area_t coords;
-    coords.x1 = x;
-    coords.y1 = y;
-    coords.x2 = x + w - 1;
-    coords.y2 = y + h - 1;
-
-    lv_draw_rect(&layer, &dsc, &coords);
-    lv_canvas_finish_layer(s_canvas, &layer);
-}
-
-static void render_game_scene(void)
-{
-    if (!s_canvas) return;
-
-    // 清空背景 (深邃夜空黑)
-    lv_color_t bg_col = (s_flash_timer > 0) ? lv_color_hex(0xFFFFFF) : lv_color_hex(0x060913);
-    lv_canvas_fill_bg(s_canvas, bg_col, LV_OPA_COVER);
     if (s_flash_timer > 0) {
         s_flash_timer--;
-        return;
+        lv_obj_set_style_bg_color(s_playfield, lv_color_hex(0xFFFFFF), 0);
+    } else {
+        lv_obj_set_style_bg_color(s_playfield, lv_color_hex(0x060913), 0);
     }
 
-    // 1. 绘制玩家机体 (大尺寸 30x28 像素)
+    // 1. 玩家战机
     if (!s_game.game_over) {
-        int px = (int)s_game.player_x;
-        int py = (int)s_game.player_y - 30; // 适配画布高度
-
-        // 喷射火焰动画
-        int flame_h = 5 + (s_game.wave_tick % 3) * 3;
-        draw_rect_canvas(px + 9, py + 24, 4, flame_h, lv_color_hex(0xFF9900));
-        draw_rect_canvas(px + 17, py + 24, 4, flame_h, lv_color_hex(0xFF9900));
-
-        // 战机机翼与机体
-        draw_rect_canvas(px + 2, py + 12, 26, 8, lv_color_hex(0x00AACC));
-        draw_rect_canvas(px, py + 16, 30, 6, lv_color_hex(0x0077AA));
-        draw_rect_canvas(px + 11, py + 2, 8, 22, lv_color_hex(0x00E5FF));
-        // 机鼻与座舱
-        draw_rect_canvas(px + 13, py, 4, 12, lv_color_hex(0xFFFFFF));
-        draw_rect_canvas(px + 12, py + 8, 6, 6, lv_color_hex(0xFFAA00));
-        // 翼尖加农炮
-        draw_rect_canvas(px, py + 10, 3, 6, lv_color_hex(0xFFD928));
-        draw_rect_canvas(px + 27, py + 10, 3, 6, lv_color_hex(0xFFD928));
+        lv_obj_remove_flag(s_player_obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(s_player_flame, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(s_player_obj, (int)s_game.player_x, (int)s_game.player_y - 24);
+        int flame_h = 4 + (s_game.wave_tick % 3) * 3;
+        lv_obj_set_size(s_player_flame, 8, flame_h);
+        lv_obj_set_pos(s_player_flame, (int)s_game.player_x + 11, (int)s_game.player_y - 24 + 26);
+    } else {
+        lv_obj_add_flag(s_player_obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(s_player_flame, LV_OBJ_FLAG_HIDDEN);
     }
 
-    // 2. 绘制玩家激光 (大号粗光束)
+    // 2. 玩家子弹
     for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
         if (s_game.bullets[i].active) {
-            bullet_t *b = &s_game.bullets[i];
-            draw_rect_canvas((int)b->x, (int)b->y - 30, b->w, b->h, lv_color_hex(b->color));
+            lv_obj_remove_flag(s_bullets[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_pos(s_bullets[i], (int)s_game.bullets[i].x, (int)s_game.bullets[i].y - 24);
+            lv_obj_set_size(s_bullets[i], s_game.bullets[i].w, s_game.bullets[i].h);
+            lv_obj_set_style_bg_color(s_bullets[i], lv_color_hex(s_game.bullets[i].color), 0);
+        } else {
+            lv_obj_add_flag(s_bullets[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 
-    // 3. 绘制敌机子弹
+    // 3. 敌机子弹
     for (int i = 0; i < THUNDER_MAX_ENEMY_BULLETS; i++) {
         if (s_game.enemy_bullets[i].active) {
-            bullet_t *eb = &s_game.enemy_bullets[i];
-            draw_rect_canvas((int)eb->x, (int)eb->y - 30, eb->w, eb->h, lv_color_hex(0xFF2244));
+            lv_obj_remove_flag(s_ebullets[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_pos(s_ebullets[i], (int)s_game.enemy_bullets[i].x, (int)s_game.enemy_bullets[i].y - 24);
+            lv_obj_set_size(s_ebullets[i], s_game.enemy_bullets[i].w, s_game.enemy_bullets[i].h);
+        } else {
+            lv_obj_add_flag(s_ebullets[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 
-    // 4. 绘制敌机
+    // 4. 敌机
     for (int i = 0; i < THUNDER_MAX_ENEMIES; i++) {
         if (s_game.enemies[i].active) {
             enemy_t *e = &s_game.enemies[i];
-            int ex = (int)e->x;
-            int ey = (int)e->y - 30;
+            lv_obj_remove_flag(s_enemies[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_pos(s_enemies[i], (int)e->x, (int)e->y - 24);
+            lv_obj_set_size(s_enemies[i], e->w, e->h);
 
-            if (e->type == ENEMY_SCOUT) { // 绿蜂侦察机 (24x20)
-                draw_rect_canvas(ex + 8, ey, 8, 16, lv_color_hex(0x22CC44));
-                draw_rect_canvas(ex + 2, ey + 4, 20, 8, lv_color_hex(0x88FF33));
-                draw_rect_canvas(ex + 4, ey + 6, 4, 4, lv_color_hex(0xFF2222));
-                draw_rect_canvas(ex + 16, ey + 6, 4, 4, lv_color_hex(0xFF2222));
-            } else if (e->type == ENEMY_BOMBER) { // 红色重巡 (32x28)
-                draw_rect_canvas(ex + 10, ey, 12, 24, lv_color_hex(0xCC2233));
-                draw_rect_canvas(ex + 2, ey + 8, 28, 12, lv_color_hex(0xFF4455));
-                draw_rect_canvas(ex + 12, ey + 8, 8, 8, lv_color_hex(0xFFD928));
-            } else { // 巨型 BOSS (64x44)
-                draw_rect_canvas(ex + 16, ey, 32, 40, lv_color_hex(0x552277));
-                draw_rect_canvas(ex + 4, ey + 10, 56, 20, lv_color_hex(0x8833BB));
-                draw_rect_canvas(ex + 24, ey + 28, 16, 12, lv_color_hex(0xFF0055));
-                draw_rect_canvas(ex + 6, ey + 24, 6, 8, lv_color_hex(0xFFBB00));
-                draw_rect_canvas(ex + 52, ey + 24, 6, 8, lv_color_hex(0xFFBB00));
+            if (e->type == ENEMY_SCOUT) {
+                lv_obj_set_style_bg_color(s_enemies[i], lv_color_hex(0x22CC44), 0);
+                lv_obj_set_style_border_color(s_enemies[i], lv_color_hex(0x88FF33), 0);
+            } else if (e->type == ENEMY_BOMBER) {
+                lv_obj_set_style_bg_color(s_enemies[i], lv_color_hex(0xCC2233), 0);
+                lv_obj_set_style_border_color(s_enemies[i], lv_color_hex(0xFFD928), 0);
+            } else {
+                lv_obj_set_style_bg_color(s_enemies[i], lv_color_hex(0x7722AA), 0);
+                lv_obj_set_style_border_color(s_enemies[i], lv_color_hex(0xFF0055), 0);
             }
+        } else {
+            lv_obj_add_flag(s_enemies[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 
-    // 5. 绘制道具 (带彩色边框的大块)
+    // 5. 掉落道具
     for (int i = 0; i < THUNDER_MAX_ITEMS; i++) {
         if (s_game.items[i].active) {
             thunder_item_t *it = &s_game.items[i];
-            lv_color_t c = (it->type == ITEM_TYPE_POWER) ? lv_color_hex(0xFFD928) :
-                           ((it->type == ITEM_TYPE_BOMB) ? lv_color_hex(0xFF3344) : lv_color_hex(0x00E5FF));
-            draw_rect_canvas((int)it->x, (int)it->y - 30, it->w, it->h, c);
+            lv_obj_remove_flag(s_items[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_pos(s_items[i], (int)it->x, (int)it->y - 24);
+            lv_color_t col = (it->type == ITEM_TYPE_POWER) ? lv_color_hex(0xFFD928) :
+                             ((it->type == ITEM_TYPE_BOMB) ? lv_color_hex(0xFF3344) : lv_color_hex(0x00E5FF));
+            lv_obj_set_style_bg_color(s_items[i], col, 0);
+        } else {
+            lv_obj_add_flag(s_items[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -259,7 +239,7 @@ static void game_timer_cb(lv_timer_t *timer)
         }
     }
 
-    render_game_scene();
+    update_render();
 }
 
 void demo_thunder_enter(void)
@@ -298,12 +278,74 @@ void demo_thunder_enter(void)
     lv_obj_set_style_text_font(s_hud_bomb, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_bomb, lv_color_hex(0x00E5FF), 0);
 
-    // 2. 游戏画布 (240 x 250)
-    s_canvas = lv_canvas_create(s_scr);
-    lv_canvas_set_buffer(s_canvas, s_canvas_buf, CANVAS_W, CANVAS_H, LV_COLOR_FORMAT_RGB565);
-    lv_obj_set_pos(s_canvas, 0, 26);
+    // 2. 战场容器 (240x250)
+    s_playfield = lv_obj_create(s_scr);
+    lv_obj_remove_flag(s_playfield, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_pos(s_playfield, 0, 26);
+    lv_obj_set_size(s_playfield, 240, 252);
+    lv_obj_set_style_bg_color(s_playfield, lv_color_hex(0x060913), 0);
+    lv_obj_set_style_border_width(s_playfield, 0, 0);
+    lv_obj_set_style_pad_all(s_playfield, 0, 0);
 
-    // 3. 底部按键说明
+    // 2.1 玩家战机
+    s_player_obj = lv_obj_create(s_playfield);
+    lv_obj_remove_flag(s_player_obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(s_player_obj, 30, 26);
+    lv_obj_set_style_bg_color(s_player_obj, lv_color_hex(0x00AACC), 0);
+    lv_obj_set_style_border_color(s_player_obj, lv_color_hex(0x00E5FF), 0);
+    lv_obj_set_style_border_width(s_player_obj, 2, 0);
+    lv_obj_set_style_radius(s_player_obj, 4, 0);
+
+    s_player_flame = lv_obj_create(s_playfield);
+    lv_obj_remove_flag(s_player_flame, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(s_player_flame, 8, 6);
+    lv_obj_set_style_bg_color(s_player_flame, lv_color_hex(0xFF6600), 0);
+    lv_obj_set_style_border_width(s_player_flame, 0, 0);
+
+    // 2.2 玩家子弹池
+    for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
+        s_bullets[i] = lv_obj_create(s_playfield);
+        lv_obj_remove_flag(s_bullets[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_size(s_bullets[i], 4, 14);
+        lv_obj_set_style_bg_color(s_bullets[i], lv_color_hex(0xFFD928), 0);
+        lv_obj_set_style_border_width(s_bullets[i], 0, 0);
+        lv_obj_set_style_radius(s_bullets[i], 2, 0);
+        lv_obj_add_flag(s_bullets[i], LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // 2.3 敌机子弹池
+    for (int i = 0; i < THUNDER_MAX_ENEMY_BULLETS; i++) {
+        s_ebullets[i] = lv_obj_create(s_playfield);
+        lv_obj_remove_flag(s_ebullets[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_size(s_ebullets[i], 4, 8);
+        lv_obj_set_style_bg_color(s_ebullets[i], lv_color_hex(0xFF2244), 0);
+        lv_obj_set_style_border_width(s_ebullets[i], 0, 0);
+        lv_obj_set_style_radius(s_ebullets[i], 2, 0);
+        lv_obj_add_flag(s_ebullets[i], LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // 2.4 敌机池
+    for (int i = 0; i < THUNDER_MAX_ENEMIES; i++) {
+        s_enemies[i] = lv_obj_create(s_playfield);
+        lv_obj_remove_flag(s_enemies[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_size(s_enemies[i], 24, 20);
+        lv_obj_set_style_border_width(s_enemies[i], 2, 0);
+        lv_obj_set_style_radius(s_enemies[i], 4, 0);
+        lv_obj_add_flag(s_enemies[i], LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // 2.5 道具池
+    for (int i = 0; i < THUNDER_MAX_ITEMS; i++) {
+        s_items[i] = lv_obj_create(s_playfield);
+        lv_obj_remove_flag(s_items[i], LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_size(s_items[i], 14, 14);
+        lv_obj_set_style_border_color(s_items[i], lv_color_hex(0xFFFFFF), 0);
+        lv_obj_set_style_border_width(s_items[i], 2, 0);
+        lv_obj_set_style_radius(s_items[i], 3, 0);
+        lv_obj_add_flag(s_items[i], LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // 3. 底部操作指引
     s_guide_label = lv_label_create(s_scr);
     lv_obj_set_pos(s_guide_label, 0, 282);
     lv_obj_set_size(s_guide_label, 240, 36);
@@ -312,7 +354,7 @@ void demo_thunder_enter(void)
     lv_label_set_text(s_guide_label, "UP: LEFT | DOWN: RIGHT\nOK: MEGA BOMB (CLEAR SCREEN)");
     lv_obj_set_style_text_color(s_guide_label, lv_color_hex(0xFFD928), 0);
 
-    s_game_timer = lv_timer_create(game_timer_cb, 40, NULL); // 25 FPS 高速流畅刷新
+    s_game_timer = lv_timer_create(game_timer_cb, 40, NULL);
     lv_screen_load(s_scr);
 }
 
@@ -333,7 +375,12 @@ void demo_thunder_exit(void)
     if (s_scr) {
         lv_obj_delete(s_scr);
         s_scr = NULL;
-        s_hud_score = s_hud_hp = s_hud_bomb = s_canvas = s_guide_label = NULL;
+        s_hud_score = s_hud_hp = s_hud_bomb = s_playfield = s_guide_label = NULL;
+        s_player_obj = s_player_flame = NULL;
+        for (int i = 0; i < THUNDER_MAX_BULLETS; i++) s_bullets[i] = NULL;
+        for (int i = 0; i < THUNDER_MAX_ENEMY_BULLETS; i++) s_ebullets[i] = NULL;
+        for (int i = 0; i < THUNDER_MAX_ENEMIES; i++) s_enemies[i] = NULL;
+        for (int i = 0; i < THUNDER_MAX_ITEMS; i++) s_items[i] = NULL;
     }
 }
 

@@ -20,15 +20,12 @@ static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
     { "Thunder",   demo_thunder_enter,   demo_thunder_exit,   demo_thunder_key   },
-    { "FlyDriver", demo_flydriver_enter, demo_flydriver_exit, demo_flydriver_key },
-    { "FlySaber",  demo_flysaber_enter,  demo_flysaber_exit,  demo_flysaber_key  },
-    { "Roulette",  demo_roulette_enter,  demo_roulette_exit,  demo_roulette_key  },
     { "Display",   demo_display_enter,   demo_display_exit,   demo_display_key   },
     { "Button",    demo_button_enter,    demo_button_exit,    demo_button_key   },
     { "Audio",     demo_audio_enter,     demo_audio_exit,     demo_audio_key    },
     { "Battery",   demo_battery_enter,   demo_battery_exit,   demo_battery_key  },
     { "Wi-Fi",     demo_wifi_enter,      demo_wifi_exit,      demo_wifi_key     },
-    { "BLE",       demo_ble_enter,      demo_ble_exit,      demo_ble_key      },
+    { "BLE",       demo_ble_enter,       demo_ble_exit,       demo_ble_key      },
     { "Low Power", demo_low_power_enter, demo_low_power_exit, demo_low_power_key },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
@@ -131,16 +128,13 @@ void app_main(void) {
     bool bat_ok = (bsp_battery_init() == ESP_OK);
 
     s_ok[0] = btn_ok;                                 // Thunder (大像素雷霆战机)
-    s_ok[1] = btn_ok;                                 // FlyDriver (果蝇视流超跑)
-    s_ok[2] = btn_ok;                                 // FlySaber (果蝇光剑: 神经反射)
-    s_ok[3] = btn_ok;                                 // Roulette (恶魔轮盘赌)
-    s_ok[4] = true;                                   // Display 已确认可用
-    s_ok[5] = btn_ok;                                 // Button
-    s_ok[6] = audio_ok;                               // Audio
-    s_ok[7] = bat_ok;                                 // Battery
-    s_ok[8] = true;                                   // Wi-Fi 页面内按需初始化
-    s_ok[9] = true;                                   // BLE
-    s_ok[10] = true;                                  // Low Power
+    s_ok[1] = true;                                   // Display 已确认可用
+    s_ok[2] = btn_ok;                                 // Button
+    s_ok[3] = audio_ok;                               // Audio
+    s_ok[4] = bat_ok;                                 // Battery
+    s_ok[5] = true;                                   // Wi-Fi 页面内按需初始化
+    s_ok[6] = true;                                   // BLE
+    s_ok[7] = true;                                  // Low Power
 
     if (bsp_lvgl_lock(1000)) {
         s_active = 0;

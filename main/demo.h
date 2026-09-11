@@ -33,16 +33,7 @@ void demo_ble_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 void demo_low_power_enter(void); void demo_low_power_exit(void);
 void demo_low_power_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
-void demo_roulette_enter(void); void demo_roulette_exit(void);
-void demo_roulette_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-
 void demo_thunder_enter(void); void demo_thunder_exit(void);
 void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-
-void demo_flysaber_enter(void); void demo_flysaber_exit(void);
-void demo_flysaber_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-
-void demo_flydriver_enter(void); void demo_flydriver_exit(void);
-void demo_flydriver_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
 
