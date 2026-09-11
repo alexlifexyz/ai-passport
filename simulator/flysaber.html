@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Passport - 《果蝇光剑：神经反射》(FlySaber)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(circle at center, #130a24 0%, #06040e 100%);
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+    user-select: none;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .nav-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-tab.active {
+    background: linear-gradient(90deg, #00e5ff, #d000ff);
+    color: #000;
+    box-shadow: 0 0 14px rgba(0, 229, 255, 0.6);
+  }
+  .nav-tab.inactive {
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .nav-tab.inactive:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 22px;
+    letter-spacing: 1.5px;
+    background: linear-gradient(90deg, #00e5ff 0%, #d000ff 50%, #ff3366 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .header p {
+    font-size: 12px;
+    color: #ffd700;
+    margin-top: 3px;
+    font-weight: 600;
+  }
+
+  /* 模拟 AI Passport 透明外壳 */
+  .device-shell {
+    position: relative;
+    width: 324px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 100%);
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 28px;
+    padding: 20px 18px 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.85), inset 0 0 20px rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .device-brand {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 6px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #00e5ff;
+    border-bottom: 1px dashed rgba(208, 0, 255, 0.3);
+    margin-bottom: 10px;
+  }
+  .device-brand .accent { color: #ff3366; }
+
+  /* 240 x 320 物理屏幕比例 */
+  .screen-bezel {
+    width: 256px;
+    height: 336px;
+    background: #000;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.95), 0 0 24px rgba(208,0,255,0.3);
+    border: 2px solid #281e42;
+  }
+
+  #gameCanvas {
+    width: 240px;
+    height: 320px;
+    background: #070611;
+    border-radius: 6px;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* 物理按键区 */
+  .controls-panel {
+    margin-top: 16px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .hw-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .btn-circle {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #2b2044, #181226);
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    color: #fff;
+    transition: transform 0.06s, background 0.06s;
+  }
+  .btn-circle:active, .btn-circle.active {
+    transform: translateY(3px) scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.7);
+  }
+  #btn-up .btn-circle:active, #btn-up .btn-circle.active {
+    background: #00e5ff;
+    color: #000;
+  }
+  #btn-down .btn-circle:active, #btn-down .btn-circle.active {
+    background: #ff3366;
+    color: #fff;
+  }
+  #btn-ok .btn-circle:active, #btn-ok .btn-circle.active {
+    background: #ffd700;
+    color: #000;
+  }
+
+  .btn-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #cbd5e1;
+    letter-spacing: 0.5px;
+  }
+  .key-hint {
+    font-size: 9px;
+    color: #64748b;
+  }
+
+  .instructions {
+    margin-top: 18px;
+    max-width: 440px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .instructions strong { color: #00e5ff; }
+  .instructions kbd {
+    background: #334155;
+    color: #f8fafc;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #475569;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<div class="nav-tabs">
+  <a href="flydriver.html" class="nav-tab inactive">🏎️ 果蝇超跑 (FlyDriver) [新]</a>
+  <a href="flysaber.html" class="nav-tab active">🪰 果蝇光剑 (FlySaber)</a>
+  <a href="index.html" class="nav-tab inactive">⚡ 雷霆战机 (Thunder)</a>
+</div>
+
+<div class="header">
+  <h1><span>🪰</span> 果蝇光剑：神经反射 (FLYSABER)</h1>
+  <p>★ 14万果蝇脑神经元连接组仿生 · 30ms 超频子弹时间 ★</p>
+</div>
+
+<div class="device-shell">
+  <div class="device-brand">
+    <span>AI PASSPORT<span class="accent">//</span>240x320</span>
+    <span>FLYSABER 140K V1.0</span>
+  </div>
+
+  <div class="screen-bezel">
+    <canvas id="gameCanvas" width="240" height="320"></canvas>
+  </div>
+
+  <!-- 3 实体按键模拟 -->
+  <div class="controls-panel">
+    <div class="hw-btn" id="btn-up">
+      <div class="btn-circle">🗡️</div>
+      <span class="btn-label" style="color:#00e5ff">UP (左蓝刀)</span>
+      <span class="key-hint"><kbd>W</kbd> 或 <kbd>↑</kbd></span>
+    </div>
+    <div class="hw-btn" id="btn-down">
+      <div class="btn-circle">⚔️</div>
+      <span class="btn-label" style="color:#ff3366">DOWN (右红刀)</span>
+      <span class="key-hint"><kbd>S</kbd> 或 <kbd>↓</kbd></span>
+    </div>
+    <div class="hw-btn" id="btn-ok">
+      <div class="btn-circle">💥</div>
+      <span class="btn-label" style="color:#ffd700">OK (合击/超频)</span>
+      <span class="key-hint"><kbd>Space</kbd> / <kbd>Enter</kbd></span>
+    </div>
+  </div>
+</div>
+
+<div class="instructions">
+  <strong>🧠 果蝇全脑连接组仿生机制说明：</strong><br>
+  • <strong>3次突触复苏生命</strong>：初始拥有 3 条突触生命；突触血量归零时消耗 1 条命自动除颤复苏至 75% 并赠送 2 秒子弹时间！达成 15 连击重塑奖励 1 条命！<br>
+  • <strong>复眼双光谱通道 (R7/R8)</strong>：<br>
+    - <kbd>W / ↑ UP</kbd>：挥动<strong>左手蓝光剑</strong>劈砍左侧 R7 通道蓝块<br>
+    - <kbd>S / ↓ DOWN</kbd>：挥动<strong>右手红光剑</strong>劈砍右侧 R8 通道红块<br>
+    - <kbd>Space / OK</kbd>：<strong>双刀十字合击</strong>切劈中央核心；蓄满 100% 神经电位时触发 <strong>30ms 果蝇子弹时间（减速 55% + 3倍爆分）</strong>！<br>
+  • <strong>神经杂波规避</strong>：遇到黄色警示尖刺不要劈砍，顺利穿过即可奖励神经积分！
+</div>
+
+<script>
+// --- Web Audio 纯代码合成音效 ---
+class SoundManager {
+  constructor() {
+    this.ctx = null;
+  }
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  playSlashBlue() { // 蓝刀高频下扫 (1200 -> 600Hz)
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(550, this.ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.08);
+  }
+
+  playSlashRed() { // 红刀破空下扫 (800 -> 350Hz)
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(320, this.ctx.currentTime + 0.09);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.09);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.09);
+  }
+
+  playHitPerfect() { // 完美水晶切割双音和弦
+    this.init();
+    [880, 1760].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0.22 / (idx + 1), this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.16);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.16);
+    });
+  }
+
+  playHitGood() {
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(580, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.08);
+  }
+
+  playMiss() { // 低频断路蜂鸣
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(130, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.12);
+  }
+
+  playOverdrive() { // 神经超频升调爆发
+    this.init();
+    const notes = [440, 660, 880, 1320];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }, idx * 40);
+    });
+  }
+
+  playGameOver() {
+    this.init();
+    const notes = [493, 440, 392, 330];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+      }, idx * 100);
+    });
+  }
+}
+const snd = new SoundManager();
+
+// --- 游戏逻辑实现 ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let syncHp = 100;
+let lives = 3;
+const maxLives = 3;
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let overdriveGauge = 0;
+let isOverdrive = false;
+let overdriveTimer = 0;
+let gameOver = false;
+
+function applySyncDamage(dmg) {
+  syncHp -= dmg;
+  if (syncHp <= 0) {
+    if (lives > 1) {
+      lives--;
+      syncHp = 75;
+      isOverdrive = true;
+      overdriveTimer = 60;
+      hitMsg = ">> EMERGENCY SYNAPSE REBOOT! <<";
+      hitMsgColor = "#ffd700";
+      hitMsgTimer = 25;
+      snd.playOverdrive();
+    } else {
+      lives = 0;
+      syncHp = 0;
+      gameOver = true;
+      snd.playGameOver();
+    }
+  }
+}
+
+let slashLeftTimer = 0;
+let slashRightTimer = 0;
+let slashDualTimer = 0;
+let hitMsg = "";
+let hitMsgTimer = 0;
+let hitMsgColor = "#ffd700";
+
+let tick = 0;
+let spawnTimer = 0;
+let blocks = [];
+let particles = [];
+
+const VP_X = 120;
+const VP_Y = 20;
+const DEST_LEFT = 55;
+const DEST_RIGHT = 185;
+const DEST_CTR = 120;
+const DEST_Y = 225;
+const STRIKE_T = 0.85;
+
+function calcPos(p, lane) {
+  const destX = (lane === 0) ? DEST_LEFT : ((lane === 1) ? DEST_RIGHT : DEST_CTR);
+  const curvedP = p * (0.4 + 0.6 * p);
+  const cx = VP_X + curvedP * (destX - VP_X);
+  const cy = VP_Y + curvedP * (DEST_Y - VP_Y);
+  const w = Math.floor(6 + curvedP * 26);
+  const h = Math.floor(4 + curvedP * 18);
+  return { x: cx - w / 2, y: cy - h / 2, w, h };
+}
+
+function spawnParticles(x, y, color, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 12 + Math.floor(Math.random() * 6),
+      color
+    });
+  }
+}
+
+const PATTERNS = [
+  { lane: 0, type: 'BLUE' },
+  { lane: 1, type: 'RED' },
+  { lane: 0, type: 'BLUE' },
+  { lane: 0, type: 'BLUE' },
+  { lane: 1, type: 'RED' },
+  { lane: 2, type: 'DUAL' },
+  { lane: 0, type: 'SPIKE' },
+  { lane: 1, type: 'RED' },
+  { lane: 1, type: 'SPIKE' },
+  { lane: 0, type: 'BLUE' },
+  { lane: 2, type: 'DUAL' },
+];
+let patternStep = 0;
+
+function spawnBlock() {
+  const item = PATTERNS[patternStep];
+  patternStep = (patternStep + 1) % PATTERNS.length;
+  const baseSpeed = 0.022 + (score / 4000) * 0.003;
+  blocks.push({
+    lane: item.lane,
+    type: item.type,
+    progress: 0.0,
+    speed: Math.min(baseSpeed, 0.045),
+    sliced: false
+  });
+}
+
+function slashLeft() {
+  if (gameOver) return;
+  slashLeftTimer = 5;
+  const targets = blocks.filter(b => b.lane === 0 && !b.sliced && Math.abs(b.progress - STRIKE_T) <= 0.18);
+  if (targets.length > 0) {
+    targets.sort((a, b) => Math.abs(a.progress - STRIKE_T) - Math.abs(b.progress - STRIKE_T));
+    const target = targets[0];
+    target.sliced = true;
+    const pos = calcPos(target.progress, target.lane);
+
+    if (target.type === 'SPIKE') {
+      combo = 0;
+      hitMsg = "HAZARD SPIKE HIT! -8%";
+      hitMsgColor = "#ff9900";
+      hitMsgTimer = 16;
+      snd.playMiss();
+      applySyncDamage(8);
+    } else if (target.type === 'BLUE') {
+      const diff = Math.abs(target.progress - STRIKE_T);
+      spawnParticles(pos.x + pos.w / 2, pos.y + pos.h / 2, '#00e5ff', 10);
+      if (diff <= 0.08) {
+        score += isOverdrive ? 300 : 100;
+        combo++;
+        if (combo > 0 && combo % 15 === 0 && lives < maxLives) lives++;
+        if (!isOverdrive) overdriveGauge = Math.min(100, overdriveGauge + 10);
+        syncHp = Math.min(100, syncHp + 8);
+        hitMsg = `PERFECT REFLEX! x${combo}`;
+        hitMsgColor = "#ffd700";
+        snd.playHitPerfect();
+      } else {
+        score += isOverdrive ? 150 : 50;
+        combo++;
+        if (!isOverdrive) overdriveGauge = Math.min(100, overdriveGauge + 5);
+        syncHp = Math.min(100, syncHp + 4);
+        hitMsg = `GOOD HIT! x${combo}`;
+        hitMsgColor = "#33ff66";
+        snd.playHitGood();
+      }
+      hitMsgTimer = 14;
+    } else {
+      combo = 0;
+      hitMsg = "WRONG COLOR! R7 MISMATCH -4%";
+      hitMsgColor = "#ff2255";
+      hitMsgTimer = 14;
+      snd.playMiss();
+      applySyncDamage(4);
+    }
+  } else {
+    snd.playSlashBlue();
+  }
+}
+
+function slashRight() {
+  if (gameOver) return;
+  slashRightTimer = 5;
+  const targets = blocks.filter(b => b.lane === 1 && !b.sliced && Math.abs(b.progress - STRIKE_T) <= 0.18);
+  if (targets.length > 0) {
+    targets.sort((a, b) => Math.abs(a.progress - STRIKE_T) - Math.abs(b.progress - STRIKE_T));
+    const target = targets[0];
+    target.sliced = true;
+    const pos = calcPos(target.progress, target.lane);
+
+    if (target.type === 'SPIKE') {
+      combo = 0;
+      hitMsg = "HAZARD SPIKE HIT! -8%";
+      hitMsgColor = "#ff9900";
+      hitMsgTimer = 16;
+      snd.playMiss();
+      applySyncDamage(8);
+    } else if (target.type === 'RED') {
+      const diff = Math.abs(target.progress - STRIKE_T);
+      spawnParticles(pos.x + pos.w / 2, pos.y + pos.h / 2, '#ff3366', 10);
+      if (diff <= 0.08) {
+        score += isOverdrive ? 300 : 100;
+        combo++;
+        if (combo > 0 && combo % 15 === 0 && lives < maxLives) lives++;
+        if (!isOverdrive) overdriveGauge = Math.min(100, overdriveGauge + 10);
+        syncHp = Math.min(100, syncHp + 8);
+        hitMsg = `PERFECT REFLEX! x${combo}`;
+        hitMsgColor = "#ffd700";
+        snd.playHitPerfect();
+      } else {
+        score += isOverdrive ? 150 : 50;
+        combo++;
+        if (!isOverdrive) overdriveGauge = Math.min(100, overdriveGauge + 5);
+        syncHp = Math.min(100, syncHp + 4);
+        hitMsg = `GOOD HIT! x${combo}`;
+        hitMsgColor = "#33ff66";
+        snd.playHitGood();
+      }
+      hitMsgTimer = 14;
+    } else {
+      combo = 0;
+      hitMsg = "WRONG COLOR! R8 MISMATCH -4%";
+      hitMsgColor = "#ff2255";
+      hitMsgTimer = 14;
+      snd.playMiss();
+      applySyncDamage(4);
+    }
+  } else {
+    snd.playSlashRed();
+  }
+}
+
+function slashDual() {
+  if (gameOver) {
+    location.reload();
+    return;
+  }
+  slashDualTimer = 6;
+  slashLeftTimer = 6;
+  slashRightTimer = 6;
+
+  if (overdriveGauge >= 100) {
+    isOverdrive = true;
+    overdriveTimer = 120;
+    overdriveGauge = 0;
+    hitMsg = ">> 30ms NEURO OVERDRIVE! <<";
+    hitMsgColor = "#ffd700";
+    hitMsgTimer = 22;
+    snd.playOverdrive();
+
+    blocks.forEach(b => {
+      if (!b.sliced && b.type !== 'SPIKE') {
+        b.sliced = true;
+        score += 300;
+        combo++;
+        const pos = calcPos(b.progress, b.lane);
+        spawnParticles(pos.x + pos.w / 2, pos.y + pos.h / 2, '#ffd700', 8);
+      }
+    });
+    return;
+  }
+
+  // 中央双色核心判定
+  let hit = false;
+  const ctrTargets = blocks.filter(b => b.lane === 2 && !b.sliced && Math.abs(b.progress - STRIKE_T) <= 0.18);
+  if (ctrTargets.length > 0) {
+    const t = ctrTargets[0];
+    t.sliced = true;
+    const pos = calcPos(t.progress, t.lane);
+    spawnParticles(pos.x + pos.w / 2, pos.y + pos.h / 2, '#d000ff', 12);
+    score += isOverdrive ? 350 : 150;
+    combo++;
+    if (combo > 0 && combo % 15 === 0 && lives < maxLives) lives++;
+    overdriveGauge = Math.min(100, overdriveGauge + 15);
+    hitMsg = `DUAL CORE SPLIT! x${combo}`;
+    hitMsgColor = "#d000ff";
+    hitMsgTimer = 14;
+    snd.playHitPerfect();
+    hit = true;
+  }
+
+  // 左右同时切
+  const leftT = blocks.find(b => b.lane === 0 && !b.sliced && b.type === 'BLUE' && Math.abs(b.progress - STRIKE_T) <= 0.18);
+  const rightT = blocks.find(b => b.lane === 1 && !b.sliced && b.type === 'RED' && Math.abs(b.progress - STRIKE_T) <= 0.18);
+  if (leftT) {
+    leftT.sliced = true;
+    score += 100;
+    combo++;
+    if (combo > 0 && combo % 15 === 0 && lives < maxLives) lives++;
+    hit = true;
+  }
+  if (rightT) {
+    rightT.sliced = true;
+    score += 100;
+    combo++;
+    if (combo > 0 && combo % 15 === 0 && lives < maxLives) lives++;
+    hit = true;
+  }
+
+  if (!hit) {
+    snd.playSlashBlue();
+  }
+}
+
+// 主渲染与游戏循环 (30 FPS)
+function update() {
+  if (!gameOver) {
+    tick++;
+    if (slashLeftTimer > 0) slashLeftTimer--;
+    if (slashRightTimer > 0) slashRightTimer--;
+    if (slashDualTimer > 0) slashDualTimer--;
+    if (hitMsgTimer > 0) hitMsgTimer--;
+
+    if (isOverdrive) {
+      overdriveTimer--;
+      if (overdriveTimer <= 0) isOverdrive = false;
+    }
+
+    spawnTimer++;
+    let threshold = (score > 3000) ? 18 : ((score > 1000) ? 22 : 28);
+    if (isOverdrive) threshold = Math.floor(threshold * 1.5);
+    if (spawnTimer >= threshold) {
+      spawnTimer = 0;
+      spawnBlock();
+    }
+
+    const speedFactor = isOverdrive ? 0.45 : 1.0;
+    blocks.forEach(b => {
+      b.progress += b.speed * speedFactor;
+      if (b.progress > 1.08 && !b.sliced) {
+        if (b.type === 'SPIKE') {
+          score += 20; // 躲避奖励
+        } else {
+          combo = 0;
+          hitMsg = "SYNAPSE MISS! -6%";
+          hitMsgColor = "#ff4444";
+          hitMsgTimer = 14;
+          snd.playMiss();
+          applySyncDamage(6);
+        }
+      }
+    });
+    blocks = blocks.filter(b => b.progress <= 1.15 && !b.sliced);
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+    });
+    particles = particles.filter(p => p.life > 0);
+  }
+
+  render();
+}
+
+function render() {
+  // 1. 画布背景
+  ctx.fillStyle = isOverdrive ? '#1b1404' : '#070611';
+  ctx.fillRect(0, 0, 240, 320);
+
+  // 2. 顶部 HUD
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(`SCORE:${score}`, 8, 18);
+
+  const hpCol = syncHp > 50 ? '#33ff66' : (syncHp > 25 ? '#ffaa00' : '#ff3333');
+  ctx.fillStyle = hpCol;
+  ctx.fillText(`HP:${syncHp}% x${lives}`, 92, 18);
+
+  if (isOverdrive) {
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText("BURST 3x!", 172, 18);
+  } else if (overdriveGauge >= 100) {
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText("[OK] READY", 168, 18);
+  } else {
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillText(`AP:${overdriveGauge}%`, 172, 18);
+  }
+
+  // 3. 3D 透视视神经隧道
+  const gridCol = isOverdrive ? '#553300' : '#1a1b30';
+  ctx.strokeStyle = gridCol;
+  ctx.lineWidth = 1;
+
+  // 远景消失点放射轨道线
+  for (let s = 0; s < 16; s++) {
+    const p = s / 16;
+    const l = calcPos(p, 0);
+    const r = calcPos(p, 1);
+    const c = calcPos(p, 2);
+    ctx.fillStyle = isOverdrive ? '#886611' : '#003366';
+    ctx.fillRect(l.x + l.w / 2 - 1, l.y + l.h / 2, 3, 2);
+    ctx.fillStyle = isOverdrive ? '#995511' : '#661122';
+    ctx.fillRect(r.x + r.w / 2 - 1, r.y + r.h / 2, 3, 2);
+  }
+
+  // 飞掠深度环
+  const ringOffset = (tick * 2) % 36;
+  for (let r = 0; r < 4; r++) {
+    const p = (r * 36 + ringOffset) / 144;
+    if (p >= 0.05 && p <= 1.0) {
+      const y = Math.floor(VP_Y + p * p * (DEST_Y - VP_Y));
+      const span = Math.floor(20 + p * 180);
+      ctx.fillStyle = gridCol;
+      ctx.fillRect(120 - span / 2, y, span, 1);
+    }
+  }
+
+  // 判定线
+  const strikeY = 196;
+  ctx.fillStyle = '#334466';
+  ctx.fillRect(20, strikeY, 200, 2);
+  // 左判定靶 (Cyan)
+  ctx.fillStyle = '#00e5ff';
+  ctx.fillRect(44, strikeY - 2, 24, 5);
+  // 右判定靶 (Red)
+  ctx.fillStyle = '#ff3366';
+  ctx.fillRect(172, strikeY - 2, 24, 5);
+  // 中判定靶 (Gold)
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(110, strikeY - 2, 20, 5);
+
+  // 4. 绘制方块
+  blocks.forEach(b => {
+    const pos = calcPos(b.progress, b.lane);
+    if (b.type === 'BLUE') {
+      ctx.fillStyle = '#0055aa';
+      ctx.fillRect(pos.x, pos.y, pos.w, pos.h);
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillRect(pos.x + 1, pos.y + 1, pos.w - 2, pos.h - 2);
+      if (pos.w > 10) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(pos.x + pos.w / 2 - 2, pos.y + pos.h / 2 - 1, 4, 2);
+      }
+    } else if (b.type === 'RED') {
+      ctx.fillStyle = '#881122';
+      ctx.fillRect(pos.x, pos.y, pos.w, pos.h);
+      ctx.fillStyle = '#ff2255';
+      ctx.fillRect(pos.x + 1, pos.y + 1, pos.w - 2, pos.h - 2);
+      if (pos.w > 10) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(pos.x + pos.w / 2 - 2, pos.y + pos.h / 2 - 1, 4, 2);
+      }
+    } else if (b.type === 'DUAL') {
+      ctx.fillStyle = '#d000ff';
+      ctx.fillRect(pos.x, pos.y, pos.w, pos.h);
+      ctx.fillStyle = '#ffd700';
+      ctx.fillRect(pos.x + 2, pos.y + 2, pos.w - 4, pos.h - 4);
+    } else if (b.type === 'SPIKE') {
+      ctx.fillStyle = '#ff9900';
+      ctx.fillRect(pos.x, pos.y, pos.w, pos.h);
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(pos.x + 2, pos.y + 2, pos.w - 4, pos.h - 4);
+    }
+  });
+
+  // 5. 粒子
+  particles.forEach(p => {
+    ctx.fillStyle = p.color;
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), 3, 3);
+  });
+
+  // 6. 机械果蝇角色机甲
+  if (!gameOver) {
+    const fx = 120;
+    const fy = 216;
+    const wingY = (tick % 2 === 0) ? -2 : 1;
+
+    // 左翼与右翼
+    ctx.fillStyle = '#0088bb';
+    ctx.fillRect(fx - 24, fy - 6 + wingY, 18, 5);
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillRect(fx - 20, fy - 8 + wingY, 12, 3);
+
+    ctx.fillStyle = '#bb2244';
+    ctx.fillRect(fx + 6, fy - 6 + wingY, 18, 5);
+    ctx.fillStyle = '#ff3366';
+    ctx.fillRect(fx + 8, fy - 8 + wingY, 12, 3);
+
+    // 躯体与头
+    ctx.fillStyle = '#334455';
+    ctx.fillRect(fx - 6, fy - 3, 12, 14);
+    ctx.fillStyle = '#445566';
+    ctx.fillRect(fx - 5, fy - 9, 10, 6);
+
+    // 复眼 (R7 蓝 / R8 红)
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillRect(fx - 8, fy - 9, 4, 6);
+    ctx.fillStyle = '#ff2255';
+    ctx.fillRect(fx + 4, fy - 9, 4, 6);
+
+    // 光剑弧线
+    if (slashLeftTimer > 0) {
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillRect(fx - 58, fy - 26, 44, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(fx - 48, fy - 22, 36, 5);
+    } else {
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillRect(fx - 18, fy - 14, 4, 12);
+      ctx.fillRect(fx - 22, fy - 22, 5, 10);
+    }
+
+    if (slashRightTimer > 0) {
+      ctx.fillStyle = '#ff2255';
+      ctx.fillRect(fx + 14, fy - 26, 44, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(fx + 12, fy - 22, 36, 5);
+    } else {
+      ctx.fillStyle = '#ff2255';
+      ctx.fillRect(fx + 14, fy - 14, 4, 12);
+      ctx.fillRect(fx + 17, fy - 22, 5, 10);
+    }
+
+    if (slashDualTimer > 0) {
+      ctx.fillStyle = '#ffd700';
+      ctx.fillRect(fx - 24, fy - 28, 48, 6);
+      ctx.fillStyle = '#d000ff';
+      ctx.fillRect(fx - 16, fy - 34, 32, 16);
+    }
+  }
+
+  // 7. 底部提示
+  ctx.textAlign = 'center';
+  ctx.font = '10px monospace';
+  if (hitMsgTimer > 0) {
+    ctx.fillStyle = hitMsgColor;
+    ctx.fillText(hitMsg, 120, 290);
+  } else {
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillText("UP: BLUE (R7) | DOWN: RED (R8)", 120, 286);
+    ctx.fillText("OK: DUAL / OVERDRIVE", 120, 300);
+  }
+
+  if (gameOver) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 100, 240, 80);
+    ctx.fillStyle = '#ff3333';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText("140K SYNAPSE LOST!", 120, 135);
+    ctx.fillStyle = '#ffd700';
+    ctx.font = '10px monospace';
+    ctx.fillText("PRESS [OK] / SPACE RETRY", 120, 155);
+  }
+  ctx.textAlign = 'left';
+}
+
+setInterval(update, 33); // ~30 FPS
+
+// 按键绑定
+function bindBtn(id, downFn) {
+  const el = document.getElementById(id);
+  const circle = el.querySelector('.btn-circle');
+  el.addEventListener('mousedown', () => { circle.classList.add('active'); downFn(); });
+  window.addEventListener('mouseup', () => circle.classList.remove('active'));
+  el.addEventListener('touchstart', (e) => { e.preventDefault(); circle.classList.add('active'); downFn(); });
+  window.addEventListener('touchend', () => circle.classList.remove('active'));
+}
+
+bindBtn('btn-up', slashLeft);
+bindBtn('btn-down', slashRight);
+bindBtn('btn-ok', slashDual);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+    document.querySelector('#btn-up .btn-circle').classList.add('active');
+    slashLeft();
+  } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    document.querySelector('#btn-down .btn-circle').classList.add('active');
+    slashRight();
+  } else if (e.key === ' ' || e.key === 'Enter') {
+    document.querySelector('#btn-ok .btn-circle').classList.add('active');
+    slashDual();
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+    document.querySelector('#btn-up .btn-circle').classList.remove('active');
+  } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    document.querySelector('#btn-down .btn-circle').classList.remove('active');
+  } else if (e.key === ' ' || e.key === 'Enter') {
+    document.querySelector('#btn-ok .btn-circle').classList.remove('active');
+  }
+});
+</script>
+</body>
+</html>

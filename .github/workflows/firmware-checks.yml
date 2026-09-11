@@ -10,6 +10,8 @@ on:
   push:
     branches:
       - main
+      - "play/**"
+      - "feature/**"
     paths-ignore:
       - "docs/**"
       - "plays/**"
