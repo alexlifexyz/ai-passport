@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char *TAG = "demo_roulette";
+static const char *TAG __attribute__((unused)) = "demo_roulette";
 
 typedef enum {
     SFX_NONE = 0,

@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char *TAG = "demo_thunder";
+static const char *TAG __attribute__((unused)) = "demo_thunder";
 
 typedef enum {
     SND_NONE = 0,
@@ -38,10 +38,10 @@ static QueueHandle_t s_snd_queue;
 static TaskHandle_t s_snd_task;
 static int s_flash_timer = 0;
 
-// 240x260 游戏绘制画布缓冲 (RGB565 格式)
 #define CANVAS_W 240
 #define CANVAS_H 250
-static uint8_t s_canvas_buf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(CANVAS_W, CANVAS_H)];
+#define CANVAS_BUF_SIZE (CANVAS_W * CANVAS_H * 2)
+static uint8_t s_canvas_buf[CANVAS_BUF_SIZE];
 
 static void send_sound(thunder_snd_t snd)
 {

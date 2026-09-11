@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char *TAG = "demo_flydriver";
+static const char *TAG __attribute__((unused)) = "demo_flydriver";
 
 static flydriver_game_t s_game;
 static lv_obj_t *s_scr;
@@ -29,7 +29,8 @@ static TaskHandle_t s_snd_task;
 
 #define CANVAS_W 240
 #define CANVAS_H 250
-static uint8_t s_canvas_buf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(CANVAS_W, CANVAS_H)];
+#define CANVAS_BUF_SIZE (CANVAS_W * CANVAS_H * 2)
+static uint8_t s_canvas_buf[CANVAS_BUF_SIZE];
 
 static void send_sound(flydriver_snd_t snd)
 {
