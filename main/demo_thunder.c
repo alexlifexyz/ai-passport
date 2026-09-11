@@ -264,12 +264,26 @@ static void on_playfield_draw(lv_event_t *e)
         }
     }
 
-    // 3. 玩家子弹 (高能极速光刃与等离子火球)
+    // 3. 玩家子弹 (高能极速光刃与等离子核脉冲)
     for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
         if (s_game.bullets[i].active) {
             int bx = (int)s_game.bullets[i].x + ox;
             int by = (int)s_game.bullets[i].y + oy;
-            draw_box(layer, bx, by, s_game.bullets[i].w, s_game.bullets[i].h, s_game.bullets[i].color);
+            int bw = s_game.bullets[i].w;
+            int bh = s_game.bullets[i].h;
+            if (s_game.bullets[i].dmg >= 8) {
+                // 超级歼星光矛：亮白高能核心 + 紫粉色等离子外晕
+                draw_box(layer, bx - 1, by - 1, bw + 2, bh + 2, 0xFF00BB);
+                draw_box(layer, bx, by, bw, bh, 0xFFFFFF);
+            } else if (s_game.bullets[i].dmg >= 4) {
+                // 狂暴等离子：亮金核心 + 耀眼外晕
+                draw_box(layer, bx, by, bw, bh, s_game.bullets[i].color);
+                if (bw > 3 && bh > 4) {
+                    draw_box(layer, bx + 1, by + 1, bw - 2, bh - 2, 0xFFFFFF);
+                }
+            } else {
+                draw_box(layer, bx, by, bw, bh, s_game.bullets[i].color);
+            }
         }
     }
 
@@ -370,9 +384,12 @@ static void on_playfield_draw(lv_event_t *e)
     // 8. 顶部半透 HUD 背景栏
     draw_box(layer, 0, 0, SCREEN_W, 22, 0x050812);
 
-    // 8.1 玩家红心生命绘制 (在 HUD 中间)
+    // 8.1 玩家红心生命绘制 (在 HUD 中间动态居中)
+    int heart_pitch = 10;
+    int total_heart_w = s_game.player_max_hp * heart_pitch - 3;
+    int start_heart_x = (SCREEN_W - total_heart_w) / 2;
     for (int h = 0; h < s_game.player_max_hp; h++) {
-        draw_heart(layer, 108 + h * 12, 8, h < s_game.player_hp);
+        draw_heart(layer, start_heart_x + h * heart_pitch, 8, h < s_game.player_hp);
     }
 
     // 8.2 BOSS 预警血条

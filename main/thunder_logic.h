@@ -6,7 +6,7 @@
 #define SCREEN_W 240
 #define SCREEN_H 320
 
-#define THUNDER_MAX_BULLETS       20
+#define THUNDER_MAX_BULLETS       48
 #define THUNDER_MAX_ENEMY_BULLETS 16
 #define THUNDER_MAX_ENEMIES       8
 #define THUNDER_MAX_ITEMS         4
@@ -30,6 +30,7 @@ typedef struct {
     float x, y;
     float vx, vy;
     int w, h;
+    int dmg;
     bool active;
     uint32_t color;
 } bullet_t;

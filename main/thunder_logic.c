@@ -12,9 +12,9 @@ void thunder_init(thunder_game_t *g)
     g->player_h = 28;
     g->player_x = (SCREEN_W - g->player_w) / 2.0f;
     g->player_y = 260.0f;
-    g->player_hp = 3;
-    g->player_max_hp = 3;
-    g->bombs = 2;
+    g->player_hp = 6;
+    g->player_max_hp = 6;
+    g->bombs = 4;
     g->weapon_level = 1;
     g->score = 0;
     g->game_over = false;
@@ -94,7 +94,7 @@ bool thunder_use_bomb(thunder_game_t *g)
     return true;
 }
 
-static void spawn_bullet(thunder_game_t *g, float x, float y, float vx, float vy, int w, int h, uint32_t color)
+static void spawn_bullet(thunder_game_t *g, float x, float y, float vx, float vy, int w, int h, int dmg, uint32_t color)
 {
     for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
         if (!g->bullets[i].active) {
@@ -105,6 +105,7 @@ static void spawn_bullet(thunder_game_t *g, float x, float y, float vx, float vy
             g->bullets[i].vy = vy;
             g->bullets[i].w = w;
             g->bullets[i].h = h;
+            g->bullets[i].dmg = dmg;
             g->bullets[i].color = color;
             return;
         }
@@ -163,16 +164,37 @@ void thunder_step(thunder_game_t *g)
         g->shoot_timer = 0;
         g->snd_laser = true;
         if (g->weapon_level == 1) {
-            spawn_bullet(g, g->player_x + 4, g->player_y, 0, -12.0f, 4, 12, 0x00E5FF);
-            spawn_bullet(g, g->player_x + 22, g->player_y, 0, -12.0f, 4, 12, 0x00E5FF);
+            // Level 1: 开局高能三联激光炮 —— 中间贯穿穿甲激光 (dmg 2) + 左右高速脉冲光刃 (dmg 1)
+            // 一轮齐射总伤害 4 点，开局就能瞬间秒杀红煞轰炸机 (4 HP)！
+            spawn_bullet(g, g->player_x + 13, g->player_y - 2, 0, -13.0f, 4, 14, 2, 0xFFD928);
+            spawn_bullet(g, g->player_x + 2,  g->player_y,     0, -12.0f, 4, 12, 1, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 24, g->player_y,     0, -12.0f, 4, 12, 1, 0x00E5FF);
         } else if (g->weapon_level == 2) {
-            spawn_bullet(g, g->player_x + 13, g->player_y - 2, 0, -13.0f, 4, 14, 0xFFD928);
-            spawn_bullet(g, g->player_x + 2, g->player_y, -2.0f, -12.0f, 4, 12, 0x00E5FF);
-            spawn_bullet(g, g->player_x + 24, g->player_y, 2.0f, -12.0f, 4, 12, 0x00E5FF);
+            // Level 2: 四联重型等离子加农炮 —— 中间双联聚能炮 (dmg 3) + 左右外侧高速炮 (dmg 2)
+            spawn_bullet(g, g->player_x + 10, g->player_y - 3, -0.5f, -13.0f, 5, 14, 3, 0xFFEA00);
+            spawn_bullet(g, g->player_x + 16, g->player_y - 3,  0.5f, -13.0f, 5, 14, 3, 0xFFEA00);
+            spawn_bullet(g, g->player_x + 1,  g->player_y,     -2.0f, -12.0f, 4, 12, 2, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 25, g->player_y,      2.0f, -12.0f, 4, 12, 2, 0x00E5FF);
+        } else if (g->weapon_level == 3) {
+            // Level 3: 五联狂暴等离子歼灭炮 —— 中间巨型等离子核脉冲单发直接秒杀轰炸机！(单发 dmg 4 >= 4 HP)
+            // 外侧 4 发广角等离子死光 (dmg 2)
+            spawn_bullet(g, g->player_x + 11, g->player_y - 4, 0, -14.0f, 8, 16, 4, 0xFF00BB);
+            spawn_bullet(g, g->player_x + 5,  g->player_y - 1, -1.2f, -13.0f, 4, 12, 2, 0xFFD928);
+            spawn_bullet(g, g->player_x + 21, g->player_y - 1,  1.2f, -13.0f, 4, 12, 2, 0xFFD928);
+            spawn_bullet(g, g->player_x + 0,  g->player_y + 2, -2.8f, -12.0f, 4, 12, 2, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 26, g->player_y + 2,  2.8f, -12.0f, 4, 12, 2, 0x00E5FF);
         } else {
-            spawn_bullet(g, g->player_x + 12, g->player_y - 4, 0, -14.0f, 6, 16, 0xFF00BB);
-            spawn_bullet(g, g->player_x + 1, g->player_y, -2.5f, -12.0f, 4, 12, 0xFFD928);
-            spawn_bullet(g, g->player_x + 25, g->player_y, 2.5f, -12.0f, 4, 12, 0xFFD928);
+            // Level 4: 七联终极超载·歼星光幕 (Star-Buster Hyper Beam) —— 毁天灭地！
+            // 中间超级光矛死光 (单发 dmg 8，摧枯拉朽，秒杀一切常规机！)
+            // 两侧等离子重炮 (dmg 4，单发亦能秒杀轰炸机！)
+            // 外翼 4 发广角散射幕 (dmg 2)
+            spawn_bullet(g, g->player_x + 10, g->player_y - 6, 0, -15.0f, 10, 18, 8, 0xFFFFFF);
+            spawn_bullet(g, g->player_x + 4,  g->player_y - 3, -0.8f, -14.0f, 6, 14, 4, 0xFF00BB);
+            spawn_bullet(g, g->player_x + 20, g->player_y - 3,  0.8f, -14.0f, 6, 14, 4, 0xFF00BB);
+            spawn_bullet(g, g->player_x + 0,  g->player_y,     -2.0f, -13.0f, 4, 12, 2, 0xFFEA00);
+            spawn_bullet(g, g->player_x + 26, g->player_y,      2.0f, -13.0f, 4, 12, 2, 0xFFEA00);
+            spawn_bullet(g, g->player_x - 3,  g->player_y + 3, -3.6f, -12.0f, 4, 10, 2, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 29, g->player_y + 3,  3.6f, -12.0f, 4, 10, 2, 0x00E5FF);
         }
     }
 
@@ -227,7 +249,7 @@ void thunder_step(thunder_game_t *g)
             if (g->items[i].x < g->player_x + g->player_w && g->items[i].x + g->items[i].w > g->player_x &&
                 g->items[i].y < g->player_y + g->player_h && g->items[i].y + g->items[i].h > g->player_y) {
                 g->snd_powerup = true;
-                if (g->items[i].type == ITEM_TYPE_POWER && g->weapon_level < 3) {
+                if (g->items[i].type == ITEM_TYPE_POWER && g->weapon_level < 4) {
                     g->weapon_level++;
                 } else if (g->items[i].type == ITEM_TYPE_BOMB) {
                     g->bombs++;
@@ -345,7 +367,8 @@ void thunder_step(thunder_game_t *g)
                     if (pb->x < e->x + e->w && pb->x + pb->w > e->x &&
                         pb->y < e->y + e->h && pb->y + pb->h > e->y) {
                         pb->active = false;
-                        e->hp--;
+                        int dmg = pb->dmg > 0 ? pb->dmg : 1;
+                        e->hp -= dmg;
                         g->snd_hit = true;
                         if (e->hp <= 0) {
                             e->active = false;
@@ -361,7 +384,7 @@ void thunder_step(thunder_game_t *g)
                                 g->snd_explode = true;
                                 create_explosion(g, e->x + e->w / 2.0f, e->y + e->h / 2.0f, 0x88FF33, 10);
                             }
-                            if (rand() % 100 < 30) {
+                            if (rand() % 100 < 38) {
                                 spawn_item(g, e->x + e->w / 2.0f - 7, e->y);
                             }
                             break;
