@@ -38,7 +38,13 @@ static lv_obj_t *s_hud_score;
 static lv_obj_t *s_hud_speed;
 static lv_obj_t *s_hud_shield;
 static lv_obj_t *s_hud_nitro;
+static lv_obj_t *s_hud_hints;
 static lv_obj_t *s_gameover_box;
+static lv_obj_t *s_pause_box = NULL;
+static lv_obj_t *s_pause_vol_label = NULL;
+static uint8_t s_volume = 80;
+static int s_up_hold_ticks = 0;
+static int s_down_hold_ticks = 0;
 static lv_timer_t *s_game_timer;
 
 static QueueHandle_t s_snd_queue;
@@ -348,24 +354,40 @@ static void game_timer_cb(lv_timer_t *timer)
         lv_label_set_text(s_hud_nitro, buf);
     }
 
-    if (s_game.game_over && !s_gameover_box) {
-        s_gameover_box = lv_obj_create(s_scr);
-        lv_obj_set_size(s_gameover_box, 180, 80);
-        lv_obj_center(s_gameover_box);
-        lv_obj_set_style_bg_color(s_gameover_box, lv_color_hex(0x000000), 0);
-        lv_obj_set_style_bg_opa(s_gameover_box, LV_OPA_80, 0);
-        lv_obj_set_style_border_color(s_gameover_box, lv_color_hex(0xEF4444), 0);
-        lv_obj_set_style_border_width(s_gameover_box, 2, 0);
+    // 长按检测连续变道
+    if (!s_game.paused && !s_game.game_over) {
+        int mv = bsp_button_read_mv();
+        if (mv >= 0 && mv < 150) { // 按住 UP 键
+            s_up_hold_ticks++;
+            if (s_up_hold_ticks > 6 && (s_up_hold_ticks % 5 == 0)) {
+                thunderracer_steer_left(&s_game);
+                send_racer_sound(TR_SND_LANE);
+            }
+        } else {
+            s_up_hold_ticks = 0;
+        }
 
-        lv_obj_t *lbl = lv_label_create(s_gameover_box);
-        lv_label_set_text(lbl, "CRASHED!\nPress OK to Retry");
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), 0);
-        lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_center(lbl);
-    } else if (!s_game.game_over && s_gameover_box) {
-        lv_obj_delete(s_gameover_box);
-        s_gameover_box = NULL;
+        if (mv >= 150 && mv < 447) { // 按住 DOWN 键
+            s_down_hold_ticks++;
+            if (s_down_hold_ticks > 6 && (s_down_hold_ticks % 5 == 0)) {
+                thunderracer_steer_right(&s_game);
+                send_racer_sound(TR_SND_LANE);
+            }
+        } else {
+            s_down_hold_ticks = 0;
+        }
+    }
+
+    // 暂停状态控制弹窗显隐与音量刷新
+    if (s_pause_box) {
+        if (s_game.paused) {
+            lv_obj_remove_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
+            if (s_pause_vol_label) {
+                lv_label_set_text_fmt(s_pause_vol_label, "VOLUME: %d%%", s_volume);
+            }
+        } else {
+            lv_obj_add_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     lv_obj_invalidate(s_playfield);
@@ -421,6 +443,45 @@ void demo_thunderracer_enter(void)
     lv_obj_set_style_text_color(s_hud_shield, lv_color_hex(0x38BDF8), 0);
     lv_obj_set_pos(s_hud_shield, 160, 4);
 
+    // 底部操作栏提示
+    s_hud_hints = lv_label_create(s_scr);
+    lv_obj_set_pos(s_hud_hints, 0, 303);
+    lv_obj_set_size(s_hud_hints, 240, 16);
+    lv_obj_set_style_text_align(s_hud_hints, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(s_hud_hints, "UP:L  DN:R  OK:FIRE  HOLD:NITRO");
+    lv_obj_set_style_text_font(s_hud_hints, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_hud_hints, lv_color_hex(0xFFD700), 0);
+
+    // 暂停半透明弹窗 (居中，带音量调节与提示)
+    s_pause_box = lv_obj_create(s_scr);
+    lv_obj_set_size(s_pause_box, 180, 110);
+    lv_obj_center(s_pause_box);
+    lv_obj_set_style_bg_color(s_pause_box, lv_color_hex(0x0a1020), 0);
+    lv_obj_set_style_bg_opa(s_pause_box, LV_OPA_90, 0);
+    lv_obj_set_style_border_color(s_pause_box, lv_color_hex(0x00E5FF), 0);
+    lv_obj_set_style_border_width(s_pause_box, 2, 0);
+    lv_obj_set_style_pad_all(s_pause_box, 8, 0);
+    lv_obj_add_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t *pt = lv_label_create(s_pause_box);
+    lv_label_set_text(pt, "-- PAUSED --");
+    lv_obj_set_style_text_font(pt, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(pt, lv_color_hex(0xFFD700), 0);
+    lv_obj_align(pt, LV_ALIGN_TOP_MID, 0, 2);
+
+    s_pause_vol_label = lv_label_create(s_pause_box);
+    lv_label_set_text_fmt(s_pause_vol_label, "VOLUME: %d%%", s_volume);
+    lv_obj_set_style_text_font(s_pause_vol_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_pause_vol_label, lv_color_hex(0x00E5FF), 0);
+    lv_obj_align(s_pause_vol_label, LV_ALIGN_CENTER, 0, -4);
+
+    lv_obj_t *ph = lv_label_create(s_pause_box);
+    lv_label_set_text(ph, "UP/DN: VOL\nOK: RESUME");
+    lv_obj_set_style_text_font(ph, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(ph, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_align(ph, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(ph, LV_ALIGN_BOTTOM_MID, 0, 0);
+
     s_gameover_box = NULL;
     lv_screen_load(s_scr);
 
@@ -443,6 +504,9 @@ void demo_thunderracer_exit(void)
         s_hud_speed = NULL;
         s_hud_shield = NULL;
         s_hud_nitro = NULL;
+        s_hud_hints = NULL;
+        s_pause_box = NULL;
+        s_pause_vol_label = NULL;
         s_gameover_box = NULL;
     }
     if (s_snd_queue) {
@@ -455,26 +519,78 @@ void demo_thunderracer_exit(void)
     }
 }
 
-// 硬件按键分发
+// 硬件按键分发：0ms 触底极速响应 + 双击暂停 + 音量调节
 void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    if (ev == BSP_BTN_CLICK) {
-        if (btn == BSP_BTN_UP) {
-            thunderracer_handle_input(&s_game, TR_KEY_UP, TR_KEY_EV_CLICK);
-            send_racer_sound(TR_SND_LANE);
-        } else if (btn == BSP_BTN_DOWN) {
-            thunderracer_handle_input(&s_game, TR_KEY_DOWN, TR_KEY_EV_CLICK);
-            send_racer_sound(TR_SND_LANE);
-        } else if (btn == BSP_BTN_OK) {
-            if (s_game.game_over) {
-                thunderracer_init(&s_game);
-            } else {
-                thunderracer_handle_input(&s_game, TR_KEY_OK, TR_KEY_EV_CLICK);
+    // 游戏结束状态
+    if (s_game.game_over) {
+        if (btn == BSP_BTN_OK && (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS)) {
+            thunderracer_init(&s_game);
+            if (s_gameover_box) {
+                lv_obj_add_flag(s_gameover_box, LV_OBJ_FLAG_HIDDEN);
             }
         }
-    } else if (ev == BSP_BTN_LONG && btn == BSP_BTN_OK) {
-        if (!s_game.game_over) {
-            thunderracer_handle_input(&s_game, TR_KEY_OK, TR_KEY_EV_LONG_PRESS);
+        return;
+    }
+
+    // 暂停状态：UP/DOWN 调节音量，OK 恢复游戏
+    if (s_game.paused) {
+        if (btn == BSP_BTN_UP && (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS)) {
+            if (s_volume <= 90) s_volume += 10; else s_volume = 100;
+            bsp_audio_set_volume(s_volume);
+            if (s_pause_vol_label) {
+                lv_label_set_text_fmt(s_pause_vol_label, "VOLUME: %d%%", s_volume);
+            }
+            send_racer_sound(TR_SND_LANE);
+        } else if (btn == BSP_BTN_DOWN && (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS)) {
+            if (s_volume >= 10) s_volume -= 10; else s_volume = 0;
+            bsp_audio_set_volume(s_volume);
+            if (s_pause_vol_label) {
+                lv_label_set_text_fmt(s_pause_vol_label, "VOLUME: %d%%", s_volume);
+            }
+            send_racer_sound(TR_SND_LANE);
+        } else if (btn == BSP_BTN_OK && (ev == BSP_BTN_CLICK || ev == BSP_BTN_DOUBLE)) {
+            thunderracer_toggle_pause(&s_game);
+            if (s_pause_box) {
+                lv_obj_add_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
+            }
+            send_racer_sound(TR_SND_MISSILE);
+        }
+        return;
+    }
+
+    // 正常比赛进行中
+    // OK 键：双击暂停；长按超频氮气；单击发射飞弹
+    if (btn == BSP_BTN_OK) {
+        if (ev == BSP_BTN_DOUBLE) {
+            thunderracer_toggle_pause(&s_game);
+            if (s_pause_box) {
+                if (s_pause_vol_label) {
+                    lv_label_set_text_fmt(s_pause_vol_label, "VOLUME: %d%%", s_volume);
+                }
+                lv_obj_remove_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
+            }
+            send_racer_sound(TR_SND_LANE);
+        } else if (ev == BSP_BTN_LONG) {
+            thunderracer_trigger_nitro(&s_game);
+        } else if (ev == BSP_BTN_CLICK) {
+            thunderracer_fire_missile(&s_game);
+        }
+        return;
+    }
+
+    // UP 键：按一次即刻向左切车道 (0ms 触底响应)
+    if (btn == BSP_BTN_UP) {
+        if (ev == BSP_BTN_PRESS) {
+            thunderracer_steer_left(&s_game);
+            send_racer_sound(TR_SND_LANE);
+        }
+    }
+    // DOWN 键：按一次即刻向右切车道 (0ms 触底响应)
+    else if (btn == BSP_BTN_DOWN) {
+        if (ev == BSP_BTN_PRESS) {
+            thunderracer_steer_right(&s_game);
+            send_racer_sound(TR_SND_LANE);
         }
     }
 }
