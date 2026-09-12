@@ -42,4 +42,7 @@ void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 void demo_adventure_enter(void); void demo_adventure_exit(void);
 void demo_adventure_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
+void demo_contra_enter(void); void demo_contra_exit(void);
+void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+
 
