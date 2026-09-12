@@ -19,8 +19,8 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
-    { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
     { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
+    { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
     { "Racer",     demo_thunderracer_enter, demo_thunderracer_exit, demo_thunderracer_key },
     { "Thunder",   demo_thunder_enter,      demo_thunder_exit,      demo_thunder_key      },
     { "Display",   demo_display_enter,      demo_display_exit,      demo_display_key      },
@@ -130,8 +130,8 @@ void app_main(void) {
     bool audio_ok = (bsp_audio_init() == ESP_OK);
     bool bat_ok = (bsp_battery_init() == ESP_OK);
 
-    s_ok[0] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
-    s_ok[1] = btn_ok;                                 // Island (像素冒险岛 HD)
+    s_ok[0] = btn_ok;                                 // Island (像素冒险岛 HD)
+    s_ok[1] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
     s_ok[2] = btn_ok;                                 // Racer (雷霆飞车：极速武装)
     s_ok[3] = btn_ok;                                 // Thunder (大像素雷霆战机)
     s_ok[4] = true;                                   // Display 已确认可用
