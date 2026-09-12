@@ -61,8 +61,6 @@ static uint32_t s_spawn_soldier_timer = 0;
 static uint32_t s_spawn_capsule_timer = 0;
 static uint32_t s_spawn_turret_timer = 0;
 static float s_jump_rot = 0.0f;
-static int s_ok_hold_ms = 0;
-static int s_bomb_flash_frames = 0;
 static bool s_boss_spawned = false;
 
 static void send_contra_sound(contra_snd_t snd)
@@ -579,21 +577,15 @@ static void playfield_draw_cb(lv_event_t *e)
     lv_layer_t *layer = lv_event_get_layer(e);
     if (!layer) return;
 
-    // 全屏炸弹闪白效果
-    if (s_bomb_flash_frames > 0) {
-        draw_box(layer, 0, 0, SCREEN_W, SCREEN_H, 0xFFFFFF);
-        return;
-    }
-
-    // 1. 深邃异星军港夜空
-    draw_box(layer, 0, 0, SCREEN_W, (int)CONTRA_GROUND_Y, 0x070D18);
+    // 1. 深邃异星军港夜空 (从 y=26 顶部 HUD 栏下方开始绘制，确保绝不遮挡顶部状态栏)
+    draw_box(layer, 0, 26, SCREEN_W, (int)CONTRA_GROUND_Y - 26, 0x070D18);
 
     // 远景通讯天线与红色防空警示信标 (闪烁)
     int beacon_on = ((s_frame_tick / 15) % 2 == 0);
-    draw_box(layer, 180, 40, 2, 70, 0x334155);
-    draw_box(layer, 177, 60, 8, 2, 0x334155);
+    draw_box(layer, 180, 52, 2, 60, 0x334155);
+    draw_box(layer, 177, 72, 8, 2, 0x334155);
     if (beacon_on) {
-        draw_box(layer, 179, 38, 4, 4, 0xEF4444);
+        draw_box(layer, 179, 50, 4, 4, 0xEF4444);
     }
 
     // 工业要塞巨型金属管道背景
@@ -638,10 +630,6 @@ static void game_timer_cb(lv_timer_t *timer)
     (void)timer;
     s_frame_tick++;
 
-    if (s_bomb_flash_frames > 0) {
-        s_bomb_flash_frames--;
-    }
-
     if (!s_paused) {
         // 翻滚跳跃动画角度累加
         if (s_game.is_jumping) {
@@ -657,7 +645,7 @@ static void game_timer_cb(lv_timer_t *timer)
             }
         }
 
-        // 硬件按键实时电平采样，支持持续匍匐、自动连发与长按引爆炸弹
+        // 硬件按键实时电平采样，支持持续匍匐与按住连发射击
         int mv = bsp_button_read_mv();
         bool up_held = (mv >= 0 && mv < 150);
         bool dn_held = (mv >= 150 && mv < 447);
@@ -674,18 +662,10 @@ static void game_timer_cb(lv_timer_t *timer)
         }
 
         if (ok_held) {
-            s_ok_hold_ms += 30;
-            if (s_ok_hold_ms >= 500) {
-                if (s_game.bombs > 0 && contra_logic_throw_bomb(&s_game)) {
-                    s_bomb_flash_frames = 3;
-                    send_contra_sound(CONTRA_SND_BOMB);
-                }
-                s_ok_hold_ms = 0;
-            } else if (s_game.fire_cooldown_ms == 0) {
+            if (s_game.fire_cooldown_ms == 0) {
                 contra_logic_fire(&s_game);
             }
         } else {
-            s_ok_hold_ms = 0;
             if (s_game.key_ok) {
                 contra_logic_btn_ok(&s_game, false);
             }
@@ -741,7 +721,7 @@ static void game_timer_cb(lv_timer_t *timer)
         if (s_game.combo > 1) {
             snprintf(buf, sizeof(buf), "x%d %d", s_game.combo, s_game.score);
         } else {
-            snprintf(buf, sizeof(buf), "SC:%d", s_game.score);
+            snprintf(buf, sizeof(buf), "SCORE:%d", s_game.score);
         }
         lv_label_set_text(s_hud_score, buf);
         lv_obj_set_style_text_color(s_hud_score,
@@ -828,8 +808,6 @@ void demo_contra_enter(void)
     contra_logic_init(&s_game);
     s_paused = false;
     s_boss_spawned = false;
-    s_ok_hold_ms = 0;
-    s_bomb_flash_frames = 0;
 
     if (!s_snd_queue) {
         s_snd_queue = xQueueCreate(16, sizeof(contra_snd_t));
@@ -848,38 +826,41 @@ void demo_contra_enter(void)
     lv_obj_clear_flag(s_playfield, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(s_playfield, playfield_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
 
-    // 顶部 HUD 状态栏
+    // 顶部 HUD 状态栏 (纯黑背景 + 底部隔线，100% 不透明，零内边距防止字体被裁切)
     lv_obj_t *hud_bar = lv_obj_create(s_scr);
     lv_obj_set_size(hud_bar, SCREEN_W, 26);
-    lv_obj_set_pos(hud_bar, 0, 4);
-    lv_obj_set_style_bg_color(hud_bar, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_bg_opa(hud_bar, LV_OPA_80, 0);
-    lv_obj_set_style_border_width(hud_bar, 0, 0);
+    lv_obj_set_pos(hud_bar, 0, 0);
+    lv_obj_set_style_bg_color(hud_bar, lv_color_hex(0x050B14), 0);
+    lv_obj_set_style_bg_opa(hud_bar, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_side(hud_bar, LV_BORDER_SIDE_BOTTOM, 0);
+    lv_obj_set_style_border_color(hud_bar, lv_color_hex(0x1E293B), 0);
+    lv_obj_set_style_border_width(hud_bar, 1, 0);
+    lv_obj_set_style_pad_all(hud_bar, 0, 0);
     lv_obj_clear_flag(hud_bar, LV_OBJ_FLAG_SCROLLABLE);
 
     s_hud_score = lv_label_create(hud_bar);
-    lv_label_set_text(s_hud_score, "SC:0");
+    lv_label_set_text(s_hud_score, "SCORE:0");
     lv_obj_set_style_text_font(s_hud_score, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_score, lv_color_hex(0xFFD700), 0);
-    lv_obj_set_pos(s_hud_score, 8, 4);
+    lv_obj_set_pos(s_hud_score, 8, 5);
 
     s_hud_weapon = lv_label_create(hud_bar);
     lv_label_set_text(s_hud_weapon, "[N]");
     lv_obj_set_style_text_font(s_hud_weapon, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(s_hud_weapon, lv_color_hex(0xE2E8F0), 0);
-    lv_obj_set_pos(s_hud_weapon, 88, 4);
+    lv_obj_set_style_text_color(s_hud_weapon, lv_color_hex(0x00E5FF), 0);
+    lv_obj_set_pos(s_hud_weapon, 110, 5);
 
     s_hud_lives = lv_label_create(hud_bar);
     lv_label_set_text(s_hud_lives, "HP:***");
     lv_obj_set_style_text_font(s_hud_lives, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_lives, lv_color_hex(0xFF4466), 0);
-    lv_obj_set_pos(s_hud_lives, 130, 4);
+    lv_obj_set_pos(s_hud_lives, 150, 5);
 
     s_hud_bombs = lv_label_create(hud_bar);
     lv_label_set_text(s_hud_bombs, "B:2");
     lv_obj_set_style_text_font(s_hud_bombs, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_bombs, lv_color_hex(0x10B981), 0);
-    lv_obj_set_pos(s_hud_bombs, 195, 4);
+    lv_obj_set_pos(s_hud_bombs, 205, 5);
 
     // 底部操作提示
     s_hud_hints = lv_label_create(s_scr);
@@ -1006,10 +987,9 @@ void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev)
     if (btn == BSP_BTN_OK) {
         if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
             contra_logic_btn_ok(&s_game, true);
-        } else if (ev == BSP_BTN_DOUBLE || ev == BSP_BTN_LONG) {
-            // 双击或长按 OK 投掷全屏炸弹
+        } else if (ev == BSP_BTN_DOUBLE) {
+            // 双击 OK 投掷全屏炸弹清屏
             if (s_game.bombs > 0 && contra_logic_throw_bomb(&s_game)) {
-                s_bomb_flash_frames = 3;
                 send_contra_sound(CONTRA_SND_BOMB);
             }
         }
