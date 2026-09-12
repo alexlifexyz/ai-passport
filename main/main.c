@@ -19,6 +19,7 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
     { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
     { "Display",   demo_display_enter,      demo_display_exit,      demo_display_key      },
     { "Button",    demo_button_enter,       demo_button_exit,       demo_button_key       },
@@ -56,15 +57,15 @@ static void menu_build(void) {
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
         int x = 11 + (int)(i % 2) * 112;
-        int y = 52 + (int)(i / 2) * 47;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 40, UI_PAPER);
+        int y = 42 + (int)(i / 2) * 38;
+        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 34, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(s_rows[i]);
     }
 
-    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 242);
+    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 246);
 
     menu_refresh();
     lv_screen_load(s_menu_scr);
@@ -128,14 +129,15 @@ void app_main(void) {
     bool audio_ok = (bsp_audio_init() == ESP_OK);
     bool bat_ok = (bsp_battery_init() == ESP_OK);
 
-    s_ok[0] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
-    s_ok[1] = true;                                   // Display 已确认可用
-    s_ok[2] = btn_ok;                                 // Button
-    s_ok[3] = audio_ok;                               // Audio
-    s_ok[4] = bat_ok;                                 // Battery
-    s_ok[5] = true;                                   // Wi-Fi 页面内按需初始化
-    s_ok[6] = true;                                   // BLE
-    s_ok[7] = true;                                   // Low Power
+    s_ok[0] = btn_ok;                                 // Island (像素冒险岛 HD)
+    s_ok[1] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
+    s_ok[2] = true;                                   // Display 已确认可用
+    s_ok[3] = btn_ok;                                 // Button
+    s_ok[4] = audio_ok;                               // Audio
+    s_ok[5] = bat_ok;                                 // Battery
+    s_ok[6] = true;                                   // Wi-Fi 页面内按需初始化
+    s_ok[7] = true;                                   // BLE
+    s_ok[8] = true;                                   // Low Power
 
     if (bsp_lvgl_lock(1000)) {
         s_active = 0;
@@ -144,5 +146,5 @@ void app_main(void) {
     }
 
     ESP_LOGI(TAG, "就绪:Display=%d Button=%d Audio=%d Battery=%d",
-             s_ok[1], s_ok[2], s_ok[3], s_ok[4]);
+             s_ok[2], s_ok[3], s_ok[4], s_ok[5]);
 }

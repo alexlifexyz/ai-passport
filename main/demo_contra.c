@@ -62,6 +62,7 @@ static uint32_t s_spawn_capsule_timer = 0;
 static uint32_t s_spawn_turret_timer = 0;
 static float s_jump_rot = 0.0f;
 static bool s_boss_spawned = false;
+static int s_muzzle_flash_frames = 0;
 
 static void send_contra_sound(contra_snd_t snd)
 {
@@ -70,7 +71,54 @@ static void send_contra_sound(contra_snd_t snd)
     }
 }
 
-// 独立后台音效合成任务 (16kHz 16-bit 复古街机音效)
+// 经典魂斗罗丛林关卡 (Jungle Theme) 8-bit 双通道激昂背景音乐乐谱
+typedef struct {
+    uint16_t lead_hz; // 主旋律方波频率 (Hz), 0 表示休止
+    uint16_t bass_hz; // 贝斯低音频率 (Hz), 0 表示休止
+    uint16_t ms;      // 持续时间 (毫秒)
+} contra_note_t;
+
+static const contra_note_t s_contra_bgm[] = {
+    // 经典动机 1: D-D-F-G-Ab-A (魂斗罗标志性军旅切分主旋律)
+    { 294, 73, 110 }, { 0, 0, 25 },
+    { 294, 73, 110 }, { 0, 0, 25 },
+    { 349, 87, 160 }, { 0, 0, 20 },
+    { 392, 98, 160 }, { 0, 0, 20 },
+    { 415, 104, 160 }, { 0, 0, 20 },
+    { 440, 110, 280 }, { 0, 0, 35 },
+
+    // 经典动机 2: A-A-C-D-C-A (高昂突进旋律)
+    { 440, 110, 110 }, { 0, 0, 25 },
+    { 440, 110, 110 }, { 0, 0, 25 },
+    { 523, 131, 160 }, { 0, 0, 20 },
+    { 587, 147, 160 }, { 0, 0, 20 },
+    { 523, 131, 160 }, { 0, 0, 20 },
+    { 440, 110, 280 }, { 0, 0, 35 },
+
+    // 经典动机 3: 热血军旅战歌 (F-G-A-F-D-C-D)
+    { 349, 73, 150 }, { 0, 0, 20 },
+    { 392, 82, 150 }, { 0, 0, 20 },
+    { 440, 87, 220 }, { 0, 0, 20 },
+    { 349, 73, 150 }, { 0, 0, 20 },
+    { 294, 58, 300 }, { 0, 0, 30 },
+    { 262, 55, 150 }, { 0, 0, 20 },
+    { 294, 73, 360 }, { 0, 0, 40 },
+
+    // 经典动机 4: 推进突击高潮 (D-F-G-A-Bb-A-G-F-E-D)
+    { 294, 73, 120 }, { 0, 0, 20 },
+    { 349, 87, 120 }, { 0, 0, 20 },
+    { 392, 98, 120 }, { 0, 0, 20 },
+    { 440, 110, 120 }, { 0, 0, 20 },
+    { 466, 98, 170 }, { 0, 0, 20 },
+    { 440, 87, 130 }, { 0, 0, 20 },
+    { 392, 82, 130 }, { 0, 0, 20 },
+    { 349, 73, 130 }, { 0, 0, 20 },
+    { 330, 55, 150 }, { 0, 0, 20 },
+    { 294, 73, 340 }, { 0, 0, 50 },
+};
+#define BGM_NOTE_COUNT (sizeof(s_contra_bgm) / sizeof(s_contra_bgm[0]))
+
+// 独立后台音效与背景音乐合成任务 (16kHz 16-bit 复古街机合成器)
 static void contra_audio_task(void *arg)
 {
     (void)arg;
@@ -78,10 +126,16 @@ static void contra_audio_task(void *arg)
     int16_t buf[256];
 
     bsp_audio_set_format(16000, 16, 1);
-    bsp_audio_set_volume(85);
+    bsp_audio_set_volume(s_volume);
+
+    size_t bgm_idx = 0;
+    uint32_t bgm_sample_in_note = 0;
+    float phase_lead = 0.0f;
+    float phase_bass = 0.0f;
 
     while (1) {
-        if (xQueueReceive(s_snd_queue, &snd, portMAX_DELAY) == pdTRUE) {
+        // 优先以非阻塞方式获取音效触发事件
+        if (xQueueReceive(s_snd_queue, &snd, 0) == pdTRUE) {
             if (snd == CONTRA_SND_NONE) continue;
 
             if (snd == CONTRA_SND_FIRE) {
@@ -258,6 +312,49 @@ static void contra_audio_task(void *arg)
                     }
                 }
             }
+            continue;
+        }
+
+        // 无音效时：若游戏正常进行中且未暂停，合成并持续循环播放魂斗罗 8-bit 背景音乐
+        if (!s_paused && !s_game.game_over && !s_game.victory) {
+            for (int i = 0; i < 256; i++) {
+                const contra_note_t *note = &s_contra_bgm[bgm_idx];
+                float s = 0.0f;
+
+                if (note->lead_hz > 0) {
+                    phase_lead += ((float)note->lead_hz / 16000.0f);
+                    if (phase_lead >= 1.0f) phase_lead -= 1.0f;
+                    // 50% 占空比方波主音 (经典的街机芯片质感)
+                    s += (phase_lead < 0.5f) ? 2600.0f : -2600.0f;
+                }
+
+                if (note->bass_hz > 0) {
+                    phase_bass += ((float)note->bass_hz / 16000.0f);
+                    if (phase_bass >= 1.0f) phase_bass -= 1.0f;
+                    // 三角波下潜低音
+                    float tri = (phase_bass < 0.5f) ? (phase_bass * 4.0f - 1.0f) : (3.0f - phase_bass * 4.0f);
+                    s += tri * 2200.0f;
+                }
+
+                // 军鼓/击弦打击感微弱噪声 (每个音符前 15ms 强拍)
+                if (bgm_sample_in_note < 240 && (bgm_idx % 2 == 0)) {
+                    float noise = (float)((rand() % 4000) - 2000);
+                    s += noise * (1.0f - (float)bgm_sample_in_note / 240.0f);
+                }
+
+                buf[i] = (int16_t)s;
+
+                bgm_sample_in_note++;
+                uint32_t total_samples = (uint32_t)note->ms * 16;
+                if (bgm_sample_in_note >= total_samples) {
+                    bgm_sample_in_note = 0;
+                    bgm_idx = (bgm_idx + 1) % BGM_NOTE_COUNT;
+                }
+            }
+            bsp_audio_write(buf, sizeof(buf));
+        } else {
+            // 暂停或游戏结算时休眠
+            vTaskDelay(pdMS_TO_TICKS(20));
         }
     }
 }
@@ -327,12 +424,17 @@ static void draw_badge_letter(lv_layer_t *layer, int x, int y, char letter, uint
     }
 }
 
-// 绘制掉落的升级徽章
+// 绘制掉落的升级徽章 (带上下浮动与金色闪烁外框)
 static void draw_badge(lv_layer_t *layer, int x, int y, contra_badge_t badge)
 {
-    // 银白外边框 + 金属边角
-    draw_box(layer, x, y, 16, 16, 0xE2E8F0);
-    draw_box(layer, x + 1, y + 1, 14, 14, 0x0F172A);
+    // 上下 2px 轻盈浮动
+    int float_y = ((s_frame_tick / 6) % 2) * 2;
+    int by = y + float_y;
+
+    // 金黄与银白边框交替闪烁，增强醒目度
+    uint32_t border_col = ((s_frame_tick / 4) % 2 == 0) ? 0xFBBF24 : 0xE2E8F0;
+    draw_box(layer, x, by, 16, 16, border_col);
+    draw_box(layer, x + 1, by + 1, 14, 14, 0x0F172A);
 
     uint32_t bg_col = 0x334155;
     char code = ' ';
@@ -345,11 +447,11 @@ static void draw_badge(lv_layer_t *layer, int x, int y, contra_badge_t badge)
         default: break;
     }
 
-    draw_box(layer, x + 2, y + 2, 12, 12, bg_col);
-    draw_badge_letter(layer, x + 4, y + 3, code, 0xFFFFFF);
+    draw_box(layer, x + 2, by + 2, 12, 12, bg_col);
+    draw_badge_letter(layer, x + 4, by + 3, code, 0xFFFFFF);
 }
 
-// 绘制主角魂斗罗战士 (红头带比尔·雷泽)
+// 绘制主角魂斗罗战士 (红头带比尔·雷泽：带持续冲锋步态、波浪翻卷红头带与开火等离子枪口火光)
 static void draw_contra_soldier(lv_layer_t *layer, const contra_game_t *g)
 {
     int px = (int)g->player_x;
@@ -391,7 +493,8 @@ static void draw_contra_soldier(lv_layer_t *layer, const contra_game_t *g)
     if (g->is_crouching) {
         // 匍匐射击姿势 (贴地卧倒，枪口平指前方)
         // 飘逸红头带
-        draw_box(layer, px - 4, py + 2, 5, 3, 0xEF4444);
+        draw_box(layer, px - 5, py + 2, 6, 3, 0xEF4444);
+        draw_box(layer, px - 8, py + 3, 4, 2, 0xEF4444);
         // 头部与面容
         draw_box(layer, px + 1, py + 1, 8, 6, 0xFDBA74);
         draw_box(layer, px + 1, py + 1, 8, 2, 0xEF4444); // 头带
@@ -402,49 +505,78 @@ static void draw_contra_soldier(lv_layer_t *layer, const contra_game_t *g)
         // 步枪
         draw_box(layer, px + 12, py + 6, 14, 3, 0x475569);
         draw_box(layer, px + 18, py + 4, 3, 3, 0x94A3B8);
+
+        // 匍匐开火枪口闪光
+        if (s_muzzle_flash_frames > 0) {
+            draw_box(layer, px + 26, py + 4, 7, 7, 0xFACC15);
+            draw_box(layer, px + 28, py + 6, 3, 3, 0xFFFFFF);
+        }
         return;
     }
 
-    // 正常站立 / 奔跑射击
-    // 1. 经典红色长头带 (随奔跑在脑后飘扬)
-    int ribbon_y = py + 2 + ((s_frame_tick / 4) % 2 ? 1 : -1);
-    draw_box(layer, px - 5, ribbon_y, 6, 3, 0xEF4444);
-    draw_box(layer, px - 8, ribbon_y + 1, 4, 2, 0xEF4444);
+    // 正常站立 / 奔跑冲锋射击状态 (基于全局帧时钟呈现充满张力的 4 步动态循环)
+    int run_step = (s_frame_tick / 4) % 4;
+    int body_y_offset = (run_step == 1) ? 1 : ((run_step == 3) ? -1 : 0);
+
+    // 1. 经典红色长飘带 (4 帧波浪动态剧烈迎风翻卷)
+    static const int ribbon_offsets[4] = { 0, -2, -1, 1 };
+    int ry = py + 2 + ribbon_offsets[run_step];
+    draw_box(layer, px - 5, ry, 6, 3, 0xEF4444);
+    draw_box(layer, px - 9, ry + ((run_step % 2) ? 1 : -1), 4, 2, 0xEF4444);
 
     // 2. 头部头带
-    draw_box(layer, px + 2, py, 12, 4, 0xEF4444);
+    draw_box(layer, px + 2, py + body_y_offset, 12, 4, 0xEF4444);
 
     // 3. 脸庞与双眼
-    draw_box(layer, px + 3, py + 4, 10, 7, 0xFDBA74);
-    draw_box(layer, px + 8, py + 5, 2, 2, 0x000000);
+    draw_box(layer, px + 3, py + 4 + body_y_offset, 10, 7, 0xFDBA74);
+    draw_box(layer, px + 8, py + 5 + body_y_offset, 2, 2, 0x000000);
 
     // 4. 肌肉躯干与金色子弹背带
-    draw_box(layer, px + 2, py + 11, 12, 8, 0xFDBA74);
-    draw_box(layer, px + 4, py + 12, 2, 2, 0xFBBF24);
-    draw_box(layer, px + 6, py + 14, 2, 2, 0xFBBF24);
-    draw_box(layer, px + 8, py + 16, 2, 2, 0xFBBF24);
+    draw_box(layer, px + 2, py + 11 + body_y_offset, 12, 8, 0xFDBA74);
+    draw_box(layer, px + 4, py + 12 + body_y_offset, 2, 2, 0xFBBF24);
+    draw_box(layer, px + 6, py + 14 + body_y_offset, 2, 2, 0xFBBF24);
+    draw_box(layer, px + 8, py + 16 + body_y_offset, 2, 2, 0xFBBF24);
 
     // 5. 蓝色军裤
-    draw_box(layer, px + 3, py + 19, 10, 6, 0x2563EB);
+    draw_box(layer, px + 3, py + 19 + body_y_offset, 10, 6, 0x2563EB);
 
-    // 6. 双腿奔跑脚步
-    int leg_phase = ((int)g->player_x / 5) % 2;
-    if (leg_phase == 0) {
-        draw_box(layer, px + 2, py + 25, 4, 5, 0x1E293B);
-        draw_box(layer, px + 8, py + 25, 4, 5, 0x1E293B);
-    } else {
-        draw_box(layer, px, py + 25, 5, 5, 0x1E293B);
+    // 6. 奔跑步态动态渲染 (双腿交替大跨步迈进，活力四射)
+    if (run_step == 0) {
+        // 左脚前跨，右脚后蹬
+        draw_box(layer, px + 1, py + 24, 5, 6, 0x1E293B);
         draw_box(layer, px + 9, py + 25, 5, 5, 0x1E293B);
+    } else if (run_step == 1) {
+        // 双脚微屈触地，身体微沉 1 像素
+        draw_box(layer, px + 3, py + 25, 4, 5, 0x1E293B);
+        draw_box(layer, px + 7, py + 25, 4, 5, 0x1E293B);
+    } else if (run_step == 2) {
+        // 右脚前跨，左脚后蹬
+        draw_box(layer, px + 8, py + 24, 5, 6, 0x1E293B);
+        draw_box(layer, px, py + 25, 5, 5, 0x1E293B);
+    } else {
+        // 双脚腾空交替，身体微扬 1 像素
+        draw_box(layer, px + 2, py + 23, 4, 6, 0x1E293B);
+        draw_box(layer, px + 8, py + 24, 4, 5, 0x1E293B);
     }
 
-    // 7. 枪械 (平射或斜上仰射)
+    // 7. 枪械与开火枪口爆裂火光
     if (g->aim_dir == CONTRA_AIM_UP) {
-        draw_box(layer, px + 8, py - 10, 4, 14, 0x475569);
-        draw_box(layer, px + 7, py - 12, 6, 3, 0x94A3B8);
+        draw_box(layer, px + 8, py - 10 + body_y_offset, 4, 14, 0x475569);
+        draw_box(layer, px + 7, py - 12 + body_y_offset, 6, 3, 0x94A3B8);
+        if (s_muzzle_flash_frames > 0) {
+            // 垂直向上等离子十字爆闪火光
+            draw_box(layer, px + 6, py - 18 + body_y_offset, 8, 6, 0xFACC15);
+            draw_box(layer, px + 8, py - 20 + body_y_offset, 4, 10, 0xFFFFFF);
+        }
     } else {
-        draw_box(layer, px + 10, py + 12, 14, 4, 0x475569);
-        draw_box(layer, px + 14, py + 9, 3, 4, 0x94A3B8);
-        draw_box(layer, px + 22, py + 13, 4, 2, 0xCBD5E1);
+        draw_box(layer, px + 10, py + 12 + body_y_offset, 14, 4, 0x475569);
+        draw_box(layer, px + 14, py + 9 + body_y_offset, 3, 4, 0x94A3B8);
+        draw_box(layer, px + 22, py + 13 + body_y_offset, 4, 2, 0xCBD5E1);
+        if (s_muzzle_flash_frames > 0) {
+            // 水平向前爆裂等离子十字星芒火光
+            draw_box(layer, px + 26, py + 11 + body_y_offset, 7, 6, 0xFACC15);
+            draw_box(layer, px + 28, py + 9 + body_y_offset, 3, 10, 0xFFFFFF);
+        }
     }
 }
 
