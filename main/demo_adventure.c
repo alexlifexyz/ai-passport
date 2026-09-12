@@ -67,53 +67,7 @@ static void send_adv_sound(adv_snd_t snd)
     }
 }
 
-// 经典高桥名人冒险岛 8-Bit BGM 旋律与低音节奏谱 (16kHz)
-typedef struct {
-    uint16_t melody; // 主旋律 (Hz)
-    uint16_t bass;   // 低音伴奏 (Hz)
-    uint16_t ms;     // 拍子时长 (ms)
-} adv_bgm_note_t;
-
-static const adv_bgm_note_t BGM_TRACK[] = {
-    // 经典轻快海岛大冒险主歌 (C大调复古岛屿节奏)
-    { 523, 131, 130 }, // C5 + C3
-    { 523, 131, 130 }, // C5
-    { 659, 165, 130 }, // E5 + E3
-    { 784, 196, 180 }, // G5 + G3
-    { 880, 220, 130 }, // A5 + A3
-    { 784, 196, 130 }, // G5
-    { 659, 165, 130 }, // E5
-    { 523, 131, 200 }, // C5
-    // 第二乐句
-    { 587, 147, 130 }, // D5 + D3
-    { 659, 165, 130 }, // E5
-    { 587, 147, 130 }, // D5
-    { 494, 123, 180 }, // B4 + B2
-    { 523, 131, 130 }, // C5
-    { 659, 165, 130 }, // E5
-    { 784, 196, 220 }, // G5
-    {   0, 131,  80 }, // 停顿重音
-    // 欢快高潮副歌
-    { 880, 220, 130 }, // A5 + A3
-    { 880, 220, 130 }, // A5
-    { 988, 247, 130 }, // B5 + B3
-    {1046, 262, 200 }, // C6 + C4
-    { 988, 247, 130 }, // B5
-    { 880, 220, 130 }, // A5
-    { 784, 196, 180 }, // G5 + G3
-    { 659, 165, 130 }, // E5
-    // 回环旋律
-    { 784, 196, 130 }, // G5
-    { 880, 220, 130 }, // A5
-    { 784, 196, 130 }, // G5
-    { 659, 165, 130 }, // E5
-    { 587, 147, 130 }, // D5
-    { 523, 131, 240 }, // C5
-    {   0,   0,  90 }, // 呼吸小节
-};
-#define BGM_NOTE_COUNT (sizeof(BGM_TRACK) / sizeof(BGM_TRACK[0]))
-
-// 独立后台音效与背景音乐合成任务 (16kHz 16-bit 街机合成)
+// 独立后台音效合成任务 (16kHz 16-bit 街机音效)
 static void adv_audio_task(void *arg)
 {
     (void)arg;
@@ -123,14 +77,8 @@ static void adv_audio_task(void *arg)
     bsp_audio_set_format(16000, 16, 1);
     bsp_audio_set_volume(85);
 
-    int bgm_note_idx = 0;
-    int bgm_note_samples_left = 0;
-    float phase_melody = 0.0f;
-    float phase_bass = 0.0f;
-
     while (1) {
-        // 1. 优先检查即时音效 (非阻塞拉取)
-        if (xQueueReceive(s_snd_queue, &snd, 0) == pdTRUE) {
+        if (xQueueReceive(s_snd_queue, &snd, portMAX_DELAY) == pdTRUE) {
             if (snd != ADV_SND_NONE) {
                 if (snd == ADV_SND_JUMP) {
                     // 跳跃上升音阶 (260Hz -> 620Hz)
@@ -277,47 +225,8 @@ static void adv_audio_task(void *arg)
                                 bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                             }
                         }
-                    }
                 }
-                continue;
             }
-        }
-
-        // 2. 正常游戏中合成连续 8-Bit BGM 背景音乐 (单次输出 256 个采样，约 16ms)
-        if (!s_paused && s_game.player.is_alive && !s_game.game_over) {
-            if (bgm_note_samples_left <= 0) {
-                bgm_note_idx = (bgm_note_idx + 1) % BGM_NOTE_COUNT;
-                bgm_note_samples_left = (int)(BGM_TRACK[bgm_note_idx].ms * 16);
-            }
-
-            const adv_bgm_note_t *note = &BGM_TRACK[bgm_note_idx];
-            float freq_m = (float)note->melody;
-            float freq_b = (float)note->bass;
-
-            // 踏上滑板时 BGM 自动切入欢快狂暴提速 (1.2x 速度与音高)
-            if (s_game.player.has_skateboard) {
-                freq_m *= 1.2f;
-                freq_b *= 1.2f;
-            }
-
-            for (int i = 0; i < 256; i++) {
-                int16_t s = 0;
-                if (freq_m > 30.0f) {
-                    phase_melody += (freq_m / 16000.0f);
-                    if (phase_melody >= 1.0f) phase_melody -= 1.0f;
-                    s += (phase_melody < 0.5f) ? 2200 : -2200;
-                }
-                if (freq_b > 30.0f) {
-                    phase_bass += (freq_b / 16000.0f);
-                    if (phase_bass >= 1.0f) phase_bass -= 1.0f;
-                    s += (phase_bass < 0.5f) ? 1400 : -1400;
-                }
-                buf[i] = s;
-            }
-            bgm_note_samples_left -= 256;
-            bsp_audio_write(buf, 256 * sizeof(int16_t));
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(16));
         }
     }
 }
@@ -386,7 +295,7 @@ static void playfield_draw_cb(lv_event_t *e)
     draw_box(layer, 0, 0, SCREEN_W, TOP_HUD_H, 0x060D1A);
     draw_box(layer, 0, TOP_HUD_H - 1, SCREEN_W, 1, 0xF59E0B); // 金色分割线
 
-    // 2. 热带海岛蔚蓝天空与翻滚浪花 (从 y = 26 开始，安全避开顶部 HUD)
+    // 2. 热带海岛蔚蓝天空 (从 y = 26 开始，安全避开顶部 HUD)
     draw_box(layer, 0, TOP_HUD_H, SCREEN_W, (int)ADVENTURE_GROUND_Y - TOP_HUD_H, 0x38BDF8);
 
     // 远景白云与山脉
@@ -395,16 +304,8 @@ static void playfield_draw_cb(lv_event_t *e)
     draw_box(layer, SCREEN_W - cloud_offset + 8, 42, 32, 10, 0xF0F9FF);
 
     // 远景碧绿海岛群山
-    draw_box(layer, 0, 204, 60, 46, 0x0D9488);
-    draw_box(layer, 120, 184, 80, 66, 0x0F766E);
-
-    // 碧蓝海浪拍岸动态翻滚 (随帧律动浪花)
-    int wave_shift = (s_frame_tick * 2) % 36;
-    draw_box(layer, 0, 222, SCREEN_W, 10, 0x0284C7); // 深蓝海水
-    for (int wx = -wave_shift; wx < SCREEN_W + 36; wx += 36) {
-        draw_box(layer, wx, 224, 18, 5, 0xBAE6FD); // 翻滚浪花
-        draw_box(layer, wx + 6, 226, 12, 3, 0xFFFFFF); // 纯白浪沫
-    }
+    draw_box(layer, 0, 210, 60, 50, 0x0D9488);
+    draw_box(layer, 120, 190, 80, 70, 0x0F766E);
 
     // 椰子树随卷轴滚动
     int tree_scroll = (s_frame_tick * (s_game.player.has_skateboard ? 4 : 2)) % 180;

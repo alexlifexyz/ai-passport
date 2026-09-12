@@ -71,54 +71,7 @@ static void send_contra_sound(contra_snd_t snd)
     }
 }
 
-// 经典魂斗罗丛林关卡 (Jungle Theme) 8-bit 双通道激昂背景音乐乐谱
-typedef struct {
-    uint16_t lead_hz; // 主旋律方波频率 (Hz), 0 表示休止
-    uint16_t bass_hz; // 贝斯低音频率 (Hz), 0 表示休止
-    uint16_t ms;      // 持续时间 (毫秒)
-} contra_note_t;
-
-static const contra_note_t s_contra_bgm[] = {
-    // 经典动机 1: D-D-F-G-Ab-A (魂斗罗标志性军旅切分主旋律)
-    { 294, 73, 110 }, { 0, 0, 25 },
-    { 294, 73, 110 }, { 0, 0, 25 },
-    { 349, 87, 160 }, { 0, 0, 20 },
-    { 392, 98, 160 }, { 0, 0, 20 },
-    { 415, 104, 160 }, { 0, 0, 20 },
-    { 440, 110, 280 }, { 0, 0, 35 },
-
-    // 经典动机 2: A-A-C-D-C-A (高昂突进旋律)
-    { 440, 110, 110 }, { 0, 0, 25 },
-    { 440, 110, 110 }, { 0, 0, 25 },
-    { 523, 131, 160 }, { 0, 0, 20 },
-    { 587, 147, 160 }, { 0, 0, 20 },
-    { 523, 131, 160 }, { 0, 0, 20 },
-    { 440, 110, 280 }, { 0, 0, 35 },
-
-    // 经典动机 3: 热血军旅战歌 (F-G-A-F-D-C-D)
-    { 349, 73, 150 }, { 0, 0, 20 },
-    { 392, 82, 150 }, { 0, 0, 20 },
-    { 440, 87, 220 }, { 0, 0, 20 },
-    { 349, 73, 150 }, { 0, 0, 20 },
-    { 294, 58, 300 }, { 0, 0, 30 },
-    { 262, 55, 150 }, { 0, 0, 20 },
-    { 294, 73, 360 }, { 0, 0, 40 },
-
-    // 经典动机 4: 推进突击高潮 (D-F-G-A-Bb-A-G-F-E-D)
-    { 294, 73, 120 }, { 0, 0, 20 },
-    { 349, 87, 120 }, { 0, 0, 20 },
-    { 392, 98, 120 }, { 0, 0, 20 },
-    { 440, 110, 120 }, { 0, 0, 20 },
-    { 466, 98, 170 }, { 0, 0, 20 },
-    { 440, 87, 130 }, { 0, 0, 20 },
-    { 392, 82, 130 }, { 0, 0, 20 },
-    { 349, 73, 130 }, { 0, 0, 20 },
-    { 330, 55, 150 }, { 0, 0, 20 },
-    { 294, 73, 340 }, { 0, 0, 50 },
-};
-#define BGM_NOTE_COUNT (sizeof(s_contra_bgm) / sizeof(s_contra_bgm[0]))
-
-// 独立后台音效与背景音乐合成任务 (16kHz 16-bit 复古街机合成器)
+// 独立后台音效合成任务 (16kHz 16-bit 复古街机音效)
 static void contra_audio_task(void *arg)
 {
     (void)arg;
@@ -128,14 +81,8 @@ static void contra_audio_task(void *arg)
     bsp_audio_set_format(16000, 16, 1);
     bsp_audio_set_volume(s_volume);
 
-    size_t bgm_idx = 0;
-    uint32_t bgm_sample_in_note = 0;
-    float phase_lead = 0.0f;
-    float phase_bass = 0.0f;
-
     while (1) {
-        // 优先以非阻塞方式获取音效触发事件
-        if (xQueueReceive(s_snd_queue, &snd, 0) == pdTRUE) {
+        if (xQueueReceive(s_snd_queue, &snd, portMAX_DELAY) == pdTRUE) {
             if (snd == CONTRA_SND_NONE) continue;
 
             if (snd == CONTRA_SND_FIRE) {
@@ -312,49 +259,6 @@ static void contra_audio_task(void *arg)
                     }
                 }
             }
-            continue;
-        }
-
-        // 无音效时：若游戏正常进行中且未暂停，合成并持续循环播放魂斗罗 8-bit 背景音乐
-        if (!s_paused && !s_game.game_over && !s_game.victory) {
-            for (int i = 0; i < 256; i++) {
-                const contra_note_t *note = &s_contra_bgm[bgm_idx];
-                float s = 0.0f;
-
-                if (note->lead_hz > 0) {
-                    phase_lead += ((float)note->lead_hz / 16000.0f);
-                    if (phase_lead >= 1.0f) phase_lead -= 1.0f;
-                    // 50% 占空比方波主音 (经典的街机芯片质感)
-                    s += (phase_lead < 0.5f) ? 2600.0f : -2600.0f;
-                }
-
-                if (note->bass_hz > 0) {
-                    phase_bass += ((float)note->bass_hz / 16000.0f);
-                    if (phase_bass >= 1.0f) phase_bass -= 1.0f;
-                    // 三角波下潜低音
-                    float tri = (phase_bass < 0.5f) ? (phase_bass * 4.0f - 1.0f) : (3.0f - phase_bass * 4.0f);
-                    s += tri * 2200.0f;
-                }
-
-                // 军鼓/击弦打击感微弱噪声 (每个音符前 15ms 强拍)
-                if (bgm_sample_in_note < 240 && (bgm_idx % 2 == 0)) {
-                    float noise = (float)((rand() % 4000) - 2000);
-                    s += noise * (1.0f - (float)bgm_sample_in_note / 240.0f);
-                }
-
-                buf[i] = (int16_t)s;
-
-                bgm_sample_in_note++;
-                uint32_t total_samples = (uint32_t)note->ms * 16;
-                if (bgm_sample_in_note >= total_samples) {
-                    bgm_sample_in_note = 0;
-                    bgm_idx = (bgm_idx + 1) % BGM_NOTE_COUNT;
-                }
-            }
-            bsp_audio_write(buf, sizeof(buf));
-        } else {
-            // 暂停或游戏结算时休眠
-            vTaskDelay(pdMS_TO_TICKS(20));
         }
     }
 }
@@ -591,22 +495,34 @@ static void draw_contra_enemies(lv_layer_t *layer, const contra_game_t *g)
         int ey = (int)e->y;
 
         if (e->type == CONTRA_ENEMY_FOOT_SOLDIER) {
-            // 红色突击步兵
+            // 红色突击步兵奔跑迈步冲锋动画
+            int e_run = ((s_frame_tick + i * 2) / 4) % 2;
             draw_box(layer, ex + 2, ey, 10, 6, 0xDC2626); // 红头盔
             draw_box(layer, ex + 4, ey + 6, 6, 4, 0xFDBA74); // 脸部
             draw_box(layer, ex + 1, ey + 10, 12, 8, 0xDC2626); // 红色战斗服
-            draw_box(layer, ex + 3, ey + 18, 8, 8, 0x1E293B); // 战术军靴
+            // 双腿交替大步迈进
+            if (e_run == 0) {
+                draw_box(layer, ex + 1, ey + 18, 5, 8, 0x1E293B);
+                draw_box(layer, ex + 7, ey + 18, 4, 6, 0x1E293B);
+            } else {
+                draw_box(layer, ex + 6, ey + 18, 5, 8, 0x1E293B);
+                draw_box(layer, ex + 2, ey + 18, 4, 6, 0x1E293B);
+            }
             draw_box(layer, ex - 6, ey + 11, 8, 3, 0x475569); // 突击步枪向前
         } else if (e->type == CONTRA_ENEMY_CAPSULE) {
-            // 红隼飞行武器补给舱 (Red Falcon Drone)
+            // 红隼飞行武器补给舱 (上下悬停正弦波平滑起伏 + 推进光焰双色跳动)
             int wing = ((s_frame_tick / 3) % 2 == 0) ? -2 : 2;
-            draw_box(layer, ex + 2, ey, 16, 12, 0xF43F5E); // 核心机体
-            draw_box(layer, ex, ey + 3, 20, 6, 0xE11D48);
-            draw_box(layer, ex + 6, ey + 2, 8, 8, 0xFFFFFF); // 核心玻璃罩
-            // 推进光焰与翅膀
-            draw_box(layer, ex + 20, ey + 4, 5, 4, 0x00E5FF);
-            draw_box(layer, ex + 6, ey - 4 + wing, 8, 4, 0x38BDF8);
-            draw_box(layer, ex + 6, ey + 12 - wing, 8, 4, 0x38BDF8);
+            int float_y = (int)(sinf((float)s_frame_tick * 0.15f) * 4.0f);
+            int cy = ey + float_y;
+            draw_box(layer, ex + 2, cy, 16, 12, 0xF43F5E); // 核心机体
+            draw_box(layer, ex, cy + 3, 20, 6, 0xE11D48);
+            draw_box(layer, ex + 6, cy + 2, 8, 8, 0xFFFFFF); // 核心玻璃罩
+            // 双色跳动等离子尾焰
+            int flame_len = ((s_frame_tick / 2) % 2 == 0) ? 7 : 10;
+            draw_box(layer, ex + 20, cy + 4, flame_len, 4, 0x00E5FF);
+            draw_box(layer, ex + 20, cy + 5, flame_len - 2, 2, 0xFFFFFF);
+            draw_box(layer, ex + 6, cy - 4 + wing, 8, 4, 0x38BDF8);
+            draw_box(layer, ex + 6, cy + 12 - wing, 8, 4, 0x38BDF8);
         } else if (e->type == CONTRA_ENEMY_TURRET) {
             // 地堡双管旋转加农炮台
             draw_box(layer, ex, ey + 8, 24, 16, 0x334155);
@@ -712,13 +628,12 @@ static void playfield_draw_cb(lv_event_t *e)
     // 1. 深邃异星军港夜空 (从 y=26 顶部 HUD 栏下方开始绘制，确保绝不遮挡顶部状态栏)
     draw_box(layer, 0, 26, SCREEN_W, (int)CONTRA_GROUND_Y - 26, 0x070D18);
 
-    // 远景通讯天线与红色防空警示信标 (闪烁)
-    int beacon_on = ((s_frame_tick / 15) % 2 == 0);
+    // 远景通讯天线与红色防空警示信标 (带呼吸扩散光晕脉冲)
+    int beacon_pulse = (s_frame_tick / 4) % 4;
     draw_box(layer, 180, 52, 2, 60, 0x334155);
     draw_box(layer, 177, 72, 8, 2, 0x334155);
-    if (beacon_on) {
-        draw_box(layer, 179, 50, 4, 4, 0xEF4444);
-    }
+    draw_box(layer, 179 - beacon_pulse, 49 - beacon_pulse, 4 + beacon_pulse * 2, 4 + beacon_pulse * 2, 0x7F1D1D);
+    draw_box(layer, 179, 49, 4, 4, 0xEF4444);
 
     // 工业要塞巨型金属管道背景
     int pipe_scroll = (s_frame_tick) % 120;
@@ -727,6 +642,18 @@ static void playfield_draw_cb(lv_event_t *e)
         draw_box(layer, px, 150, 80, 16, 0x1E293B);
         draw_box(layer, px + 20, 130, 10, 20, 0x0F172A);
     }
+
+    // 要塞工业排气散热涡轮 (4 扇叶高速动态旋转)
+    int fan_frame = (s_frame_tick / 2) % 4;
+    draw_box(layer, 85, 108, 22, 22, 0x0F172A);
+    draw_box(layer, 87, 110, 18, 18, 0x1E293B);
+    if (fan_frame == 0 || fan_frame == 2) {
+        draw_box(layer, 95, 110, 2, 18, 0x64748B);
+        draw_box(layer, 87, 118, 18, 2, 0x64748B);
+    } else {
+        draw_box(layer, 89, 112, 14, 14, 0x475569);
+    }
+    draw_box(layer, 94, 117, 4, 4, 0x00E5FF); // 核心霓虹高能指示灯
 
     // 2. 机械要塞地表 (金属甲板 + 危险黄色斜纹)
     draw_box(layer, 0, (int)CONTRA_GROUND_Y, SCREEN_W, 10, 0x334155); // 甲板主体
@@ -737,6 +664,12 @@ static void playfield_draw_cb(lv_event_t *e)
     int deck_scroll = (s_frame_tick * 3) % 24;
     for (int gx = -deck_scroll; gx < SCREEN_W; gx += 24) {
         draw_box(layer, gx, (int)CONTRA_GROUND_Y + 4, 8, 3, 0x1E293B);
+    }
+
+    // 地表高速后退机械摩擦火花微粒
+    if ((s_frame_tick % 4) < 2) {
+        int spark_x = (s_frame_tick * 11) % SCREEN_W;
+        draw_box(layer, spark_x, (int)CONTRA_GROUND_Y + 1, 3, 2, 0xFACC15);
     }
 
     // 3. 绘制掉落武器徽章
@@ -761,6 +694,10 @@ static void game_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
     s_frame_tick++;
+
+    if (s_muzzle_flash_frames > 0) {
+        s_muzzle_flash_frames--;
+    }
 
     if (!s_paused) {
         // 翻滚跳跃动画角度累加
@@ -806,17 +743,23 @@ static void game_timer_cb(lv_timer_t *timer)
         // 步进核心物理与战斗逻辑
         contra_logic_update(&s_game, 30);
 
-        // 敌人与战机波次生成逻辑
+        // 敌人与战机波次生成逻辑 (紧凑热血的 1.2s 步兵刷新间隔)
         s_spawn_soldier_timer += 30;
-        if (s_spawn_soldier_timer >= 2200) {
+        if (s_spawn_soldier_timer >= 1200) {
             s_spawn_soldier_timer = 0;
-            if (s_game.enemies[0].active == false || s_game.enemies[1].active == false) {
+            int active_soldiers = 0;
+            for (int i = 0; i < CONTRA_MAX_ENEMIES; i++) {
+                if (s_game.enemies[i].active && s_game.enemies[i].type == CONTRA_ENEMY_FOOT_SOLDIER) {
+                    active_soldiers++;
+                }
+            }
+            if (active_soldiers < 3) {
                 contra_logic_spawn_enemy(&s_game, CONTRA_ENEMY_FOOT_SOLDIER, SCREEN_W + 10, CONTRA_GROUND_Y - 26);
             }
         }
 
         s_spawn_capsule_timer += 30;
-        if (s_spawn_capsule_timer >= 3600) {
+        if (s_spawn_capsule_timer >= 3200) {
             s_spawn_capsule_timer = 0;
             contra_badge_t badges[] = { CONTRA_BADGE_S, CONTRA_BADGE_L, CONTRA_BADGE_M, CONTRA_BADGE_BARRIER, CONTRA_BADGE_BOMB };
             contra_badge_t b = badges[rand() % 5];
@@ -824,7 +767,7 @@ static void game_timer_cb(lv_timer_t *timer)
         }
 
         s_spawn_turret_timer += 30;
-        if (s_spawn_turret_timer >= 6000) {
+        if (s_spawn_turret_timer >= 5500) {
             s_spawn_turret_timer = 0;
             contra_logic_spawn_enemy(&s_game, CONTRA_ENEMY_TURRET, SCREEN_W + 15, CONTRA_GROUND_Y - 24);
         }
@@ -833,6 +776,11 @@ static void game_timer_cb(lv_timer_t *timer)
         if (s_game.score >= 600 && !s_boss_spawned) {
             s_boss_spawned = true;
             contra_logic_spawn_boss(&s_game, 185.0f, 180.0f, 150);
+        }
+
+        // 开火瞬间点亮枪口等离子火光 (2帧闪光)
+        if (s_game.snd.snd_fire || s_game.snd.snd_spread || s_game.snd.snd_laser) {
+            s_muzzle_flash_frames = 2;
         }
 
         // 音效事件触发分发
