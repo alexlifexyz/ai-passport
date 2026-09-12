@@ -19,17 +19,13 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
-    { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
-    { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
-    { "Racer",     demo_thunderracer_enter, demo_thunderracer_exit, demo_thunderracer_key },
-    { "Thunder",   demo_thunder_enter,      demo_thunder_exit,      demo_thunder_key      },
-    { "Display",   demo_display_enter,      demo_display_exit,      demo_display_key      },
-    { "Button",    demo_button_enter,       demo_button_exit,       demo_button_key       },
-    { "Audio",     demo_audio_enter,        demo_audio_exit,        demo_audio_key        },
-    { "Battery",   demo_battery_enter,      demo_battery_exit,      demo_battery_key      },
-    { "Wi-Fi",     demo_wifi_enter,         demo_wifi_exit,         demo_wifi_key         },
-    { "BLE",       demo_ble_enter,          demo_ble_exit,          demo_ble_key          },
-    { "Low Power", demo_low_power_enter,    demo_low_power_exit,    demo_low_power_key    },
+    { "Display", demo_display_enter, demo_display_exit, demo_display_key },
+    { "Button",  demo_button_enter,  demo_button_exit,  demo_button_key  },
+    { "Audio",   demo_audio_enter,   demo_audio_exit,   demo_audio_key   },
+    { "Battery", demo_battery_enter, demo_battery_exit, demo_battery_key },
+    { "Wi-Fi",   demo_wifi_enter,    demo_wifi_exit,    demo_wifi_key    },
+    { "BLE",     demo_ble_enter,     demo_ble_exit,     demo_ble_key     },
+    { "Low Power", demo_low_power_enter, demo_low_power_exit, demo_low_power_key },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
 
@@ -45,7 +41,8 @@ static int  s_active = -1;         // 当前所在演示页;-1 = 在菜单
 
 static void menu_refresh(void) {
     for (size_t i = 0; i < DEMO_COUNT; i++) {
-        lv_label_set_text_fmt(s_rows[i], "%s%s", DEMOS[i].name,
+        lv_label_set_text_fmt(s_rows[i], "%s%s",
+                              DEMOS[i].name,
                               s_ok[i] ? "" : "  [FAIL]");
         ui_pixel_set_selected(s_cards[i], (int)i == s_sel, s_ok[i]);
         lv_obj_set_style_text_color(s_rows[i],
@@ -58,15 +55,15 @@ static void menu_build(void) {
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
         int x = 11 + (int)(i % 2) * 112;
-        int y = 38 + (int)(i / 2) * 35;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 30, UI_PAPER);
+        int y = 52 + (int)(i / 2) * 47;
+        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 40, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(s_rows[i]);
     }
 
-    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 248);
+    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 242);
 
     menu_refresh();
     lv_screen_load(s_menu_scr);
@@ -126,27 +123,16 @@ void app_main(void) {
     }
     bsp_display_backlight(100);
 
-    bool btn_ok = (bsp_button_init(on_key, NULL) == ESP_OK);
-    bool audio_ok = (bsp_audio_init() == ESP_OK);
-    bool bat_ok = (bsp_battery_init() == ESP_OK);
+    // 其余外设单项失败不阻塞:菜单里标 [FAIL],其他项照常可测。
+    s_ok[0] = true;                                   // Display 已确认可用
+    s_ok[1] = (bsp_button_init(on_key, NULL) == ESP_OK);
+    s_ok[2] = (bsp_audio_init() == ESP_OK);
+    s_ok[3] = (bsp_battery_init() == ESP_OK);
+    s_ok[4] = true;                                    // 页面内按需初始化并显示错误
+    s_ok[5] = true;
+    s_ok[6] = true;
 
-    s_ok[0] = btn_ok;                                 // Island (像素冒险岛 HD)
-    s_ok[1] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
-    s_ok[2] = btn_ok;                                 // Racer (雷霆飞车：极速武装)
-    s_ok[3] = btn_ok;                                 // Thunder (大像素雷霆战机)
-    s_ok[4] = true;                                   // Display 已确认可用
-    s_ok[5] = btn_ok;                                 // Button
-    s_ok[6] = audio_ok;                               // Audio
-    s_ok[7] = bat_ok;                                 // Battery
-    s_ok[8] = true;                                   // Wi-Fi 页面内按需初始化
-    s_ok[9] = true;                                   // BLE
-    s_ok[10] = true;                                  // Low Power
-
-    if (bsp_lvgl_lock(1000)) {
-        s_active = 0;
-        DEMOS[0].enter();
-        bsp_lvgl_unlock();
-    }
+    if (bsp_lvgl_lock(1000)) { enter_menu(); bsp_lvgl_unlock(); }
 
     ESP_LOGI(TAG, "就绪:Display=%d Button=%d Audio=%d Battery=%d",
              s_ok[0], s_ok[1], s_ok[2], s_ok[3]);
