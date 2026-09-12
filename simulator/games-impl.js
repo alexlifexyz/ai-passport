@@ -4,6 +4,39 @@
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+  function drawLetterBadge(ctx, x, y, letter) {
+    const bob = Math.sin(Date.now() / 110) * 3;
+    ctx.fillStyle = '#1a0508';
+    ctx.fillRect(x - 10, y - 10 + bob, 20, 20);
+    ctx.fillStyle = '#e11d2a';
+    ctx.fillRect(x - 9, y - 9 + bob, 18, 18);
+    ctx.fillStyle = '#fff7ed';
+    ctx.fillRect(x - 7, y - 7 + bob, 14, 5);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(letter, x, y + 5 + bob);
+    ctx.textAlign = 'left';
+  }
+
+  function drawOver(ctx, title, score) {
+    ctx.fillStyle = 'rgba(0,0,0,0.78)';
+    ctx.fillRect(18, 92, 204, 128);
+    ctx.strokeStyle = '#f0c14b';
+    ctx.strokeRect(18.5, 92.5, 203, 127);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(title, 120, 122);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('SCORE ' + score, 120, 148);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px monospace';
+    ctx.fillText('OK TO RETRY', 120, 178);
+    ctx.textAlign = 'left';
+  }
+
   const GAMES = {
     // ==========================================
     // 1. 雷霆飞车：极速武装 (Thunder Racer HD)
@@ -1083,9 +1116,10 @@
     // ==========================================
     adventure: {
       init() {
-        this.p = { x: 60, y: 240, vy: 0, onGround: true, stamina: 100, lives: 3, score: 0 };
+        this.p = { x: 72, y: 240, vy: 0, onGround: true, stamina: 100, lives: 3, score: 0, weapon: 'A', combo: 0, comboT: 0, inv: 0 };
         this.axes = [];
         this.enemies = [];
+        this.items = [{ x: 180, y: 236, type: 'banana' }];
         this.scroll = 0;
         this.dead = false;
         this.spawn = 0;
@@ -1093,138 +1127,154 @@
       onOk(snd, fx) {
         if (this.dead) { this.init(); if (snd) snd.playClick(); return; }
         if (this.p.onGround) {
-          this.p.vy = -8.2;
+          this.p.vy = -8.4;
           this.p.onGround = false;
           if (snd) snd.playJump();
         } else {
-          this.axes.push({ x: this.p.x + 12, y: this.p.y - 6, vx: 6.5, vy: -3.0, rot: 0 });
+          const w = this.p.weapon;
+          if (w === 'K') this.axes.push({ x: this.p.x + 12, y: this.p.y - 6, vx: 8.2, vy: 0, rot: 0, t: 'K', pierce: false });
+          else if (w === 'P') this.axes.push({ x: this.p.x + 12, y: this.p.y - 8, vx: 6.4, vy: 0, rot: 0, t: 'P', pierce: true });
+          else this.axes.push({ x: this.p.x + 12, y: this.p.y - 8, vx: 5.6, vy: -3.4, rot: 0, t: 'A', pierce: false });
           if (snd) snd.playLaser();
         }
       },
+      kill(e, bonus, snd, fx) {
+        e.dead = true;
+        this.p.combo = this.p.comboT > 0 ? this.p.combo + 1 : 1;
+        this.p.comboT = 1100;
+        const add = (bonus + (e.score || 200)) * (this.p.combo > 1 ? this.p.combo : 1);
+        this.p.score += add;
+        if (fx) {
+          fx.burst(e.x, e.y, 8, ['#ffd928', '#ff5533', '#fff']);
+          fx.floatText(e.x, e.y - 10, this.p.combo > 1 ? 'x' + this.p.combo : '+' + add, '#ffd928');
+        }
+        if (snd) snd.playExplode(false);
+      },
       update(dt, keys, snd, fx) {
         if (this.dead) return;
-        const k = dt / 16.6;
-        const spd = keys.down ? 3.0 : (keys.up ? 0.6 : 1.8);
-        this.scroll += spd * k;
-
-        this.p.y += this.p.vy * k;
-        this.p.vy += 0.42 * k;
-        if (this.p.y >= 240) { this.p.y = 240; this.p.vy = 0; this.p.onGround = true; }
-
-        this.p.stamina -= 0.04 * k;
-        if (this.p.stamina <= 0) {
-          this.p.lives--;
-          this.p.stamina = 100;
-          if (this.p.lives <= 0) { this.dead = true; if (snd) snd.playGameOver(); }
+        const p = this.p, k = dt / 16.6;
+        if (p.comboT > 0) { p.comboT -= dt; if (p.comboT <= 0) p.combo = 0; }
+        if (p.inv > 0) p.inv -= dt;
+        const sprint = keys.down, brake = keys.up;
+        const worldSpd = sprint ? 3.1 : brake ? 0.35 : 1.7;
+        this.scroll += worldSpd * k;
+        if (sprint) { p.x += 1.1 * k; p.stamina -= 0.02 * k; }
+        else if (brake) p.x -= 2.0 * k;
+        else p.x += 0.35 * k;
+        p.x = clamp(p.x, 28, 168);
+        p.y += p.vy * k; p.vy += 0.42 * k;
+        if (p.y >= 240) { p.y = 240; p.vy = 0; p.onGround = true; }
+        p.stamina = Math.max(0, p.stamina - 0.03 * k);
+        if (p.stamina <= 0) {
+          p.lives--; p.stamina = 100; p.inv = 1200;
+          if (snd) snd.playHit(); if (fx) fx.shake = 5;
+          if (p.lives <= 0) { this.dead = true; if (snd) snd.playGameOver(); }
         }
-
-        // 飞斧
         for (let i = this.axes.length - 1; i >= 0; i--) {
           const a = this.axes[i];
-          a.x += a.vx * k;
-          a.y += a.vy * k;
-          a.vy += 0.25 * k;
-          a.rot += 0.4 * k;
-          if (a.y > 270 || a.x > 250) this.axes.splice(i, 1);
+          a.x += a.vx * k; a.y += a.vy * k;
+          if (a.t === 'A') a.vy += 0.26 * k;
+          a.rot += (a.t === 'P' ? 0.5 : 0.38) * k;
+          if (a.y > 280 || a.x > 255) this.axes.splice(i, 1);
         }
-
-        // 生成蜗牛
         this.spawn += dt;
-        if (this.spawn > 1200 && this.enemies.length < 3) {
+        if (this.spawn > 900 && this.enemies.length < 4) {
           this.spawn = 0;
-          this.enemies.push({ x: 250, y: 244, vx: -1.2, dead: false });
+          const r = Math.random();
+          const type = r > 0.7 ? 'bird' : r > 0.4 ? 'frog' : 'snail';
+          this.enemies.push({ x: 250, y: type === 'bird' ? 150 + Math.random() * 40 : 244, type, score: type === 'bird' ? 300 : type === 'frog' ? 200 : 100, hop: 0, vy: 0, dead: false });
         }
-
-        // 判定
         for (let i = this.enemies.length - 1; i >= 0; i--) {
           const e = this.enemies[i];
-          e.x -= (spd + 0.3) * k;
-
+          if (e.dead) { this.enemies.splice(i, 1); continue; }
+          e.x -= (worldSpd + 0.35) * k;
+          if (e.type === 'bird') e.y += Math.sin(this.scroll * 0.04 + e.x) * 0.4;
+          if (e.type === 'frog') {
+            e.hop += dt;
+            if (e.hop > 900) { e.vy = -6; e.hop = 0; }
+            e.y += e.vy; e.vy += 0.28;
+            if (e.y > 244) { e.y = 244; e.vy = 0; }
+          }
           for (let j = this.axes.length - 1; j >= 0; j--) {
             const a = this.axes[j];
             if (Math.abs(a.x - e.x) < 16 && Math.abs(a.y - e.y) < 16) {
-              this.enemies.splice(i, 1);
-              this.axes.splice(j, 1);
-              this.p.score += 200;
-              if (fx) fx.burst(e.x, e.y, 10, ['#ffd700', '#fff']);
-              if (snd) snd.playExplode(false);
+              if (!a.pierce) this.axes.splice(j, 1);
+              this.kill(e, 0, snd, fx);
               break;
             }
           }
-
-          if (Math.abs(this.p.x - e.x) < 14 && Math.abs(this.p.y - e.y) < 16) {
-            this.p.lives--;
-            this.enemies.splice(i, 1);
-            if (fx) { fx.shake = 8; fx.burst(this.p.x, this.p.y, 12, ['#ff0033']); }
-            if (snd) snd.playHit();
-            if (this.p.lives <= 0) { this.dead = true; if (snd) snd.playGameOver(); }
+          if (!e.dead && Math.abs(p.x - e.x) < 14 && Math.abs(p.y - e.y) < 18) {
+            if (!p.onGround && p.vy > 1.2 && p.y < e.y) {
+              this.kill(e, 50, snd, fx); p.vy = -6.2; p.onGround = false;
+            } else if (p.inv <= 0) {
+              p.lives--; p.inv = 1400; p.combo = 0;
+              if (snd) snd.playHit(); if (fx) fx.shake = 6;
+              if (p.lives <= 0) { this.dead = true; if (snd) snd.playGameOver(); }
+            }
           }
+          if (e.x < -24) this.enemies.splice(i, 1);
+        }
+        if (Math.random() < 0.014 && this.items.length < 3) {
+          const t = Math.random();
+          const type = t > 0.88 ? 'egg' : t > 0.72 ? 'P' : t > 0.58 ? 'K' : t > 0.46 ? 'A' : t > 0.23 ? 'pine' : 'banana';
+          this.items.push({ x: 252, y: 236, type });
+        }
+        for (let i = this.items.length - 1; i >= 0; i--) {
+          const it = this.items[i];
+          it.x -= worldSpd * k;
+          if (Math.abs(p.x - it.x) < 18 && Math.abs(p.y - it.y) < 24) {
+            if (it.type === 'egg') { p.lives++; p.score += 500; if (snd) snd.playCoin(); if (fx) fx.floatText(it.x, it.y, '1UP', '#ff66aa'); }
+            else if (it.type === 'A' || it.type === 'K' || it.type === 'P') {
+              p.weapon = it.type; p.score += 250; if (snd) snd.playCoin(); if (fx) fx.floatText(it.x, it.y, '[' + it.type + ']', '#ffd928');
+            } else {
+              p.stamina = Math.min(100, p.stamina + (it.type === 'banana' ? 25 : 50));
+              p.score += it.type === 'banana' ? 100 : 300; if (snd) snd.playCoin();
+            }
+            this.items.splice(i, 1);
+          } else if (it.x < -20) this.items.splice(i, 1);
         }
       },
-      render(ctx, frame) {
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(0, 0, 240, 240);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(0, 240, 240, 80);
-
-        // 树木视差
-        ctx.fillStyle = '#22c55e';
-        const off = (this.scroll * 0.5) % 80;
-        for (let x = -40; x < 280; x += 80) {
-          ctx.beginPath();
-          ctx.arc(x - off + 40, 210, 25, 0, Math.PI * 2);
-          ctx.fill();
+      render(ctx) {
+        ctx.fillStyle = '#38bdf8'; ctx.fillRect(0, 0, 240, 320);
+        ctx.fillStyle = '#16a34a'; ctx.fillRect(0, 252, 240, 68);
+        ctx.fillStyle = '#78350f'; ctx.fillRect(0, 266, 240, 54);
+        const palm = this.scroll % 90;
+        ctx.fillStyle = '#14532d';
+        for (let i = 0; i < 4; i++) {
+          const px = ((i * 90 - palm) % 360 + 360) % 360 - 20;
+          ctx.fillRect(px + 18, 200, 6, 52);
         }
-
-        // 玩家
-        const p = this.p;
-        ctx.fillStyle = '#ffaa66';
-        ctx.fillRect(p.x - 6, p.y - 20, 12, 10);
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(p.x - 7, p.y - 24, 14, 6);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(p.x - 8, p.y - 10, 16, 12);
-
-        // 飞斧
-        ctx.fillStyle = '#94a3b8';
+        for (const it of this.items) {
+          if (it.type === 'A' || it.type === 'K' || it.type === 'P') drawLetterBadge(ctx, it.x, it.y, it.type);
+          else if (it.type === 'egg') { ctx.fillStyle = '#f8f1d0'; ctx.fillRect(it.x - 5, it.y - 8, 10, 14); }
+          else { ctx.fillStyle = it.type === 'pine' ? '#ffaa00' : '#ffe600'; ctx.fillRect(it.x - 5, it.y - 6, 12, 10); }
+        }
+        for (const e of this.enemies) {
+          if (e.type === 'frog') { ctx.fillStyle = '#3dba4a'; ctx.fillRect(e.x - 8, e.y - 8, 16, 12); }
+          else if (e.type === 'bird') { ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(e.x, e.y, 8, 0, Math.PI * 2); ctx.fill(); }
+          else { ctx.fillStyle = '#a0522d'; ctx.beginPath(); ctx.arc(e.x, e.y - 2, 8, 0, Math.PI * 2); ctx.fill(); }
+        }
         for (const a of this.axes) {
-          ctx.save();
-          ctx.translate(a.x, a.y);
-          ctx.rotate(a.rot);
-          ctx.fillRect(-6, -6, 12, 12);
+          ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.rot);
+          ctx.fillStyle = a.t === 'P' ? '#e879f9' : a.t === 'K' ? '#cbd5e1' : '#cccccc';
+          ctx.fillRect(-8, -3, 16, 6);
           ctx.restore();
         }
-
-        // 蜗牛
-        ctx.fillStyle = '#a0522d';
-        for (const e of this.enemies) {
-          ctx.beginPath();
-          ctx.arc(e.x, e.y - 4, 8, 0, Math.PI * 2);
-          ctx.fill();
+        const p = this.p;
+        if (p.inv <= 0 || ((Date.now() / 80) | 0) % 2) {
+          ctx.fillStyle = '#ff2233'; ctx.fillRect(p.x - 6, p.y - 20, 14, 5);
+          ctx.fillStyle = '#ffcc99'; ctx.fillRect(p.x - 5, p.y - 15, 11, 8);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(p.x - 5, p.y - 6, 12, 10);
         }
-
-        // HUD
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(0, 0, 240, 26);
-        ctx.font = 'bold 12px monospace';
-        ctx.fillStyle = '#ffd700';
-        ctx.fillText(`SCORE:${this.p.score}`, 10, 18);
-        ctx.fillStyle = '#ef4444';
-        ctx.fillText(`LIFE:${this.p.lives}`, 110, 18);
-        ctx.fillStyle = '#22c55e';
-        ctx.fillText(`STA:${Math.floor(this.p.stamina)}%`, 170, 18);
-
-        if (this.dead) {
-          ctx.fillStyle = 'rgba(0,0,0,0.85)';
-          ctx.fillRect(30, 110, 180, 80);
-          ctx.fillStyle = '#ffd700';
-          ctx.font = 'bold 14px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('ISLAND OVER!', 120, 142);
-          ctx.font = '11px monospace';
-          ctx.fillText('Press OK to Restart', 120, 166);
-          ctx.textAlign = 'left';
-        }
+        ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 0, 240, 22);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#ffd928'; ctx.fillText('SC ' + p.score, 6, 15);
+        ctx.fillStyle = '#ff4466'; ctx.fillText('HP ' + '♥'.repeat(Math.max(0, p.lives)), 86, 15);
+        ctx.fillStyle = '#ffd928'; ctx.fillText('[' + p.weapon + ']', 132, 15);
+        ctx.fillStyle = '#111827'; ctx.fillRect(158, 7, 74, 10);
+        ctx.fillStyle = p.stamina > 30 ? '#22c55e' : '#ef4444';
+        ctx.fillRect(159, 8, Math.max(0, 72 * (p.stamina / 100)), 8);
+        if (this.dead) drawOver(ctx, 'GAME OVER', p.score);
       }
     },
 
@@ -1233,117 +1283,140 @@
     // ==========================================
     contra: {
       init() {
-        this.p = { x: 50, y: 240, vy: 0, onGround: true, hp: 3, score: 0 };
-        this.bullets = [];
-        this.enemies = [];
-        this.dead = false;
-        this.shootTimer = 0;
+        this.p = { x: 48, y: 250, vy: 0, crouch: false, jump: false, hp: 6, gun: 'N', score: 0, inv: 0, cool: 0 };
+        this.bullets = []; this.eb = []; this.enemies = [{ x: 210, y: 250, hp: 2 }];
+        this.cap = { x: 260, y: 148, a: true, item: null };
+        this.scroll = 0; this.dead = false; this.win = false; this.fireHold = 0;
       },
-      onOk(snd, fx) {
-        if (this.dead) { this.init(); if (snd) snd.playClick(); return; }
-        // 射击散弹
-        this.bullets.push({ x: this.p.x + 12, y: this.p.y - 12, vx: 7, vy: -1 });
-        this.bullets.push({ x: this.p.x + 12, y: this.p.y - 12, vx: 7, vy: 0 });
-        this.bullets.push({ x: this.p.x + 12, y: this.p.y - 12, vx: 7, vy: 1 });
+      fire(snd) {
+        const p = this.p;
+        if (p.cool > 0) return;
+        const y = p.crouch ? p.y + 2 : p.y - 4;
+        if (p.gun === 'S') {
+          this.bullets.push({ x: p.x + 14, y, vx: 6.4, vy: -1.5, t: 'S' });
+          this.bullets.push({ x: p.x + 14, y, vx: 7.1, vy: 0, t: 'S' });
+          this.bullets.push({ x: p.x + 14, y, vx: 6.4, vy: 1.5, t: 'S' });
+          p.cool = 140;
+        } else if (p.gun === 'L') {
+          this.bullets.push({ x: p.x + 14, y, vx: 10, vy: 0, t: 'L', pierce: true });
+          p.cool = 160;
+        } else if (p.gun === 'M') {
+          this.bullets.push({ x: p.x + 14, y, vx: 8.4, vy: 0, t: 'M' });
+          p.cool = 55;
+        } else {
+          this.bullets.push({ x: p.x + 14, y, vx: 7.2, vy: 0, t: 'N' });
+          p.cool = 110;
+        }
         if (snd) snd.playLaser();
       },
+      onOk(snd, fx) {
+        if (this.dead || this.win) { this.init(); if (snd) snd.playClick(); return; }
+        this.fire(snd);
+      },
       update(dt, keys, snd, fx) {
-        if (this.dead) return;
-        const k = dt / 16.6;
-        if (keys.up && this.p.onGround) {
-          this.p.vy = -7.8;
-          this.p.onGround = false;
-          if (snd) snd.playJump();
+        if (this.dead || this.win) return;
+        const p = this.p, k = dt / 16.6;
+        this.scroll += 1.2 * k;
+        if (p.cool > 0) p.cool -= dt;
+        if (p.inv > 0) p.inv -= dt;
+        p.crouch = keys.down && !p.jump;
+        if (!p.crouch && !p.jump) p.x = Math.min(96, p.x + 0.22 * k);
+        if (keys.upEdge && !p.jump) { p.vy = -8.4; p.jump = true; if (snd) snd.playJump(); }
+        if (keys.ok) { this.fireHold += dt; if (this.fireHold > 80) this.fire(snd); }
+        else this.fireHold = 0;
+        if (p.jump) {
+          p.y += p.vy * k; p.vy += 0.44 * k;
+          if (p.y >= 250) { p.y = 250; p.vy = 0; p.jump = false; }
         }
-        this.p.y += this.p.vy * k;
-        this.p.vy += 0.4 * k;
-        if (this.p.y >= 240) { this.p.y = 240; this.p.vy = 0; this.p.onGround = true; }
-
         for (let i = this.bullets.length - 1; i >= 0; i--) {
           const b = this.bullets[i];
-          b.x += b.vx * k;
-          b.y += b.vy * k;
-          if (b.x > 250) this.bullets.splice(i, 1);
+          b.x += b.vx * k; b.y += b.vy * k;
+          if (b.x > 255 || b.y < 0 || b.y > 320) this.bullets.splice(i, 1);
         }
-
-        if (Math.random() < 0.03 && this.enemies.length < 3) {
-          this.enemies.push({ x: 250, y: 240, vx: -2.0, hp: 1 });
+        for (let i = this.eb.length - 1; i >= 0; i--) {
+          const eb = this.eb[i];
+          eb.x += eb.vx * k;
+          const top = p.crouch ? p.y - 2 : p.y - 18;
+          if (p.inv <= 0 && Math.abs(eb.x - p.x) < 10 && eb.y >= top && eb.y <= p.y + 10) {
+            this.eb.splice(i, 1); p.hp--; p.inv = 1000;
+            if (snd) snd.playHit(); if (fx) fx.shake = 5;
+            if (p.hp <= 0) { this.dead = true; if (snd) snd.playGameOver(); }
+          } else if (eb.x < -12) this.eb.splice(i, 1);
         }
-
+        if (Math.random() < 0.018 && this.enemies.length < 4) this.enemies.push({ x: 255, y: 250, hp: 2 });
         for (let i = this.enemies.length - 1; i >= 0; i--) {
           const e = this.enemies[i];
-          e.x += e.vx * k;
-
+          e.x -= 1.15 * k;
+          if (Math.random() < 0.02) this.eb.push({ x: e.x - 8, y: e.y - 6, vx: -3.7 });
           for (let j = this.bullets.length - 1; j >= 0; j--) {
             const b = this.bullets[j];
             if (Math.abs(b.x - e.x) < 14 && Math.abs(b.y - e.y) < 16) {
-              this.enemies.splice(i, 1);
-              this.bullets.splice(j, 1);
-              this.p.score += 150;
-              if (fx) fx.burst(e.x, e.y, 10, ['#ef4444', '#ffd700']);
-              if (snd) snd.playExplode(false);
+              e.hp--; if (!b.pierce) this.bullets.splice(j, 1);
+              if (e.hp <= 0) {
+                this.enemies.splice(i, 1); p.score += 150;
+                if (fx) fx.burst(e.x, e.y, 7, ['#ff3344', '#ffd928']);
+                if (snd) snd.playExplode(false);
+              }
               break;
             }
           }
-
-          if (Math.abs(this.p.x - e.x) < 12 && Math.abs(this.p.y - e.y) < 16) {
-            this.p.hp--;
-            this.enemies.splice(i, 1);
-            if (fx) fx.shake = 10;
-            if (snd) snd.playHit();
-            if (this.p.hp <= 0) { this.dead = true; if (snd) snd.playGameOver(); }
+          if (e.x < -20) this.enemies.splice(i, 1);
+        }
+        if (this.cap.a) {
+          this.cap.x -= 1.35 * k;
+          this.cap.y = 148 + Math.sin(this.scroll * 0.05) * 16;
+          for (let j = this.bullets.length - 1; j >= 0; j--) {
+            const b = this.bullets[j];
+            if (Math.abs(b.x - this.cap.x) < 16 && Math.abs(b.y - this.cap.y) < 12) {
+              this.cap.a = false; this.bullets.splice(j, 1);
+              const guns = ['S', 'L', 'M', 'P'];
+              this.cap.item = { x: this.cap.x, y: this.cap.y, t: guns[(Math.random() * 4) | 0], vy: 1.6 };
+              if (snd) snd.playCoin();
+              break;
+            }
+          }
+          if (this.cap.x < -30) { this.cap.x = 280; this.cap.a = true; }
+        }
+        if (this.cap.item) {
+          const it = this.cap.item;
+          it.y += it.vy * k; it.vy += 0.18 * k;
+          if (it.y >= 248) { it.y = 248; it.vy = 0; }
+          it.x += (p.x + 10 - it.x) * (it.vy === 0 ? 0.28 : 0.1);
+          if (Math.abs(p.x - it.x) < 28 && Math.abs(p.y - it.y) < 28) {
+            if (it.t === 'P') { p.inv = 2200; p.score += 400; if (fx) fx.floatText(it.x, it.y, '[P] SHIELD', '#60a5fa'); }
+            else { p.gun = it.t; p.score += 300; if (fx) fx.floatText(it.x, it.y, '[' + it.t + ']', '#ffd928'); }
+            this.cap.item = null; if (snd) snd.playCoin();
           }
         }
       },
-      render(ctx, frame) {
-        ctx.fillStyle = '#0a1020';
-        ctx.fillRect(0, 0, 240, 320);
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(0, 240, 240, 80);
-
-        // 战士
+      render(ctx) {
+        ctx.fillStyle = '#06101e'; ctx.fillRect(0, 0, 240, 320);
+        ctx.fillStyle = '#1b4d24'; ctx.fillRect(0, 260, 240, 60);
         const p = this.p;
-        ctx.fillStyle = '#ff2233';
-        ctx.fillRect(p.x - 6, p.y - 20, 12, 4);
-        ctx.fillStyle = '#ffaa66';
-        ctx.fillRect(p.x - 5, p.y - 16, 10, 8);
-        ctx.fillStyle = '#0055ff';
-        ctx.fillRect(p.x - 6, p.y - 8, 12, 10);
-
-        // 子弹
-        ctx.fillStyle = '#ff0055';
+        if (p.inv <= 0 || ((Date.now() / 70) | 0) % 2) {
+          ctx.fillStyle = '#ff2233'; ctx.fillRect(p.x - 6, p.crouch ? p.y - 4 : p.y - 18, 12, 4);
+          ctx.fillStyle = '#ffaa66'; ctx.fillRect(p.x - 5, p.crouch ? p.y - 2 : p.y - 14, 10, 7);
+          ctx.fillStyle = '#0055ff'; ctx.fillRect(p.x - 6, p.crouch ? p.y + 4 : p.y - 7, p.crouch ? 18 : 12, p.crouch ? 8 : 14);
+        }
         for (const b of this.bullets) {
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillStyle = b.t === 'L' ? '#00ffff' : b.t === 'S' ? '#ff2222' : '#ffd700';
+          ctx.fillRect(b.x - (b.t === 'L' ? 12 : 3), b.y - 2, b.t === 'L' ? 24 : 7, 4);
         }
-
-        // 敌人
-        ctx.fillStyle = '#94a3b8';
-        for (const e of this.enemies) {
-          ctx.fillRect(e.x - 6, e.y - 18, 12, 18);
+        ctx.fillStyle = '#fff';
+        for (const eb of this.eb) ctx.fillRect(eb.x - 3, eb.y - 3, 6, 6);
+        ctx.fillStyle = '#cc2222';
+        for (const e of this.enemies) ctx.fillRect(e.x - 6, e.y - 14, 12, 18);
+        if (this.cap.a) {
+          ctx.fillStyle = '#ff0055'; ctx.fillRect(this.cap.x - 12, this.cap.y - 6, 24, 12);
+          ctx.fillStyle = '#fff'; ctx.font = 'bold 8px monospace'; ctx.fillText('FALCON', this.cap.x - 12, this.cap.y + 3);
         }
-
-        // HUD
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillRect(0, 0, 240, 26);
-        ctx.font = 'bold 12px monospace';
-        ctx.fillStyle = '#ffd700';
-        ctx.fillText(`SCORE:${this.p.score}`, 10, 18);
-        ctx.fillStyle = '#ff3344';
-        ctx.fillText(`LIVES:${this.p.hp}`, 170, 18);
-
-        if (this.dead) {
-          ctx.fillStyle = 'rgba(0,0,0,0.85)';
-          ctx.fillRect(30, 110, 180, 80);
-          ctx.fillStyle = '#ff0055';
-          ctx.font = 'bold 14px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('MISSION FAILED', 120, 142);
-          ctx.font = '11px monospace';
-          ctx.fillText('Press OK to Respawn', 120, 166);
-          ctx.textAlign = 'left';
-        }
+        if (this.cap.item) drawLetterBadge(ctx, this.cap.item.x, this.cap.item.y, this.cap.item.t);
+        ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 0, 240, 22);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#ffd928'; ctx.fillText('SC ' + p.score, 6, 15);
+        ctx.fillStyle = '#00e5ff'; ctx.fillText('[' + p.gun + '] ' + '♥'.repeat(Math.max(0, p.hp)), 92, 15);
+        if (this.dead) drawOver(ctx, 'MISSION FAILED', p.score);
+        if (this.win) drawOver(ctx, 'STAGE CLEAR', p.score);
       }
     },
 
@@ -1581,92 +1654,76 @@
     // ==========================================
     flappy: {
       init() {
-        this.y = 140;
-        this.vy = 0;
-        this.score = 0;
-        this.dead = false;
-        this.pipes = [{ x: 260, gapY: 120, passed: false }];
+        this.y = 150; this.vy = 0; this.rot = 0; this.score = 0; this.dead = false; this.ready = true;
+        this.gapH = 95; this.speed = 1.55;
+        this.pipes = [
+          { x: 260, gapY: 140, osc: 0, golden: false, scored: false },
+          { x: 390, gapY: 168, osc: 0, golden: false, scored: false },
+          { x: 520, gapY: 120, osc: 0, golden: false, scored: false }
+        ];
       },
       onOk(snd) {
         if (this.dead) { this.init(); if (snd) snd.playClick(); return; }
-        this.vy = -5.4;
+        this.ready = false; this.vy = -5.0;
         if (snd) snd.playJump();
       },
       update(dt, keys, snd, fx) {
-        if (this.dead) return;
+        if (this.dead || this.ready) return;
         const k = dt / 16.6;
-        this.vy += 0.32 * k;
-        this.y += this.vy * k;
-
-        if (this.y > 285 || this.y < 10) {
-          this.dead = true;
-          if (snd) snd.playGameOver();
-        }
-
-        for (let i = this.pipes.length - 1; i >= 0; i--) {
-          const p = this.pipes[i];
-          p.x -= 2.0 * k;
-          if (!p.passed && p.x < 70) {
-            p.passed = true;
-            this.score++;
+        this.y += this.vy * k; this.vy += 0.28 * k;
+        this.rot = clamp(this.vy * 0.1, -0.5, 1.0);
+        if (this.y >= 284 || this.y <= 10) { this.dead = true; if (snd) snd.playGameOver(); if (fx) fx.shake = 5; return; }
+        this.speed = Math.min(2.4, 1.55 + this.score * 0.03);
+        for (const p of this.pipes) {
+          p.x -= this.speed * k;
+          if (this.score >= 8) p.gapY += Math.sin((p.osc += 0.04 * k)) * 0.55;
+          p.gapY = clamp(p.gapY, 80, 210);
+          if (!p.scored && p.x < 50) {
+            p.scored = true; this.score += p.golden ? 2 : 1;
             if (snd) snd.playCoin();
+            if (p.golden && fx) fx.floatText(60, this.y, 'GOLD +2', '#ffd928');
           }
-          if (p.x < 85 && p.x > 35) {
-            if (this.y < p.gapY - 35 || this.y > p.gapY + 35) {
-              this.dead = true;
-              if (fx) fx.shake = 8;
-              if (snd) snd.playGameOver();
+          if (p.x < 74 && p.x > 34) {
+            if (this.y - 7 < p.gapY - this.gapH / 2 || this.y + 7 > p.gapY + this.gapH / 2) {
+              this.dead = true; if (snd) snd.playGameOver(); if (fx) fx.shake = 5;
             }
           }
-          if (p.x < -40) this.pipes.splice(i, 1);
-        }
-
-        if (this.pipes.length < 2) {
-          this.pipes.push({ x: 260, gapY: 80 + Math.random() * 110, passed: false });
+          if (p.x < -44) {
+            let maxX = 0; for (const q of this.pipes) if (q.x > maxX) maxX = q.x;
+            p.x = maxX + 130; p.gapY = 90 + Math.random() * 110; p.scored = false;
+            p.golden = this.score >= 5 && Math.random() < 0.18;
+            this.gapH = Math.max(68, 95 - this.score * 0.7);
+          }
         }
       },
-      render(ctx, frame) {
-        const isNight = Math.floor(this.score / 10) % 2 === 1;
-        ctx.fillStyle = isNight ? '#0b1626' : '#38bdf8';
-        ctx.fillRect(0, 0, 240, 320);
-
-        // 地面
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(0, 290, 240, 30);
-
-        // 管道
-        ctx.fillStyle = '#16a34a';
+      render(ctx) {
+        const night = (this.score % 20) >= 10;
+        ctx.fillStyle = night ? '#0b1626' : '#38bdf8'; ctx.fillRect(0, 0, 240, 320);
+        if (night) {
+          ctx.fillStyle = '#fff';
+          for (let i = 0; i < 18; i++) ctx.fillRect((i * 37) % 240, 12 + (i * 13) % 80, 2, 2);
+        }
         for (const p of this.pipes) {
-          ctx.fillRect(p.x, 0, 38, p.gapY - 35);
-          ctx.fillRect(p.x, p.gapY + 35, 38, 300);
+          const topH = p.gapY - this.gapH / 2, btmY = p.gapY + this.gapH / 2;
+          ctx.fillStyle = p.golden ? '#eab308' : '#22c55e';
+          ctx.fillRect(p.x, 0, 34, topH); ctx.fillRect(p.x, btmY, 34, 290 - btmY);
+          ctx.fillStyle = p.golden ? '#a16207' : '#15803d';
+          ctx.fillRect(p.x - 3, topH - 14, 40, 14); ctx.fillRect(p.x - 3, btmY, 40, 14);
         }
-
-        // 小鸟
-        ctx.fillStyle = '#ffd700';
-        ctx.beginPath();
-        ctx.arc(60, this.y, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(66, this.y - 2, 7, 5);
-
-        // HUD
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(0, 0, 240, 26);
-        ctx.font = 'bold 13px monospace';
-        ctx.fillStyle = '#ffd700';
-        ctx.fillText(`SCORE:${this.score}`, 10, 18);
-
-        if (this.dead) {
-          ctx.fillStyle = 'rgba(0,0,0,0.85)';
-          ctx.fillRect(30, 110, 180, 80);
-          ctx.fillStyle = '#ffd700';
-          ctx.font = 'bold 14px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('GAME OVER!', 120, 142);
-          ctx.font = '11px monospace';
-          ctx.fillText('Press OK to Flap', 120, 166);
-          ctx.textAlign = 'left';
+        ctx.fillStyle = '#eab308'; ctx.fillRect(0, 290, 240, 30);
+        ctx.fillStyle = '#22c55e'; ctx.fillRect(0, 290, 240, 6);
+        ctx.save(); ctx.translate(60, this.y); ctx.rotate(this.rot);
+        ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ff5500'; ctx.fillRect(6, -2, 7, 6);
+        ctx.restore();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 26px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(this.score, 120, 48); ctx.textAlign = 'left';
+        if (this.ready) {
+          ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(40, 140, 160, 36);
+          ctx.fillStyle = '#fff'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+          ctx.fillText('OK TO FLAP', 120, 162); ctx.textAlign = 'left';
         }
+        if (this.dead) drawOver(ctx, 'GAME OVER', this.score);
       }
     },
 
@@ -1675,95 +1732,82 @@
     // ==========================================
     pong: {
       init() {
-        this.paddleX = 100;
-        this.aiX = 100;
-        this.ballX = 120;
-        this.ballY = 160;
-        this.vx = 2.4;
-        this.vy = 3.2;
-        this.pScore = 0;
-        this.aiScore = 0;
-        this.mutation = 'normal';
+        this.px = 120; this.ax = 120; this.pw = 52;
+        this.ps = 0; this.as = 0; this.round = 0; this.state = 'serve'; this.winner = 0; this.slice = 0;
+        this.balls = [{ x: 120, y: 268, vx: 1.5, vy: -2.1, r: 5, type: 'NORMAL', a: true }];
       },
       onOk(snd) {
-        // 切击旋球
-        this.vx *= 1.3;
-        if (snd) snd.playClick();
+        if (this.winner) { this.init(); if (snd) snd.playClick(); return; }
+        if (this.state === 'serve') { this.state = 'play'; if (snd) snd.playCoin(); }
+        else this.slice = 10;
+      },
+      mutate(b, snd, fx) {
+        if (this.round === 0 || this.round % 4) return;
+        const types = ['MEGA', 'HYPER', 'CURVE', 'DUAL'];
+        b.type = types[(Math.random() * types.length) | 0];
+        if (snd) snd.playCoin();
+        if (fx) fx.floatText(120, 160, b.type, '#ffd928');
+        if (b.type === 'MEGA') { b.r = 12; b.vy *= 0.78; }
+        if (b.type === 'HYPER') { b.r = 3.5; b.vy *= 1.28; }
+        if (b.type === 'DUAL' && this.balls.length < 2) {
+          this.balls.push({ x: b.x, y: b.y, vx: -b.vx || 2, vy: b.vy * 0.95, r: 5, type: 'DUAL', a: true });
+        }
       },
       update(dt, keys, snd, fx) {
+        if (this.winner) return;
         const k = dt / 16.6;
-        if (keys.up) this.paddleX -= 4.2 * k;
-        if (keys.down) this.paddleX += 4.2 * k;
-        this.paddleX = clamp(this.paddleX, 5, 175);
-
-        // AI 跟踪
-        this.aiX += (this.ballX - (this.aiX + 30)) * 0.12 * k;
-        this.aiX = clamp(this.aiX, 5, 175);
-
-        this.ballX += this.vx * k;
-        this.ballY += this.vy * k;
-
-        if (this.ballX < 8 || this.ballX > 232) {
-          this.vx = -this.vx;
-          if (snd) snd.playHit();
+        if (keys.up) this.px = Math.max(30, this.px - 4.1 * k);
+        if (keys.down) this.px = Math.min(210, this.px + 4.1 * k);
+        if (this.state === 'serve') { this.balls[0].x = this.px; return; }
+        if (this.slice > 0) this.slice--;
+        let alive = 0;
+        for (const b of this.balls) {
+          if (!b.a) continue; alive++;
+          if (b.type === 'CURVE') b.vx += Math.sin(b.y * 0.04) * 0.12;
+          b.x += b.vx * k; b.y += b.vy * k;
+          if (b.x <= b.r || b.x >= 240 - b.r) { b.vx = -b.vx; if (snd) snd.playHit(); }
+          if (b.y >= 292 - b.r && b.y <= 304 && b.vy > 0 && b.x > this.px - this.pw / 2 && b.x < this.px + this.pw / 2) {
+            const off = (b.x - this.px) / (this.pw / 2);
+            b.vy = -Math.abs(b.vy) * 1.03;
+            b.vx += off * 1.15;
+            if (Math.abs(off) < 0.18 && this.slice <= 0) { b.vy *= 1.12; if (snd) snd.playCoin(); if (fx) fx.floatText(b.x, 280, 'SMASH', '#00e5ff'); }
+            else if (this.slice > 0) { b.vx += keys.up ? -2.2 : keys.down ? 2.2 : off * 1.4; b.type = 'CURVE'; if (snd) snd.playLaser(); }
+            else if (snd) snd.playHit();
+            this.round++; this.mutate(b, snd, fx);
+          }
+          if (b.y <= 28 + b.r && b.y >= 16 && b.vy < 0 && b.x > this.ax - this.pw / 2 && b.x < this.ax + this.pw / 2) {
+            b.vy = Math.abs(b.vy) * 1.03; this.round++; this.mutate(b, snd, fx); if (snd) snd.playHit();
+          }
+          if (b.y > 330) { b.a = false; this.as++; if (snd) snd.playHit(); }
+          else if (b.y < -10) { b.a = false; this.ps++; if (snd) snd.playCoin(); }
         }
-
-        // 玩家接球
-        if (this.ballY > 280 && this.ballY < 292 && this.ballX > this.paddleX && this.ballX < this.paddleX + 60) {
-          this.vy = -Math.abs(this.vy);
-          this.vx += (this.ballX - (this.paddleX + 30)) * 0.08;
-          if (snd) snd.playLaser();
-        }
-
-        // AI 接球
-        if (this.ballY < 40 && this.ballY > 28 && this.ballX > this.aiX && this.ballX < this.aiX + 60) {
-          this.vy = Math.abs(this.vy);
-          if (snd) snd.playLaser();
-        }
-
-        // 得分判定
-        if (this.ballY > 320) {
-          this.aiScore++;
-          this.ballX = 120; this.ballY = 160; this.vy = -3.2;
-          if (snd) snd.playHit();
-        }
-        if (this.ballY < 0) {
-          this.pScore++;
-          this.ballX = 120; this.ballY = 160; this.vy = 3.2;
-          if (snd) snd.playCoin();
+        const liveX = this.balls.reduce((s, b) => b.a ? b.x : s, 120);
+        this.ax += (liveX - this.ax) * 0.075;
+        if (this.ps >= 5) { this.winner = 1; if (snd) snd.playCoin(); }
+        if (this.as >= 5) { this.winner = -1; if (snd) snd.playGameOver(); }
+        if (alive === 0 && !this.winner) {
+          this.balls = [{ x: this.px, y: 268, vx: 1.5, vy: -2.1, r: 5, type: 'NORMAL', a: true }];
+          this.state = 'serve'; this.round = 0;
         }
       },
       render(ctx) {
-        ctx.fillStyle = '#0a0f1d';
-        ctx.fillRect(0, 0, 240, 320);
-
-        ctx.strokeStyle = '#334155';
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(0, 160); ctx.lineTo(240, 160);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // AI 挡板
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(this.aiX, 30, 60, 8);
-
-        // 玩家挡板
-        ctx.fillStyle = '#00e5ff';
-        ctx.fillRect(this.paddleX, 282, 60, 8);
-
-        // 球
-        ctx.fillStyle = '#ffd700';
-        ctx.beginPath();
-        ctx.arc(this.ballX, this.ballY, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 比分
-        ctx.font = 'bold 18px monospace';
-        ctx.fillStyle = '#ef4444';
-        ctx.fillText(`${this.aiScore}`, 115, 140);
-        ctx.fillStyle = '#00e5ff';
-        ctx.fillText(`${this.pScore}`, 115, 190);
+        ctx.fillStyle = '#062817'; ctx.fillRect(0, 0, 240, 320);
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.setLineDash([6, 6]);
+        ctx.beginPath(); ctx.moveTo(0, 160); ctx.lineTo(240, 160); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = 'bold 24px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillText(this.as, 20, 140); ctx.fillText(this.ps, 20, 195);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(this.ax - this.pw / 2, 20, this.pw, 8);
+        ctx.fillStyle = '#00e5ff'; ctx.fillRect(this.px - this.pw / 2, 292, this.pw, 8);
+        for (const b of this.balls) {
+          if (!b.a) continue;
+          ctx.fillStyle = b.type === 'MEGA' ? '#f59e0b' : b.type === 'HYPER' ? '#00ffff' : b.type === 'CURVE' ? '#a78bfa' : '#ffffff';
+          ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+        }
+        if (this.state === 'serve') {
+          ctx.fillStyle = '#fff'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+          ctx.fillText('OK TO SERVE', 120, 176); ctx.textAlign = 'left';
+        }
+        if (this.winner) drawOver(ctx, this.winner > 0 ? 'YOU WIN' : 'CPU WINS', this.ps + '-' + this.as);
       }
     },
 
@@ -1904,69 +1948,129 @@
     // ==========================================
     sparkler: {
       init() {
-        this.mode = 'sparkler'; // sparkler / candle
-        this.particles = [];
-        this.progress = 0;
+        this.mode = 'sparkler';
+        this.parts = [];
+        this.wick = 0; this.lit = true; this.speed = 1; this.mask = 0;
+        this.wax = 108; this.blow = 0; this.smoke = 0; this.t = 0;
       },
       onOk(snd) {
-        this.mode = (this.mode === 'sparkler') ? 'candle' : 'sparkler';
+        if (this.mode === 'sparkler' && !this.lit) { this.wick = 0; this.lit = true; this.mask = 0; if (snd) snd.playCoin(); return; }
+        if (this.mode === 'candle' && !this.lit) { this.lit = true; this.smoke = 0; if (snd) snd.playCoin(); return; }
+        this.mode = this.mode === 'sparkler' ? 'candle' : 'sparkler';
+        this.lit = true; this.wick = 0; this.wax = 108; this.mask = 0;
         if (snd) snd.playCoin();
+      },
+      spawn(x, y, n, type, cols) {
+        for (let i = 0; i < n && this.parts.length < 160; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const burst = type === 'burst';
+          const sp = (burst ? 4.2 : type === 'smoke' ? 0.5 : 2.4) * (0.35 + Math.random());
+          this.parts.push({
+            x, y, px: x, py: y,
+            vx: Math.cos(ang) * sp + this.blow * 1.8,
+            vy: Math.sin(ang) * sp - this.blow * 2.2,
+            life: burst ? 1 : type === 'smoke' ? 1.4 : 0.85 + Math.random() * 0.4,
+            max: 1, t: type, s: burst ? 3 : 1.6,
+            c: cols[(Math.random() * cols.length) | 0]
+          });
+        }
+      },
+      glow(ctx, x, y, r, col) {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       },
       update(dt, keys, snd, fx) {
         const k = dt / 16.6;
-        const blow = keys.blow;
-        const genCount = blow ? 6 : 2;
-
-        for (let i = 0; i < genCount; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const spd = (blow ? 3.5 : 1.5) * Math.random();
-          this.particles.push({
-            x: 120,
-            y: this.mode === 'sparkler' ? 140 : 180,
-            vx: Math.cos(angle) * spd,
-            vy: Math.sin(angle) * spd + 0.3,
-            life: 25,
-            color: this.mode === 'sparkler' ? '#ffd700' : '#ff5500'
+        this.t += dt;
+        if (keys.upEdge) this.speed = Math.min(3, this.speed + 0.25);
+        if (keys.downEdge) this.speed = Math.max(0.35, this.speed - 0.25);
+        this.blow = keys.blow ? Math.min(1, this.blow + 0.05) : Math.max(0, this.blow - 0.04);
+        if (this.mode === 'sparkler' && this.lit) {
+          this.wick += 0.0015 * this.speed * k;
+          if (this.wick >= 1) { this.wick = 1; this.lit = false; if (snd) snd.playExplode(false); }
+          const y = 52 + this.wick * 188;
+          this.spawn(120, y, 8 + (this.blow * 10) | 0, 'spark', ['#ffffff', '#fff4c2', '#ffe066', '#ffb703', '#fb8500']);
+          [0.25, 0.5, 0.75, 1].forEach((m, i) => {
+            if (this.wick >= m && (this.mask & (1 << i)) === 0) {
+              this.mask |= 1 << i;
+              const pal = [['#FFD700', '#FFFFFF'], ['#00FFFF', '#38BDF8'], ['#FF4D8D', '#FFFFFF'], ['#FF3333', '#33FF66', '#FFFF00']][i];
+              this.spawn(120, y, 42, 'burst', pal); if (snd) snd.playCoin(); if (fx) fx.shake = 4;
+            }
           });
         }
-
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-          const p = this.particles[i];
-          p.x += p.vx * k;
-          p.y += p.vy * k;
-          p.life--;
-          if (p.life <= 0) this.particles.splice(i, 1);
+        if (this.mode === 'candle') {
+          const fy = 248 - this.wax;
+          if (this.lit) {
+            this.wax = Math.max(26, this.wax - 0.018 * this.speed * k);
+            this.spawn(120 + this.blow * 10, fy - 8, 3, 'spark', ['#fff7ed', '#ffd166', '#fb923c']);
+            if (this.blow > 0.7) { this.smoke += dt; if (this.smoke > 220) { this.lit = false; if (snd) snd.playHit(); } }
+            else this.smoke = 0;
+          } else this.spawn(120, fy - 4, 2, 'smoke', ['#cbd5e1', '#94a3b8']);
+        }
+        for (let i = this.parts.length - 1; i >= 0; i--) {
+          const p = this.parts[i];
+          p.px = p.x; p.py = p.y;
+          p.x += p.vx * k; p.y += p.vy * k;
+          p.vy += (p.t === 'smoke' ? -0.05 : 0.09) * k;
+          p.life -= 0.028 * k;
+          if (p.life <= 0) this.parts.splice(i, 1);
         }
       },
       render(ctx) {
-        ctx.fillStyle = '#06060c';
-        ctx.fillRect(0, 0, 240, 320);
-
-        if (this.mode === 'candle') {
-          // 蜡烛身
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(108, 190, 24, 70);
-          ctx.fillStyle = '#ff9900';
-          ctx.beginPath();
-          ctx.arc(120, 180, 8, 0, Math.PI * 2);
-          ctx.fill();
+        const grd = ctx.createLinearGradient(0, 0, 0, 320);
+        grd.addColorStop(0, '#07060f'); grd.addColorStop(1, '#12080a');
+        ctx.fillStyle = grd; ctx.fillRect(0, 0, 240, 320);
+        if (this.mode === 'sparkler') {
+          const y = 52 + this.wick * 188;
+          ctx.fillStyle = '#6b3f1f'; ctx.fillRect(116, 246, 8, 30);
+          ctx.fillStyle = '#c4a574'; ctx.fillRect(118, y, 4, 252 - y);
+          ctx.fillStyle = '#1f2937'; ctx.fillRect(118, 40, 4, Math.max(0, y - 40));
+          if (this.lit) {
+            ctx.globalCompositeOperation = 'lighter';
+            this.glow(ctx, 120, y, 28 + this.blow * 10, 'rgba(255,180,40,0.28)');
+            this.glow(ctx, 120, y, 12, 'rgba(255,255,220,0.85)');
+            ctx.globalCompositeOperation = 'source-over';
+          }
+          ctx.fillStyle = this.lit ? '#ffd928' : '#6b7280';
+          ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+          ctx.fillText(this.lit ? ((this.wick * 100) | 0) + '%' : 'BURNT OUT', 120, 24);
         } else {
-          // 仙女棒金属棒
-          ctx.fillStyle = '#64748b';
-          ctx.fillRect(118, 150, 4, 110);
+          const fy = 248 - this.wax, lean = this.blow * 10;
+          ctx.fillStyle = '#9a3412'; ctx.fillRect(108, fy, 24, this.wax + 4);
+          ctx.fillStyle = '#fde68a'; ctx.fillRect(109, fy - 3, 22, 7);
+          if (this.lit) {
+            const flick = Math.sin(this.t / 70) * 2;
+            ctx.globalCompositeOperation = 'lighter';
+            this.glow(ctx, 120 + lean * 0.4, fy - 18 + flick, 34, 'rgba(255,140,40,0.32)');
+            ctx.fillStyle = '#fb923c';
+            ctx.beginPath();
+            ctx.moveTo(120 + lean, fy - 6);
+            ctx.quadraticCurveTo(112 + lean, fy - 18 + flick, 120 + lean, fy - 34 + flick);
+            ctx.quadraticCurveTo(128 + lean, fy - 18 + flick, 120 + lean, fy - 6);
+            ctx.fill();
+            ctx.fillStyle = '#fff7ed';
+            ctx.beginPath();
+            ctx.moveTo(120 + lean, fy - 8);
+            ctx.quadraticCurveTo(116 + lean, fy - 16, 120 + lean, fy - 24);
+            ctx.quadraticCurveTo(124 + lean, fy - 16, 120 + lean, fy - 8);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+          }
+          ctx.fillStyle = this.lit ? '#fdba74' : '#94a3b8';
+          ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+          ctx.fillText(this.lit ? 'CANDLE' : 'SMOKING', 120, 24);
         }
-
-        for (const p of this.particles) {
-          ctx.fillStyle = p.color;
-          ctx.fillRect(p.x, p.y, 2, 2);
+        ctx.globalCompositeOperation = 'lighter';
+        for (const p of this.parts) {
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.strokeStyle = p.c; ctx.fillStyle = p.c; ctx.lineWidth = p.s;
+          ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(p.x, p.y); ctx.stroke();
         }
-
-        ctx.font = 'bold 12px monospace';
-        ctx.fillStyle = '#ffd700';
-        ctx.fillText(this.mode === 'sparkler' ? 'SPARKLER MODE' : 'CANDLE MODE', 10, 24);
-        ctx.font = '10px monospace';
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillText('Press OK: Switch | Press B: Blow Air', 10, 40);
+        ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#94a3b8'; ctx.font = '9px monospace';
+        ctx.fillText('SPD ' + this.speed.toFixed(2) + (this.blow > 0.05 ? '  BLOW' : ''), 8, 312);
       }
     },
 
@@ -1976,60 +2080,89 @@
     worldtime: {
       init() {
         this.cities = [
-          { name: 'BEIJING', offset: 8 },
-          { name: 'LONDON', offset: 0 },
-          { name: 'NEW YORK', offset: -5 },
-          { name: 'TOKYO', offset: 9 },
-          { name: 'SAN FRANCISCO', offset: -8 }
+          { name: 'BEIJING', cn: '北京', off: 8 },
+          { name: 'TOKYO', cn: '东京', off: 9 },
+          { name: 'LONDON', cn: '伦敦', off: 0 },
+          { name: 'PARIS', cn: '巴黎', off: 1 },
+          { name: 'DUBAI', cn: '迪拜', off: 4 },
+          { name: 'NEW YORK', cn: '纽约', off: -5 },
+          { name: 'SAN FRAN', cn: '旧金山', off: -8 },
+          { name: 'SYDNEY', cn: '悉尼', off: 10 }
         ];
-        this.idx = 0;
+        this.idx = 0; this.view = 0;
       },
-      onOk(snd) {
-        if (snd) snd.playCoin();
+      onOk(snd) { this.view ^= 1; if (snd) snd.playClick(); },
+      local(c, date) {
+        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+        return new Date(utc + 3600000 * c.off);
       },
       update(dt, keys, snd) {
-        if (keys.upEdge) {
-          this.idx = (this.idx - 1 + this.cities.length) % this.cities.length;
-          if (snd) snd.playClick();
-        }
-        if (keys.downEdge) {
-          this.idx = (this.idx + 1) % this.cities.length;
-          if (snd) snd.playClick();
-        }
+        if (keys.upEdge) { this.idx = (this.idx + this.cities.length - 1) % this.cities.length; if (snd) snd.playClick(); }
+        if (keys.downEdge) { this.idx = (this.idx + 1) % this.cities.length; if (snd) snd.playClick(); }
       },
       render(ctx) {
-        ctx.fillStyle = '#060a16';
+        const now = new Date(), c = this.cities[this.idx], ct = this.local(c, now);
+        const hr = ct.getHours(), min = ct.getMinutes(), sec = ct.getSeconds();
+        const solar = hr >= 6 && hr < 18, dusk = hr >= 18 && hr < 20;
+        ctx.fillStyle = solar ? '#1d4ed8' : dusk ? '#7c2d12' : '#020617';
         ctx.fillRect(0, 0, 240, 320);
-
-        const c = this.cities[this.idx];
-        const now = new Date();
-        const utcHour = now.getUTCHours();
-        const localHour = (utcHour + c.offset + 24) % 24;
-        const isDay = localHour >= 6 && localHour < 18;
-
-        // 表盘
-        ctx.strokeStyle = isDay ? '#ffd700' : '#38bdf8';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(120, 140, 70, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 18px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(c.name, 120, 130);
-
-        ctx.font = 'bold 22px monospace';
-        ctx.fillStyle = isDay ? '#ffd700' : '#38bdf8';
-        const hStr = String(localHour).padStart(2, '0');
-        const mStr = String(now.getUTCMinutes()).padStart(2, '0');
-        ctx.fillText(`${hStr}:${mStr}`, 120, 160);
-
-        ctx.font = '11px monospace';
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillText(isDay ? '☀️ DAYTIME (WORK)' : '🌙 NIGHT (REST)', 120, 230);
-        ctx.fillText('UP/DN: Switch City | OK: Align', 120, 260);
-        ctx.textAlign = 'left';
+        if (this.view === 0) {
+          ctx.fillStyle = solar ? '#93c5fd' : '#1e293b';
+          ctx.beginPath(); ctx.arc(120, 168, 78, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ffd928'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(120, 168, 78, 0, Math.PI * 2); ctx.stroke();
+          const hAng = ((hr % 12) + min / 60) * 30 * Math.PI / 180;
+          const mAng = (min + sec / 60) * 6 * Math.PI / 180;
+          const sAng = sec * 6 * Math.PI / 180;
+          const hand = (ang, len, w, col) => {
+            ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+            ctx.moveTo(120, 168); ctx.lineTo(120 + Math.sin(ang) * len, 168 - Math.cos(ang) * len); ctx.stroke();
+          };
+          hand(hAng, 36, 4, '#0f172a'); hand(mAng, 52, 3, '#1e293b'); hand(sAng, 60, 1.5, '#ef4444');
+          ctx.fillStyle = '#ffd928'; ctx.beginPath(); ctx.arc(120, 168, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+          ctx.fillText(c.cn + '  ' + c.name, 120, 36);
+          ctx.font = 'bold 22px monospace';
+          ctx.fillText(String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0'), 120, 58);
+          ctx.fillStyle = '#ffd928'; ctx.font = '10px monospace';
+          ctx.fillText(solar ? 'DAY' : dusk ? 'DUSK' : 'NIGHT', 120, 74);
+          ctx.fillStyle = '#94a3b8'; ctx.fillText('OK MATRIX', 120, 288);
+        } else {
+          ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+          ctx.fillText('MEETING MATRIX  @' + c.name, 120, 20);
+          let bestH = 9, bestN = -1;
+          const rows = [];
+          for (let h = 8; h <= 18; h++) {
+            let n = 0; const cells = [];
+            for (const city of this.cities) {
+              let lh = h + (city.off - c.off);
+              if (lh < 0) lh += 24; if (lh >= 24) lh -= 24;
+              const biz = lh >= 9 && lh < 18; if (biz) n++;
+              cells.push({ lh, biz });
+            }
+            rows.push({ h, n, cells });
+            if (n > bestN) { bestN = n; bestH = h; }
+          }
+          rows.forEach((r, i) => {
+            const y = 36 + i * 22;
+            ctx.fillStyle = r.h === bestH ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.04)';
+            ctx.fillRect(6, y, 228, 20);
+            ctx.fillStyle = r.h === bestH ? '#86efac' : '#94a3b8';
+            ctx.textAlign = 'left'; ctx.font = '9px monospace';
+            ctx.fillText(String(r.h).padStart(2, '0'), 10, y + 14);
+            this.cities.forEach((city, ci) => {
+              const cell = r.cells[ci];
+              const x = 36 + ci * 25;
+              ctx.fillStyle = cell.biz ? '#22c55e' : '#334155';
+              ctx.fillRect(x, y + 4, 22, 12);
+              ctx.fillStyle = '#fff'; ctx.font = '7px monospace';
+              ctx.fillText(String(cell.lh).padStart(2, '0'), x + 3, y + 13);
+            });
+          });
+          ctx.fillStyle = '#ffd928'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+          ctx.fillText('BEST OVERLAP ' + String(bestH).padStart(2, '0') + ':00', 120, 300);
+        }
+        ctx.textAlign = 'left'; ctx.lineWidth = 1;
       }
     }
   };

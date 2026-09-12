@@ -401,6 +401,7 @@ window.addEventListener('keydown', e => {
     if (!keys.ok) triggerOk();
     keys.ok = true; document.getElementById('circle-ok').classList.add('active');
   }
+  if (e.code === 'KeyB') keys.blow = true;
 });
 window.addEventListener('keyup', e => {
   if (['ArrowUp', 'ArrowLeft', 'KeyW'].includes(e.code)) {
@@ -412,6 +413,7 @@ window.addEventListener('keyup', e => {
   if (['Space', 'Enter'].includes(e.code)) {
     keys.ok = false; document.getElementById('circle-ok').classList.remove('active');
   }
+  if (e.code === 'KeyB') keys.blow = false;
 });
 
 function bindBtn(id, circleId, keyName) {

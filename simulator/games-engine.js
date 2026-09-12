@@ -354,7 +354,7 @@
       upHint: '刹车后退',
       downHint: '加速冲刺',
       okHint: '起跳 / 飞斧投掷',
-      help: '• 角色<strong>自动向前跑</strong>，UP 减速刹车，DOWN 加速冲刺。<br>• <strong>OK 键</strong>：地面起跳，空中投掷旋转石斧。<br>• 路上捡取 <strong>A 石斧 / K 飞刀 / P 穿甲月刃</strong> 切换武器。<br>• 踩踏怪物可触发弹跳连击；金蛋可增加生命。'
+      help: '• 角色<strong>自动向右跑</strong>。UP 刹车后退，DOWN 加速冲刺。<br>• 空中 OK 丢出当前武器。路上红色字母 <strong>A / K / P</strong> 会滚到脚边。<br>• 踩踏蜗牛/青蛙连击加分；金蛋 +1 命。'
     },
     {
       id: 'contra',
@@ -369,7 +369,7 @@
       upHint: '翻滚起跳',
       downHint: '卧倒避弹 / 瞄准',
       okHint: '开火 / 切换武器',
-      help: '• <strong>UP 键</strong>：翻滚起跳越过地堡障碍。<br>• <strong>DOWN 键</strong>：匍匐卧倒避开敌军平射弹幕。<br>• <strong>OK 键</strong>：全自动机枪泼洒弹雨；击毁飞天胶囊升级 S/L/M 重型武装。<br>• 摧毁地堡炮台，攻克具有防御力场与反击激光的要塞巨兽。'
+      help: '• 关卡<strong>自动向右推进</strong>。UP 跳，DOWN 匍匐躲弹，OK 开火。<br>• 击落飞鹰掉 <strong>S 散弹 / L 激光 / M 机枪 / P 护盾</strong>，字母会自己滑到脚边。<br>• 下蹲可躲开胸口平飞弹。'
     },
     {
       id: 'flysaber',
