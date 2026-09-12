@@ -702,8 +702,8 @@ void demo_thunder_enter(void)
     lv_obj_set_pos(s_hud_hints, 0, 303);
     lv_obj_set_size(s_hud_hints, 240, 16);
     lv_obj_set_style_text_align(s_hud_hints, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(s_hud_hints, "UP:L DBL:UP  DN:R DBL:DN  OK:BOMB/PAUSE");
-    lv_obj_set_style_text_font(s_hud_hints, &lv_font_montserrat_12, 0);
+    lv_label_set_text(s_hud_hints, "UP:L DN:R 2x:UD OK:PAUSE");
+    lv_obj_set_style_text_font(s_hud_hints, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_hints, lv_color_hex(0xFFD928), 0);
 
     // 4. GAME OVER 结算遮罩容器
@@ -763,13 +763,13 @@ void demo_thunder_enter(void)
     lv_obj_t *p_vol_hint = lv_label_create(s_pause_box);
     lv_label_set_text(p_vol_hint, "UP: VOL+   DN: VOL-");
     lv_obj_set_style_text_color(p_vol_hint, lv_color_hex(0xAAAAAA), 0);
-    lv_obj_set_style_text_font(p_vol_hint, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(p_vol_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(p_vol_hint, LV_ALIGN_CENTER, 0, 12);
 
     lv_obj_t *p_hint = lv_label_create(s_pause_box);
     lv_label_set_text(p_hint, "PRESS [OK] RESUME");
     lv_obj_set_style_text_color(p_hint, lv_color_hex(0x00FFCC), 0);
-    lv_obj_set_style_text_font(p_hint, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(p_hint, &lv_font_montserrat_14, 0);
     lv_obj_align(p_hint, LV_ALIGN_BOTTOM_MID, 0, -6);
 
     lv_obj_add_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
