@@ -401,7 +401,7 @@ void demo_thunderracer_enter(void)
 
     if (!s_snd_queue) {
         s_snd_queue = xQueueCreate(16, sizeof(racer_snd_t));
-        xTaskCreate(racer_audio_task, "racer_audio", 2560, NULL, 5, &s_snd_task);
+        xTaskCreate(racer_audio_task, "racer_audio", 4096, NULL, 5, &s_snd_task);
     }
 
     s_scr = lv_obj_create(NULL);
