@@ -240,17 +240,17 @@
   <div class="controls-panel">
     <div class="hw-btn" id="btn-up">
       <div class="btn-circle">◄</div>
-      <span class="btn-label" id="lbl-up">UP (后退/跳)</span>
+      <span class="btn-label" id="lbl-up">UP (刹车后退)</span>
       <span class="key-hint"><kbd>←</kbd> 或 <kbd>↑</kbd></span>
     </div>
     <div class="hw-btn" id="btn-down">
       <div class="btn-circle">►</div>
-      <span class="btn-label" id="lbl-down">DOWN (前进/蹲)</span>
+      <span class="btn-label" id="lbl-down">DOWN (加速冲刺)</span>
       <span class="key-hint"><kbd>→</kbd> 或 <kbd>↓</kbd></span>
     </div>
     <div class="hw-btn" id="btn-ok">
       <div class="btn-circle">●</div>
-      <span class="btn-label" id="lbl-ok">OK (攻击/开火)</span>
+      <span class="btn-label" id="lbl-ok">OK (跳/掷武器)</span>
       <span class="key-hint"><kbd>Space</kbd> / <kbd>Enter</kbd></span>
     </div>
   </div>
@@ -258,144 +258,385 @@
 
 <div class="instructions" id="gameHelp">
   <strong>🏝️ 像素冒险岛玩法技巧：</strong><br>
-  • <kbd>↑ / ←</kbd>：后退减速；<kbd>↓ / →</kbd>：奔跑冲刺（高桥名人迈腿动画）<br>
-  • <kbd>Space / OK</kbd>：在地面起跳，在空中再次按 OK 投掷<b>高速旋转的 360° 双刃战斧</b>！<br>
-  • 踩踏蜗牛与青蛙可连击加分；捡到恐龙蛋额外生命。体力耗尽会掉心！
+  • 角色<b>自动向右跑</b>。<kbd>↑ / ←</kbd> 刹车后退；<kbd>↓ / →</kbd> 加速冲刺<br>
+  • <kbd>Space / OK</kbd>：地面起跳，空中再按丢出当前武器（A 斧 / K 刀 / P 月刃）<br>
+  • 路上的红色字母会自己滚到脚边。踩踏蜗牛青蛙可连击，金蛋 +1 命。
 </div>
 <div class="hint-bar">P 暂停 · M 静音 · 最佳成绩保存在本机 · 画面按 240×320 像素点阵绘制</div>
 
 <script>
-// ============================================================================
-// 1. Web Audio 复古街机音效引擎
-// ============================================================================
+// Compact 240x320 arcade hub: pooled FX, chiptune SFX, dt-based play.
+const W = 240, H = 320;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+ctx.imageSmoothingEnabled = false;
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function aabb(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+function hsGet(k) { try { return +localStorage.getItem('ft_hs_' + k) || 0; } catch (e) { return 0; } }
+function hsSet(k, v) {
+  try { const p = hsGet(k); if (v > p) localStorage.setItem('ft_hs_' + k, String(v)); } catch (e) {}
+}
+
 class SoundEngine {
-  constructor() {
-    this.ctx = null;
-  }
+  constructor() { this.ctx = null; this.out = null; this.muted = false; }
   init() {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.out = this.ctx.createGain();
+      this.out.gain.value = 0.22;
+      this.out.connect(this.ctx.destination);
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
   }
-  playJump() {
+  t() { return this.ctx.currentTime; }
+  osc(type, f0, f1, dur, vol) {
+    if (this.muted) return;
     this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(160, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(480, this.ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.12);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.12);
+    const t = this.t(), o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(Math.max(30, f0), t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.out);
+    o.start(t); o.stop(t + dur + 0.02);
   }
-  playShoot(type = 'normal') {
+  noise(dur, vol, freq) {
+    if (this.muted) return;
     this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type === 'laser' ? 'sawtooth' : 'triangle';
-    osc.frequency.setValueAtTime(type === 'laser' ? 880 : 600, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(type === 'laser' ? 220 : 160, this.ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.1);
+    const t = this.t(), n = Math.max(1, (this.ctx.sampleRate * dur) | 0);
+    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 700;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(this.out);
+    src.start(t); src.stop(t + dur);
   }
-  playExplode() {
-    this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(140, this.ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.2);
-    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.2);
+  playJump() { this.osc('square', 180, 520, 0.09, 0.11); }
+  playShoot(kind) {
+    if (kind === 'laser') this.osc('sawtooth', 980, 180, 0.12, 0.13);
+    else if (kind === 'spread') { this.osc('square', 640, 220, 0.08, 0.1); this.osc('square', 820, 280, 0.08, 0.06); }
+    else this.osc('triangle', 620, 140, 0.08, 0.12);
   }
-  playEat() {
-    this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(520, this.ctx.currentTime);
-    osc.frequency.setValueAtTime(780, this.ctx.currentTime + 0.06);
-    osc.frequency.setValueAtTime(1040, this.ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.16, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.22);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.22);
-  }
+  playExplode() { this.noise(0.2, 0.28, 500); this.osc('sawtooth', 160, 40, 0.18, 0.1); }
+  playEat() { this.osc('sine', 520, 1040, 0.16, 0.12); }
+  playScore() { this.osc('square', 660, 990, 0.07, 0.1); }
+  playHurt() { this.osc('square', 220, 70, 0.16, 0.16); this.noise(0.12, 0.16, 300); }
+  playPower() { this.osc('square', 440, 880, 0.14, 0.12); this.osc('triangle', 660, 1320, 0.14, 0.08); }
+  playCombo(n) { this.osc('square', 400 + n * 80, 900 + n * 40, 0.1, 0.11); }
+  playGameOver() { this.osc('sawtooth', 360, 80, 0.45, 0.14); }
+  playNitro() { this.osc('sawtooth', 140, 420, 0.22, 0.1); }
+  playSlice() { this.osc('triangle', 300, 900, 0.1, 0.12); }
+  playTick() { this.osc('square', 880, 880, 0.03, 0.05); }
+  playSpark() { this.osc('square', 1200, 400, 0.04, 0.04); }
+  playMiss() { this.osc('sine', 900, 1400, 0.05, 0.08); }
 }
 const snd = new SoundEngine();
 
-// ============================================================================
-// 2. 模拟器核心容器与键盘响应
-// ============================================================================
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const FX = {
+  pool: Array.from({ length: 56 }, () => ({ a: false })),
+  floats: Array.from({ length: 10 }, () => ({ a: false })),
+  shake: 0,
+  burst(x, y, n, cols) {
+    let c = 0;
+    for (const p of this.pool) {
+      if (p.a) continue;
+      const ang = Math.random() * Math.PI * 2, sp = 1.1 + Math.random() * 2.6;
+      p.a = true; p.x = x; p.y = y; p.vx = Math.cos(ang) * sp; p.vy = Math.sin(ang) * sp;
+      p.life = 1; p.c = cols[(Math.random() * cols.length) | 0];
+      if (++c >= n) break;
+    }
+  },
+  float(x, y, t, c) {
+    for (const f of this.floats) {
+      if (f.a) continue;
+      f.a = true; f.x = x; f.y = y; f.t = t; f.c = c || '#ffd928'; f.life = 1;
+      break;
+    }
+  },
+  update() {
+    for (const p of this.pool) {
+      if (!p.a) continue;
+      p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.life -= 0.038;
+      if (p.life <= 0) p.a = false;
+    }
+    for (const f of this.floats) {
+      if (!f.a) continue;
+      f.y -= 0.55; f.life -= 0.022;
+      if (f.life <= 0) f.a = false;
+    }
+    this.shake = this.shake > 0.25 ? this.shake * 0.82 : 0;
+  },
+  draw() {
+    for (const p of this.pool) {
+      if (!p.a) continue;
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.c;
+      ctx.fillRect(p.x | 0, p.y | 0, 2, 2);
+    }
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    for (const f of this.floats) {
+      if (!f.a) continue;
+      ctx.globalAlpha = f.life;
+      ctx.fillStyle = f.c;
+      ctx.fillText(f.t, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  },
+  reset() {
+    for (const p of this.pool) p.a = false;
+    for (const f of this.floats) f.a = false;
+    this.shake = 0;
+  }
+};
+
+function drawHud(score, paint) {
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, W, 22);
+  ctx.fillStyle = '#ffd928';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('SC ' + score, 6, 15);
+  if (paint) paint();
+}
+function drawBar(x, y, w, h, t, fg) {
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = fg;
+  ctx.fillRect(x + 1, y + 1, Math.max(0, (w - 2) * clamp(t, 0, 1)), h - 2);
+}
+function drawOver(title, score, key, hint) {
+  const hi = hsGet(key);
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(16, 92, 208, 128);
+  ctx.strokeStyle = '#ffd928';
+  ctx.strokeRect(16.5, 92.5, 207, 127);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ef4444';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText(title, 120, 122);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('SCORE ' + score, 120, 146);
+  ctx.fillStyle = '#ffd928';
+  ctx.fillText('BEST ' + hi, 120, 166);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px monospace';
+  ctx.fillText(hint || 'OK TO RETRY', 120, 192);
+  ctx.textAlign = 'left';
+}
+
+const PixelArtist = {
+  drawAdventureHero(ctx, x, y, runFrame, vy, onGround) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#ff2233'; ctx.fillRect(-6, -20, 14, 5); ctx.fillRect(-8, -17, 4, 2);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-2, -19, 4, 3);
+    ctx.fillStyle = '#ffcc99'; ctx.fillRect(-5, -15, 11, 8);
+    ctx.fillStyle = '#000000'; ctx.fillRect(1, -13, 2, 3);
+    ctx.fillStyle = '#e69966'; ctx.fillRect(3, -11, 2, 2);
+    ctx.fillStyle = '#ffcc99'; ctx.fillRect(-6, -7, 13, 7);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-4, -6, 9, 6); ctx.fillRect(-5, 0, 11, 4);
+    ctx.fillStyle = '#ffcc99';
+    const step = Math.floor(runFrame) % 3;
+    if (!onGround) {
+      ctx.fillRect(-5, 4, 4, 5); ctx.fillRect(2, 2, 4, 5);
+      ctx.fillStyle = '#222'; ctx.fillRect(-5, 8, 5, 3); ctx.fillRect(2, 6, 5, 3);
+    } else if (step === 0) {
+      ctx.fillRect(-6, 4, 4, 6); ctx.fillRect(3, 4, 4, 6);
+      ctx.fillStyle = '#222'; ctx.fillRect(-7, 9, 5, 3); ctx.fillRect(3, 9, 5, 3);
+    } else if (step === 1) {
+      ctx.fillRect(-4, 4, 4, 6); ctx.fillRect(1, 4, 4, 6);
+      ctx.fillStyle = '#222'; ctx.fillRect(-4, 9, 5, 3); ctx.fillRect(1, 9, 5, 3);
+    } else {
+      ctx.fillRect(-3, 4, 4, 6); ctx.fillRect(4, 3, 4, 7);
+      ctx.fillStyle = '#222'; ctx.fillRect(-3, 9, 5, 3); ctx.fillRect(5, 9, 5, 3);
+    }
+    ctx.restore();
+  },
+  drawBanana(ctx, x, y) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#2d8a20'; ctx.fillRect(-6, -6, 3, 3);
+    ctx.fillStyle = '#ffe600'; ctx.fillRect(-4, -4, 5, 3); ctx.fillRect(-2, -2, 6, 3); ctx.fillRect(1, 0, 6, 3); ctx.fillRect(4, 2, 4, 3);
+    ctx.fillStyle = '#cc9900'; ctx.fillRect(-1, 0, 5, 1);
+    ctx.fillStyle = '#553300'; ctx.fillRect(7, 4, 2, 2);
+    ctx.restore();
+  },
+  drawPineapple(ctx, x, y) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#22aa33'; ctx.fillRect(-4, -12, 3, 5); ctx.fillRect(-1, -14, 3, 7); ctx.fillRect(2, -12, 3, 5);
+    ctx.fillStyle = '#ffaa00'; ctx.fillRect(-6, -7, 13, 13);
+    ctx.fillStyle = '#8b5a00';
+    ctx.fillRect(-4, -5, 2, 2); ctx.fillRect(1, -5, 2, 2); ctx.fillRect(-2, -2, 2, 2);
+    ctx.fillRect(3, -2, 2, 2); ctx.fillRect(-4, 1, 2, 2); ctx.fillRect(1, 1, 2, 2);
+    ctx.restore();
+  },
+  drawEgg(ctx, x, y) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#f8f1d0'; ctx.fillRect(-5, -8, 10, 14);
+    ctx.fillStyle = '#e8c36a'; ctx.fillRect(-3, -4, 3, 3); ctx.fillRect(1, 1, 3, 3);
+    ctx.fillStyle = '#fff'; ctx.fillRect(-4, -7, 3, 3);
+    ctx.restore();
+  },
+  drawLetterBadge(ctx, x, y, letter) {
+    ctx.save(); ctx.translate(x, y);
+    const bob = Math.sin(Date.now() / 110) * 3;
+    ctx.fillStyle = '#1a0508'; ctx.fillRect(-10, -10 + bob, 20, 20);
+    ctx.fillStyle = '#e11d2a'; ctx.fillRect(-9, -9 + bob, 18, 18);
+    ctx.fillStyle = '#fff7ed'; ctx.fillRect(-7, -7 + bob, 14, 5);
+    ctx.fillStyle = '#7f1d1d'; ctx.fillRect(-9, 6 + bob, 18, 3);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(letter, 0, 5 + bob);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  },
+  drawSpinningAxe(ctx, x, y, angle) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(-2, -10, 4, 20);
+    ctx.fillStyle = '#cccccc'; ctx.fillRect(-8, -9, 16, 6);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-7, -10, 14, 2);
+    ctx.fillStyle = '#555555'; ctx.fillRect(-3, -8, 6, 4);
+    ctx.restore();
+  },
+  drawSnail(ctx, x, y) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#e6c280'; ctx.fillRect(-8, 3, 18, 4); ctx.fillRect(-9, -2, 3, 6);
+    ctx.fillStyle = '#000'; ctx.fillRect(-10, -3, 2, 2);
+    ctx.fillStyle = '#a0522d'; ctx.beginPath(); ctx.arc(1, -1, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(1, -1, 4, 0, Math.PI * 1.5); ctx.stroke();
+    ctx.restore();
+  },
+  drawFrog(ctx, x, y, jumping) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = '#3dba4a'; ctx.fillRect(-8, -6, 16, 12);
+    ctx.fillStyle = '#245c28'; ctx.fillRect(-9, jumping ? -2 : 4, 5, 6); ctx.fillRect(4, jumping ? -2 : 4, 5, 6);
+    ctx.fillStyle = '#fff'; ctx.fillRect(-5, -8, 4, 4); ctx.fillRect(1, -8, 4, 4);
+    ctx.fillStyle = '#000'; ctx.fillRect(-3, -7, 2, 2); ctx.fillRect(3, -7, 2, 2);
+    ctx.restore();
+  },
+  drawContraSoldier(ctx, x, y, isCrouch, isJumping, jumpRot) {
+    ctx.save(); ctx.translate(x, y);
+    if (isJumping) {
+      ctx.rotate(jumpRot);
+      ctx.fillStyle = '#ff2233'; ctx.fillRect(-7, -7, 14, 14);
+      ctx.fillStyle = '#0055ff'; ctx.fillRect(-5, -5, 10, 10);
+      ctx.restore(); return;
+    }
+    if (isCrouch) {
+      ctx.fillStyle = '#ff2233'; ctx.fillRect(-10, -2, 5, 2);
+      ctx.fillStyle = '#ffaa66'; ctx.fillRect(-6, -4, 8, 6);
+      ctx.fillStyle = '#0055ff'; ctx.fillRect(-8, 2, 18, 8);
+      ctx.fillStyle = '#444'; ctx.fillRect(2, 0, 16, 3);
+      ctx.fillStyle = '#999'; ctx.fillRect(8, -2, 3, 3);
+    } else {
+      ctx.fillStyle = '#ff2233'; ctx.fillRect(-6, -18, 12, 4); ctx.fillRect(-10, -17, 5, 2);
+      ctx.fillStyle = '#ffaa66'; ctx.fillRect(-5, -14, 10, 7); ctx.fillRect(-6, -7, 12, 8);
+      ctx.fillStyle = '#ffd700'; ctx.fillRect(-4, -6, 2, 2); ctx.fillRect(-2, -4, 2, 2); ctx.fillRect(0, -2, 2, 2);
+      ctx.fillStyle = '#0055ff'; ctx.fillRect(-5, 1, 10, 8);
+      ctx.fillStyle = '#222'; ctx.fillRect(-6, 9, 5, 3); ctx.fillRect(1, 9, 5, 3);
+      ctx.fillStyle = '#333'; ctx.fillRect(2, -5, 14, 4);
+      ctx.fillStyle = '#777'; ctx.fillRect(6, -8, 2, 4);
+    }
+    ctx.restore();
+  },
+  drawThunderRacerCar(ctx, x, y, isNitro, frame) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-14, -20, 28, 44);
+    ctx.fillStyle = '#111'; ctx.fillRect(-15, -16, 4, 10); ctx.fillRect(11, -16, 4, 10); ctx.fillRect(-16, 8, 5, 12); ctx.fillRect(11, 8, 5, 12);
+    ctx.fillStyle = isNitro ? '#ff0055' : '#00e5ff';
+    ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(10, -14); ctx.lineTo(12, 16); ctx.lineTo(9, 20); ctx.lineTo(-9, 20); ctx.lineTo(-12, 16); ctx.lineTo(-10, -14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#0b1626'; ctx.fillRect(-6, -8, 12, 14);
+    ctx.fillStyle = '#38bdf8'; ctx.fillRect(-4, -6, 8, 3);
+    ctx.fillStyle = '#ffd700'; ctx.fillRect(-13, 16, 26, 3);
+    const flameH = isNitro ? 18 + (frame % 4) * 3 : 8 + (frame % 3) * 2;
+    ctx.fillStyle = isNitro ? '#00ffff' : '#ff5500';
+    ctx.fillRect(-6, 20, 4, flameH); ctx.fillRect(2, 20, 4, flameH);
+    ctx.fillStyle = '#fff'; ctx.fillRect(-5, 20, 2, flameH * 0.6); ctx.fillRect(3, 20, 2, flameH * 0.6);
+    ctx.restore();
+  },
+  drawTrafficCar(ctx, x, y, type, frame) {
+    ctx.save(); ctx.translate(x, y);
+    if (type === 'police') {
+      ctx.fillStyle = '#000'; ctx.fillRect(-12, -16, 24, 32);
+      ctx.fillStyle = '#fff'; ctx.fillRect(-10, -10, 20, 20);
+      const blink = ((frame / 6) | 0) % 2 === 0;
+      ctx.fillStyle = blink ? '#ff0033' : '#0066ff'; ctx.fillRect(-6, -4, 5, 4);
+      ctx.fillStyle = blink ? '#0066ff' : '#ff0033'; ctx.fillRect(1, -4, 5, 4);
+    } else {
+      ctx.fillStyle = type === 'fast' ? '#ff3344' : '#f59e0b';
+      ctx.fillRect(-11, -15, 22, 30);
+      ctx.fillStyle = '#1e293b'; ctx.fillRect(-7, -8, 14, 10);
+      ctx.fillStyle = '#fff'; ctx.fillRect(-9, -15, 4, 2); ctx.fillRect(5, -15, 4, 2);
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(-9, 13, 4, 2); ctx.fillRect(5, 13, 4, 2);
+    }
+    ctx.restore();
+  },
+  drawPixelBird(ctx, x, y, rot, flapFrame) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff5500'; ctx.fillRect(6, -2, 7, 6);
+    ctx.fillStyle = '#cc3300'; ctx.fillRect(6, 1, 7, 1);
+    ctx.fillStyle = '#fff'; ctx.fillRect(2, -7, 6, 7);
+    ctx.fillStyle = '#000'; ctx.fillRect(5, -5, 3, 4);
+    ctx.fillStyle = '#fff8dc'; ctx.fillRect(-6, 2, 7, 6);
+    ctx.fillStyle = '#ffaa00'; ctx.fillRect(-8, (flapFrame % 2 === 0) ? -4 : 2, 6, 5);
+    ctx.restore();
+  }
+};
+
 let currentGame = 'adventure';
+let paused = false;
 let keys = { up: false, down: false, ok: false, blow: false };
+let prev = { up: false, down: false, ok: false };
+function edge(name) { return keys[name] && !prev[name]; }
 
 window.addEventListener('keydown', e => {
-  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.code)) {
-    e.preventDefault();
-  }
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault();
   snd.init();
+  if (e.code === 'KeyP') { paused = !paused; return; }
+  if (e.code === 'KeyM') { snd.muted = !snd.muted; return; }
+  if (e.code === 'KeyB') keys.blow = true;
   if (e.code === 'ArrowUp' || e.code === 'ArrowLeft' || e.key === 'w' || e.key === 'W') {
-    keys.up = true;
-    document.getElementById('btn-up').querySelector('.btn-circle').classList.add('active');
+    keys.up = true; document.querySelector('#btn-up .btn-circle').classList.add('active');
   }
   if (e.code === 'ArrowDown' || e.code === 'ArrowRight' || e.key === 's' || e.key === 'S') {
-    keys.down = true;
-    document.getElementById('btn-down').querySelector('.btn-circle').classList.add('active');
+    keys.down = true; document.querySelector('#btn-down .btn-circle').classList.add('active');
   }
   if (e.code === 'Space' || e.code === 'Enter') {
     if (!keys.ok) onOkPress();
     keys.ok = true;
-    document.getElementById('btn-ok').querySelector('.btn-circle').classList.add('active');
+    document.querySelector('#btn-ok .btn-circle').classList.add('active');
   }
 });
-
 window.addEventListener('keyup', e => {
+  if (e.code === 'KeyB') keys.blow = false;
   if (e.code === 'ArrowUp' || e.code === 'ArrowLeft' || e.key === 'w' || e.key === 'W') {
-    keys.up = false;
-    document.getElementById('btn-up').querySelector('.btn-circle').classList.remove('active');
+    keys.up = false; document.querySelector('#btn-up .btn-circle').classList.remove('active');
   }
   if (e.code === 'ArrowDown' || e.code === 'ArrowRight' || e.key === 's' || e.key === 'S') {
-    keys.down = false;
-    document.getElementById('btn-down').querySelector('.btn-circle').classList.remove('active');
+    keys.down = false; document.querySelector('#btn-down .btn-circle').classList.remove('active');
   }
   if (e.code === 'Space' || e.code === 'Enter') {
-    keys.ok = false;
-    document.getElementById('btn-ok').querySelector('.btn-circle').classList.remove('active');
+    keys.ok = false; document.querySelector('#btn-ok .btn-circle').classList.remove('active');
   }
 });
-
 function setupHwButton(id, keyName) {
   const el = document.getElementById(id);
   const circle = el.querySelector('.btn-circle');
   const press = () => {
     snd.init();
     if (keyName === 'ok' && !keys.ok) onOkPress();
-    keys[keyName] = true;
-    circle.classList.add('active');
+    keys[keyName] = true; circle.classList.add('active');
   };
-  const release = () => {
-    keys[keyName] = false;
-    circle.classList.remove('active');
-  };
+  const release = () => { keys[keyName] = false; circle.classList.remove('active'); };
   el.addEventListener('mousedown', press);
   el.addEventListener('mouseup', release);
   el.addEventListener('mouseleave', release);
@@ -405,10 +646,7 @@ function setupHwButton(id, keyName) {
 setupHwButton('btn-up', 'up');
 setupHwButton('btn-down', 'down');
 setupHwButton('btn-ok', 'ok');
-
-function onOkPress() {
-  if (games[currentGame].onOk) games[currentGame].onOk();
-}
+function onOkPress() { if (games[currentGame].onOk) games[currentGame].onOk(); }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.game) {
@@ -419,12 +657,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
   }
 });
-
 function switchGame(name) {
-  currentGame = name;
-  snd.init();
+  currentGame = name; paused = false; FX.reset(); snd.init();
   if (games[name].init) games[name].init();
-
   const g = games[name];
   document.getElementById('gameTitle').innerHTML = `<span>${g.icon}</span> ${g.title}`;
   document.getElementById('gameDesc').textContent = g.desc;
@@ -435,1272 +670,881 @@ function switchGame(name) {
   document.getElementById('gameHelp').innerHTML = g.help;
 }
 
-// ============================================================================
-// 3. 高精度像素点阵渲染器 (精美像素立绘，告别呆板色块)
-// ============================================================================
-const PixelArtist = {
-  // [A] 高桥名人 (冒险岛主角：草帽、肉色皮肤、白裤衩、换腿跑动、手臂挥舞)
-  drawAdventureHero(ctx, x, y, runFrame, vy, onGround) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // 经典红色便帽 / 遮阳帽 (带帽檐)
-    ctx.fillStyle = '#ff2233';
-    ctx.fillRect(-6, -20, 14, 5);
-    ctx.fillRect(-8, -17, 4, 2); // 伸出的帽檐
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-2, -19, 4, 3); // 白色徽记
-
-    // 头部肉色
-    ctx.fillStyle = '#ffcc99';
-    ctx.fillRect(-5, -15, 11, 8);
-    // 黑色眼睛与大鼻子
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(1, -13, 2, 3);
-    ctx.fillStyle = '#e69966';
-    ctx.fillRect(3, -11, 2, 2);
-
-    // 健硕上身 (无袖背心露出肉色肩膀)
-    ctx.fillStyle = '#ffcc99';
-    ctx.fillRect(-6, -7, 13, 7);
-    ctx.fillStyle = '#ffffff'; // 白色背心
-    ctx.fillRect(-4, -6, 9, 6);
-
-    // 双腿换步动画 (帧 0, 1, 2)
-    ctx.fillStyle = '#ffffff'; // 白色裤衩
-    ctx.fillRect(-5, 0, 11, 4);
-
-    ctx.fillStyle = '#ffcc99'; // 腿肉色
-    const step = Math.floor(runFrame) % 3;
-    if (!onGround) {
-      // 跳跃姿态：两腿蜷起
-      ctx.fillRect(-5, 4, 4, 5);
-      ctx.fillRect(2, 2, 4, 5);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(-5, 8, 5, 3);
-      ctx.fillRect(2, 6, 5, 3);
-    } else if (step === 0) {
-      // 迈开左腿
-      ctx.fillRect(-6, 4, 4, 6);
-      ctx.fillRect(3, 4, 4, 6);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(-7, 9, 5, 3);
-      ctx.fillRect(3, 9, 5, 3);
-    } else if (step === 1) {
-      // 站立/过渡
-      ctx.fillRect(-4, 4, 4, 6);
-      ctx.fillRect(1, 4, 4, 6);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(-4, 9, 5, 3);
-      ctx.fillRect(1, 9, 5, 3);
-    } else {
-      // 迈开右腿
-      ctx.fillRect(-3, 4, 4, 6);
-      ctx.fillRect(4, 3, 4, 7);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(-3, 9, 5, 3);
-      ctx.fillRect(5, 9, 5, 3);
-    }
-    ctx.restore();
-  },
-
-  // [B] 拟真香蕉 (黄弧形、深褐两端、绿果蒂)
-  drawBanana(ctx, x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = '#2d8a20'; // 绿蒂
-    ctx.fillRect(-6, -6, 3, 3);
-    ctx.fillStyle = '#ffe600'; // 明黄蕉身
-    ctx.fillRect(-4, -4, 5, 3);
-    ctx.fillRect(-2, -2, 6, 3);
-    ctx.fillRect(1, 0, 6, 3);
-    ctx.fillRect(4, 2, 4, 3);
-    ctx.fillStyle = '#cc9900'; // 阴影线
-    ctx.fillRect(-1, 0, 5, 1);
-    ctx.fillStyle = '#553300'; // 尾尖
-    ctx.fillRect(7, 4, 2, 2);
-    ctx.restore();
-  },
-
-  // [C] 拟真菠萝 (金黄菱形纹路果身 + 绿色锯齿凤梨头)
-  drawPineapple(ctx, x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    // 绿色叶冠
-    ctx.fillStyle = '#22aa33';
-    ctx.fillRect(-4, -12, 3, 5);
-    ctx.fillRect(-1, -14, 3, 7);
-    ctx.fillRect(2, -12, 3, 5);
-    // 金黄色菠萝身
-    ctx.fillStyle = '#ffaa00';
-    ctx.fillRect(-6, -7, 13, 13);
-    // 菱形网格花纹
-    ctx.fillStyle = '#8b5a00';
-    ctx.fillRect(-4, -5, 2, 2);
-    ctx.fillRect(1, -5, 2, 2);
-    ctx.fillRect(-2, -2, 2, 2);
-    ctx.fillRect(3, -2, 2, 2);
-    ctx.fillRect(-4, 1, 2, 2);
-    ctx.fillRect(1, 1, 2, 2);
-    ctx.restore();
-  },
-
-  // [D] 飞旋石斧 (木柄 + 铁质弧面双刃 + 旋转角)
-  drawSpinningAxe(ctx, x, y, angle) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    // 木柄
-    ctx.fillStyle = '#8b5a2b';
-    ctx.fillRect(-2, -10, 4, 20);
-    // 斧头铁刃
-    ctx.fillStyle = '#cccccc';
-    ctx.fillRect(-8, -9, 16, 6);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-7, -10, 14, 2);
-    ctx.fillStyle = '#555555';
-    ctx.fillRect(-3, -8, 6, 4);
-    ctx.restore();
-  },
-
-  // [E] 萌趣小蜗牛 (螺旋纹硬壳 + 软体探头伸眼睛)
-  drawSnail(ctx, x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    // 软体爬行底盘
-    ctx.fillStyle = '#e6c280';
-    ctx.fillRect(-8, 3, 18, 4);
-    // 伸出的眼睛触角
-    ctx.fillRect(-9, -2, 3, 6);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(-10, -3, 2, 2);
-    // 褐色螺旋壳
-    ctx.fillStyle = '#a0522d';
-    ctx.beginPath();
-    ctx.arc(1, -1, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffd700';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(1, -1, 4, 0, Math.PI * 1.5);
-    ctx.stroke();
-    ctx.restore();
-  },
-
-  // [F] 魂斗罗特种兵战士 (蓝裤红头巾兰博、双手托机枪、下蹲趴地动作)
-  drawContraSoldier(ctx, x, y, isCrouch, isJumping, jumpRot, weapon) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    if (isJumping) {
-      // 经典翻滚跳跃：球形旋转
-      ctx.rotate(jumpRot);
-      ctx.fillStyle = '#ff2233'; // 红头巾
-      ctx.fillRect(-7, -7, 14, 14);
-      ctx.fillStyle = '#0055ff'; // 蓝裤子
-      ctx.fillRect(-5, -5, 10, 10);
-      ctx.restore();
-      return;
-    }
-
-    if (isCrouch) {
-      // 下蹲趴地动作：高度骤降至 14px，平飞子弹从头顶穿过！
-      ctx.fillStyle = '#ff2233'; // 红色飘带
-      ctx.fillRect(-10, -2, 5, 2);
-      ctx.fillStyle = '#ffaa66'; // 头部
-      ctx.fillRect(-6, -4, 8, 6);
-      ctx.fillStyle = '#0055ff'; // 蓝色战术服与长裤匍匐
-      ctx.fillRect(-8, 2, 18, 8);
-      // 托平向右的重机枪
-      ctx.fillStyle = '#444';
-      ctx.fillRect(2, 0, 16, 3);
-      ctx.fillStyle = '#999';
-      ctx.fillRect(8, -2, 3, 3);
-    } else {
-      // 站立战斗姿态
-      // 红色飘扬头巾
-      ctx.fillStyle = '#ff2233';
-      ctx.fillRect(-6, -18, 12, 4);
-      ctx.fillRect(-10, -17, 5, 2); // 头巾飘带往后飞扬
-      // 健美肌肉脸与身躯
-      ctx.fillStyle = '#ffaa66';
-      ctx.fillRect(-5, -14, 10, 7);
-      ctx.fillRect(-6, -7, 12, 8);
-      // 经典斜跨子弹带
-      ctx.fillStyle = '#ffd700';
-      ctx.fillRect(-4, -6, 2, 2);
-      ctx.fillRect(-2, -4, 2, 2);
-      ctx.fillRect(0, -2, 2, 2);
-      // 蓝色特种长裤与靴子
-      ctx.fillStyle = '#0055ff';
-      ctx.fillRect(-5, 1, 10, 8);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(-6, 9, 5, 3);
-      ctx.fillRect(1, 9, 5, 3);
-      // 手持金属重枪
-      ctx.fillStyle = '#333333';
-      ctx.fillRect(2, -5, 14, 4);
-      ctx.fillStyle = '#777777';
-      ctx.fillRect(6, -8, 2, 4);
-    }
-    ctx.restore();
-  },
-
-  // [G] 雷霆超跑赛车 (俯视透视视角：流线前盖、扰流板、尾翼、双发排气氮气尾焰)
-  drawThunderRacerCar(ctx, x, y, isNitro, frame) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    // 赛车阴影
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(-14, -20, 28, 44);
-
-    // 轮胎 (前后 4 轮)
-    ctx.fillStyle = '#111111';
-    ctx.fillRect(-15, -16, 4, 10);
-    ctx.fillRect(11, -16, 4, 10);
-    ctx.fillRect(-16, 8, 5, 12);
-    ctx.fillRect(11, 8, 5, 12);
-
-    // 流线型碳纤维红蓝拉花车身
-    ctx.fillStyle = isNitro ? '#ff0055' : '#00e5ff';
-    ctx.beginPath();
-    ctx.moveTo(0, -22);       // 车头尖
-    ctx.lineTo(10, -14);
-    ctx.lineTo(12, 16);
-    ctx.lineTo(9, 20);        // 车尾
-    ctx.lineTo(-9, 20);
-    ctx.lineTo(-12, 16);
-    ctx.lineTo(-10, -14);
-    ctx.closePath();
-    ctx.fill();
-
-    // 黑色座舱挡风玻璃
-    ctx.fillStyle = '#0b1626';
-    ctx.fillRect(-6, -8, 12, 14);
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(-4, -6, 8, 3); // 玻璃反光
-
-    // 尾部大型 GT 扰流板
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(-13, 16, 26, 3);
-
-    // 排气管喷射炽热尾焰
-    const flameH = isNitro ? 18 + (frame % 4) * 3 : 8 + (frame % 3) * 2;
-    ctx.fillStyle = isNitro ? '#00ffff' : '#ff5500';
-    ctx.fillRect(-6, 20, 4, flameH);
-    ctx.fillRect(2, 20, 4, flameH);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-5, 20, 2, flameH * 0.6);
-    ctx.fillRect(3, 20, 2, flameH * 0.6);
-
-    ctx.restore();
-  },
-
-  // [H] 交通车辆 (警车带红蓝爆闪、红色家用轿车)
-  drawTrafficCar(ctx, x, y, type, frame) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    if (type === 'police') {
-      // 黑白警车
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(-12, -16, 24, 32);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-10, -10, 20, 20);
-      // 车顶红蓝爆闪警灯
-      const blink = Math.floor(frame / 6) % 2 === 0;
-      ctx.fillStyle = blink ? '#ff0033' : '#0066ff';
-      ctx.fillRect(-6, -4, 5, 4);
-      ctx.fillStyle = blink ? '#0066ff' : '#ff0033';
-      ctx.fillRect(1, -4, 5, 4);
-    } else {
-      // 豪华黄色或红色跑车
-      ctx.fillStyle = type === 'fast' ? '#ff3344' : '#f59e0b';
-      ctx.fillRect(-11, -15, 22, 30);
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(-7, -8, 14, 10);
-      // 车头灯与尾灯
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(-9, -15, 4, 2);
-      ctx.fillRect(5, -15, 4, 2);
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(-9, 13, 4, 2);
-      ctx.fillRect(5, 13, 4, 2);
-    }
-    ctx.restore();
-  },
-
-  // [I] 像素飞鸟 (呆萌大眼睛、橘黄鸟喙、上下拍动小翅膀)
-  drawPixelBird(ctx, x, y, rot, flapFrame) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rot);
-
-    // 金黄胖嘟嘟身体
-    ctx.fillStyle = '#ffd700';
-    ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 橘红大嘴巴
-    ctx.fillStyle = '#ff5500';
-    ctx.fillRect(6, -2, 7, 6);
-    ctx.fillStyle = '#cc3300';
-    ctx.fillRect(6, 1, 7, 1); // 嘴巴缝
-
-    // 白色大眼睛与黑色眼珠
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(2, -7, 6, 7);
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(5, -5, 3, 4);
-
-    // 白色腹部
-    ctx.fillStyle = '#fff8dc';
-    ctx.fillRect(-6, 2, 7, 6);
-
-    // 扇动小翅膀 (上中下 3 帧)
-    const wingY = (flapFrame % 2 === 0) ? -4 : 2;
-    ctx.fillStyle = '#ffaa00';
-    ctx.fillRect(-8, wingY, 6, 5);
-
-    ctx.restore();
-  }
-};
-
-// ============================================================================
-// 4. 精品游戏业务逻辑
-// ============================================================================
 const games = {
-  // --------------------------------------------------------------------------
-  // [01] 像素冒险岛 HD
-  // --------------------------------------------------------------------------
   adventure: {
-    icon: '🏝️',
-    title: '像素冒险岛 HD (ADVENTURE ISLAND)',
-    desc: '★ 真实高桥名人 · 旋转石斧 · 拟真香蕉菠萝 · 软体蜗牛与飞鸟 ★',
-    badge: 'ADVENTURE HD',
-    btnUp: 'UP (后退减速)',
-    btnDown: 'DOWN (冲刺快跑)',
-    btnOk: 'OK (跳跃/掷战斧)',
-    help: `<strong>🏝️ 像素冒险岛重制亮点：</strong><br>
-           • 告别色块！主角拥有<b>奔跑换步、跳跃蜷腿</b>的完整像素动画！<br>
-           • 捡拾生动的<b>弯月香蕉 (+20)</b> 与<b>菠萝王 (+50)</b> 补充右上角饥饿条！<br>
-           • 空中按 OK 投掷 <b>360° 高速旋转的双刃飞斧</b>，一击斩落沿途蜗牛与飞鸟！`,
+    icon: '🏝️', title: '像素冒险岛 HD (ADVENTURE ISLAND)',
+    desc: '★ 自动前进 · 踩踏连击 · A/K/P 武器字母 · 视差海岛 ★',
+    badge: 'ADVENTURE HD', btnUp: 'UP (刹车后退)', btnDown: 'DOWN (加速冲刺)', btnOk: 'OK (跳/掷武器)',
+    help: `<strong>🏝️ 像素冒险岛：</strong><br>• 角色<b>自动向右跑</b>。UP 刹车后退，DOWN 加速冲刺，空中 OK 丢武器。<br>• 路上会滚来 <b>A 石斧 / K 飞刀 / P 穿甲月刃</b>，跑过去就能吃到。<br>• 踩踏蜗牛/青蛙连击加分；金蛋 +1 命。`,
     init() {
-      this.p = { x: 40, y: 240, vy: 0, onGround: true, stamina: 100, lives: 3, score: 0, runFrame: 0 };
-      this.axes = [];
-      this.enemies = [{ x: 260, y: 244, type: 'snail', vx: -1.0 }];
-      this.items = [{ x: 180, y: 238, type: 'banana' }];
-      this.cloudOffset = 0;
+      this.p = { x: 72, y: 240, vy: 0, onGround: true, stamina: 100, lives: 3, score: 0, runFrame: 0, inv: 0, combo: 0, comboT: 0, weapon: 'A' };
+      this.axes = []; this.enemies = []; this.items = [{ x: 170, y: 238, type: 'banana' }];
+      this.scroll = 0; this.spawn = 0; this.dead = false;
     },
     onOk() {
-      if (this.p.onGround) {
-        this.p.vy = -8.6;
-        this.p.onGround = false;
-        snd.playJump();
-      } else {
-        // 空中投掷双刃石斧
-        this.axes.push({ x: this.p.x + 12, y: this.p.y - 8, vx: 5.5, vy: -3.6, rot: 0, active: true });
+      if (this.dead) { this.init(); return; }
+      if (this.p.onGround) { this.p.vy = -8.4; this.p.onGround = false; snd.playJump(); }
+      else {
+        const w = this.p.weapon;
+        if (w === 'K') this.axes.push({ x: this.p.x + 12, y: this.p.y - 6, vx: 8.2, vy: 0, rot: 0, a: true, t: 'K', pierce: false });
+        else if (w === 'P') this.axes.push({ x: this.p.x + 12, y: this.p.y - 8, vx: 6.4, vy: 0, rot: 0, a: true, t: 'P', pierce: true });
+        else this.axes.push({ x: this.p.x + 12, y: this.p.y - 8, vx: 5.6, vy: -3.4, rot: 0, a: true, t: 'A', pierce: false });
         snd.playShoot();
       }
     },
-    update(dt) {
-      const p = this.p;
-      this.cloudOffset = (this.cloudOffset + 0.3) % 240;
-
-      if (keys.down) { p.x += 2.6; p.stamina -= 0.035; p.runFrame += 0.25; }
-      else if (keys.up) { p.x -= 1.8; p.runFrame += 0.15; }
-      p.x = Math.max(16, Math.min(220, p.x));
-
-      p.y += p.vy;
-      p.vy += 0.44;
-      if (p.y >= 240) { p.y = 240; p.vy = 0; p.onGround = true; }
-
-      p.stamina = Math.max(0, p.stamina - 0.038);
-      if (p.stamina <= 0) { p.lives--; p.stamina = 100; snd.playExplode(); }
-
-      // 旋转石斧飞行更新
-      this.axes.forEach(a => {
-        if (!a.active) return;
-        a.x += a.vx;
-        a.y += a.vy;
-        a.vy += 0.28;
-        a.rot += 0.38; // 360 度疯狂旋转
-        if (a.y > 270 || a.x > 250) a.active = false;
-      });
-
-      // 敌人生成与碰撞
-      if (Math.random() < 0.014 && this.enemies.length < 3) {
-        const isBird = Math.random() > 0.6;
-        this.enemies.push({
-          x: 260, y: isBird ? 170 : 244,
-          type: isBird ? 'bird' : 'snail',
-          vx: isBird ? -2.2 : -1.0
-        });
-      }
-      this.enemies.forEach(e => {
-        e.x += e.vx;
-        this.axes.forEach(a => {
-          if (a.active && Math.abs(a.x - e.x) < 16 && Math.abs(a.y - e.y) < 16) {
-            a.active = false;
-            e.dead = true;
-            p.score += 200;
-            snd.playExplode();
-          }
-        });
-        if (!e.dead && Math.abs(p.x - e.x) < 14 && Math.abs(p.y - e.y) < 16) {
-          p.lives--;
-          p.x = Math.max(16, p.x - 30);
-          snd.playExplode();
-        }
-      });
-      this.enemies = this.enemies.filter(e => e.x > -20 && !e.dead);
-
-      // 水果刷新
-      if (Math.random() < 0.012 && this.items.length < 2) {
-        this.items.push({ x: 260, y: 236, type: Math.random() > 0.4 ? 'banana' : 'pine' });
-      }
-      this.items.forEach(it => {
-        it.x -= 1.0;
-        if (Math.abs(p.x - it.x) < 16 && Math.abs(p.y - it.y) < 20) {
-          it.collected = true;
-          p.stamina = Math.min(100, p.stamina + (it.type === 'banana' ? 25 : 50));
-          p.score += 150;
-          snd.playEat();
-        }
-      });
-      this.items = this.items.filter(it => it.x > -20 && !it.collected);
-    },
-    draw() {
-      // 蔚蓝海岛天空与白云
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(0, 0, 240, 320);
-
-      // 视差滚动白云
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillRect((180 - this.cloudOffset + 240) % 240, 40, 44, 16);
-      ctx.fillRect((60 - this.cloudOffset + 240) % 240, 65, 54, 20);
-
-      // 远景热带海岛青山
-      ctx.fillStyle = '#1e7844';
-      ctx.beginPath();
-      ctx.moveTo(0, 240); ctx.lineTo(70, 160); ctx.lineTo(150, 240);
-      ctx.lineTo(210, 180); ctx.lineTo(240, 240);
-      ctx.fill();
-
-      // 真实海岛草皮与泥土层
-      ctx.fillStyle = '#16a34a';
-      ctx.fillRect(0, 252, 240, 68);
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(0, 266, 240, 54);
-
-      // 绘制水果
-      this.items.forEach(it => {
-        if (it.type === 'banana') PixelArtist.drawBanana(ctx, it.x, it.y);
-        else PixelArtist.drawPineapple(ctx, it.x, it.y);
-      });
-
-      // 绘制敌人
-      this.enemies.forEach(e => {
-        if (e.type === 'snail') {
-          PixelArtist.drawSnail(ctx, e.x, e.y);
-        } else {
-          // 红色飞鸟
-          PixelArtist.drawPixelBird(ctx, e.x, e.y, 0, Math.floor(Date.now() / 150));
-        }
-      });
-
-      // 绘制旋转战斧
-      this.axes.forEach(a => {
-        if (!a.active) return;
-        PixelArtist.drawSpinningAxe(ctx, a.x, a.y, a.rot);
-      });
-
-      // 绘制高桥名人主角
-      PixelArtist.drawAdventureHero(ctx, this.p.x, this.p.y, this.p.runFrame, this.p.vy, this.p.onGround);
-
-      // 顶部复古仪表盘
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(0, 0, 240, 26);
-      ctx.fillStyle = '#ffd928';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`SCORE:${this.p.score}`, 8, 17);
-      ctx.fillStyle = '#ff4444';
-      ctx.fillText(`HP:${'♥'.repeat(Math.max(0, this.p.lives))}`, 95, 17);
-
-      // 饥饿体力条
-      ctx.fillStyle = '#1f2937';
-      ctx.fillRect(150, 7, 82, 12);
-      ctx.fillStyle = this.p.stamina > 30 ? '#22c55e' : '#ef4444';
-      ctx.fillRect(151, 8, (this.p.stamina / 100) * 80, 10);
-    }
-  },
-
-  // --------------------------------------------------------------------------
-  // [02] 口袋魂斗罗 HD
-  // --------------------------------------------------------------------------
-  contra: {
-    icon: '🔫',
-    title: '口袋魂斗罗 HD (POCKET CONTRA)',
-    desc: '★ 红头巾兰博 · 下蹲匍匐躲弹 · 飞鹰胶囊 · S/L/M 武器库 ★',
-    badge: 'CONTRA HD',
-    btnUp: 'UP (翻滚跳跃)',
-    btnDown: 'DOWN (下蹲躲避)',
-    btnOk: 'OK (高频开火)',
-    help: `<strong>🔫 口袋魂斗罗重制亮点：</strong><br>
-           • 完美还原经典：按 <kbd>↓ / S</kbd> 真正<b>下蹲匍匐躲避半空平飞弹</b>！<br>
-           • 空中飞鹰胶囊可击落，掉落 <b>[S] 散弹、[L] 贯穿激光、[M] 速射机枪</b>！<br>
-           • 突击步兵成群冲锋，地堡旋转炮台，决战三段狂暴机械要塞 BOSS！`,
-    init() {
-      this.p = { x: 35, y: 250, vy: 0, isCrouch: false, isJumping: false, jumpRot: 0, hp: 6, weapon: 'S', score: 0 };
-      this.bullets = [];
-      this.enemyBullets = [];
-      this.enemies = [{ x: 210, y: 250, type: 'soldier', hp: 2 }];
-      this.capsule = { x: 260, y: 150, active: true, item: null };
-      this.boss = { x: 195, y: 200, hp: 60, maxHp: 60, active: false };
-    },
-    onOk() {
-      const p = this.p;
-      snd.playShoot(p.weapon === 'L' ? 'laser' : 'normal');
-
-      if (p.weapon === 'S') {
-        // 经典 S 弹：扇形三向红白高能弹
-        this.bullets.push({ x: p.x + 14, y: p.isCrouch ? p.y + 2 : p.y - 4, vx: 6.5, vy: -1.6, type: 'S' });
-        this.bullets.push({ x: p.x + 14, y: p.isCrouch ? p.y + 2 : p.y - 4, vx: 7.2, vy: 0, type: 'S' });
-        this.bullets.push({ x: p.x + 14, y: p.isCrouch ? p.y + 2 : p.y - 4, vx: 6.5, vy: 1.6, type: 'S' });
-      } else if (p.weapon === 'L') {
-        // 激光束：贯穿
-        this.bullets.push({ x: p.x + 14, y: p.isCrouch ? p.y + 2 : p.y - 4, vx: 10.0, vy: 0, type: 'L', pierce: true });
-      } else {
-        // M 弹
-        this.bullets.push({ x: p.x + 14, y: p.isCrouch ? p.y + 2 : p.y - 4, vx: 8.0, vy: 0, type: 'M' });
-      }
-    },
-    update(dt) {
-      const p = this.p;
-      p.isCrouch = keys.down && !p.isJumping;
-
-      if (keys.up && !p.isJumping) {
-        p.vy = -8.5;
-        p.isJumping = true;
-        snd.playJump();
-      }
-
-      if (p.isJumping) {
-        p.y += p.vy;
-        p.vy += 0.45;
-        p.jumpRot += 0.35;
-        if (p.y >= 250) {
-          p.y = 250;
-          p.vy = 0;
-          p.isJumping = false;
-        }
-      }
-
-      // 子弹更新
-      this.bullets.forEach(b => { b.x += b.vx; b.y += b.vy; });
-      this.bullets = this.bullets.filter(b => b.x < 250 && b.y > 0 && b.y < 320 && !b.dead);
-
-      // 敌方子弹 (在胸口高飞，下蹲可安全躲避！)
-      this.enemyBullets.forEach(eb => {
-        eb.x += eb.vx;
-        const hitTop = p.isCrouch ? p.y - 2 : p.y - 18;
-        if (Math.abs(eb.x - p.x) < 10 && eb.y >= hitTop && eb.y <= p.y + 10) {
-          eb.dead = true;
-          p.hp--;
-          snd.playExplode();
-        }
-      });
-      this.enemyBullets = this.enemyBullets.filter(eb => eb.x > -10 && !eb.dead);
-
-      // 敌人逻辑
-      if (Math.random() < 0.02 && this.enemies.length < 3) {
-        this.enemies.push({ x: 260, y: 250, type: 'soldier', hp: 2 });
-      }
-      this.enemies.forEach(e => {
-        e.x -= 1.1;
-        if (Math.random() < 0.025) {
-          this.enemyBullets.push({ x: e.x - 8, y: e.y - 6, vx: -3.8 });
-        }
-        this.bullets.forEach(b => {
-          if (Math.abs(b.x - e.x) < 14 && Math.abs(b.y - e.y) < 16) {
-            e.hp--;
-            if (!b.pierce) b.dead = true;
-            if (e.hp <= 0) { e.dead = true; p.score += 150; snd.playExplode(); }
-          }
-        });
-      });
-      this.enemies = this.enemies.filter(e => e.x > -20 && !e.dead);
-
-      // 飞行胶囊武器飞过
-      if (this.capsule.active) {
-        this.capsule.x -= 1.4;
-        this.bullets.forEach(b => {
-          if (Math.abs(b.x - this.capsule.x) < 16 && Math.abs(b.y - this.capsule.y) < 12) {
-            this.capsule.active = false;
-            b.dead = true;
-            // 掉落徽章
-            const weapons = ['S', 'L', 'M'];
-            this.capsule.item = { x: this.capsule.x, y: this.capsule.y, type: weapons[Math.floor(Math.random()*3)] };
-            snd.playEat();
-          }
-        });
-        if (this.capsule.x < -30) {
-          this.capsule.x = 280;
-          this.capsule.y = 130 + Math.random() * 40;
-        }
-      }
-
-      // 拾取武器徽章
-      if (this.capsule.item) {
-        const it = this.capsule.item;
-        it.y += 0.8;
-        if (Math.abs(p.x - it.x) < 18 && Math.abs(p.y - it.y) < 20) {
-          p.weapon = it.type;
-          this.capsule.item = null;
-          p.score += 300;
-          snd.playEat();
-        }
-      }
-
-      // BOSS 战触发
-      if (p.score >= 600 && !this.boss.active) this.boss.active = true;
-      if (this.boss.active && this.boss.hp > 0) {
-        if (Math.random() < 0.05) {
-          this.enemyBullets.push({ x: this.boss.x - 16, y: this.boss.y + (Math.random()-0.5)*30, vx: -4.2 });
-        }
-        this.bullets.forEach(b => {
-          if (Math.abs(b.x - this.boss.x) < 26 && Math.abs(b.y - this.boss.y) < 32) {
-            this.boss.hp--;
-            if (!b.pierce) b.dead = true;
-            p.score += 50;
-            snd.playExplode();
-          }
-        });
-      }
-    },
-    draw() {
-      // 丛林军事基地多层背景
-      ctx.fillStyle = '#06101e';
-      ctx.fillRect(0, 0, 240, 320);
-
-      // 远景铁丝网与丛林
-      ctx.fillStyle = '#14301a';
-      ctx.fillRect(0, 200, 240, 60);
-      ctx.fillStyle = '#1b4d24';
-      ctx.fillRect(0, 260, 240, 60);
-
-      // 绘制主角
-      PixelArtist.drawContraSoldier(ctx, this.p.x, this.p.y, this.p.isCrouch, this.p.isJumping, this.p.jumpRot, this.p.weapon);
-
-      // 绘制子弹
-      this.bullets.forEach(b => {
-        if (b.type === 'S') {
-          ctx.fillStyle = '#ff2222';
-          ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI*2); ctx.fill();
-        } else if (b.type === 'L') {
-          ctx.fillStyle = '#00ffff';
-          ctx.fillRect(b.x - 12, b.y - 2, 24, 4);
-        } else {
-          ctx.fillStyle = '#ffd700';
-          ctx.fillRect(b.x - 3, b.y - 2, 6, 3);
-        }
-      });
-
-      // 绘制敌方子弹 (白色高亮平飞光球)
-      ctx.fillStyle = '#ffffff';
-      this.enemyBullets.forEach(eb => {
-        ctx.beginPath(); ctx.arc(eb.x, eb.y, 3.5, 0, Math.PI*2); ctx.fill();
-      });
-
-      // 绘制突击敌人
-      this.enemies.forEach(e => {
-        ctx.fillStyle = '#cc2222';
-        ctx.fillRect(e.x - 6, e.y - 14, 12, 18);
-        ctx.fillStyle = '#ffaa66';
-        ctx.fillRect(e.x - 4, e.y - 18, 8, 5);
-        ctx.fillStyle = '#333';
-        ctx.fillRect(e.x - 10, e.y - 8, 10, 4); // 敌枪
-      });
-
-      // 飞行胶囊
-      if (this.capsule.active) {
-        ctx.fillStyle = '#ff0055';
-        ctx.fillRect(this.capsule.x - 12, this.capsule.y - 6, 24, 12);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 8px sans-serif';
-        ctx.fillText('FALCON', this.capsule.x - 10, this.capsule.y + 3);
-      }
-      if (this.capsule.item) {
-        const it = this.capsule.item;
-        ctx.fillStyle = '#ffd700';
-        ctx.fillRect(it.x - 8, it.y - 8, 16, 16);
-        ctx.fillStyle = '#000';
-        ctx.font = 'bold 12px monospace';
-        ctx.fillText(it.type, it.x - 4, it.y + 4);
-      }
-
-      // 机械要塞 BOSS
-      if (this.boss.active && this.boss.hp > 0) {
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(this.boss.x - 24, this.boss.y - 36, 48, 72);
-        ctx.fillStyle = '#dc2626';
-        ctx.fillRect(this.boss.x - 10, this.boss.y - 10, 20, 20); // 核心
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(this.boss.x - 24, this.boss.y - 44, (this.boss.hp / this.boss.maxHp) * 48, 4);
-      }
-
-      // UI
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(0, 0, 240, 26);
-      ctx.fillStyle = '#ffd700';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`SCORE:${this.p.score}`, 8, 17);
-      ctx.fillStyle = '#00e5ff';
-      ctx.fillText(`GUN:[${this.p.weapon}] HP:${'♥'.repeat(Math.max(0, this.p.hp))}`, 110, 17);
-    }
-  },
-
-  // --------------------------------------------------------------------------
-  // [03] 雷霆飞车 HD
-  // --------------------------------------------------------------------------
-  thunderracer: {
-    icon: '🏎️',
-    title: '雷霆飞车 HD (THUNDER RACER)',
-    desc: '★ 真实赛车流线 · 氮气双发尾焰 · 红蓝爆闪警车 · 前向导弹 ★',
-    badge: 'RACER HD',
-    btnUp: 'UP (左变道)',
-    btnDown: 'DOWN (右变道)',
-    btnOk: 'OK (发射导弹/氮气)',
-    help: `<strong>🏎️ 雷霆飞车重制亮点：</strong><br>
-           • 告别呆板色块！驾驶<b>拥有双发尾焰的流线型超跑</b>，驰骋于 3 车道赛博公路！<br>
-           • 遭遇慢速家用车与<b>红蓝爆闪巡逻警车</b>，按 OK 发射车载前向导弹直接击碎！<br>
-           • 贴身极限擦车奖励 <b>Near-Miss 氮气</b>，长按 OK 触发 420km/h 极速狂飙！`,
-    init() {
-      this.lane = 1;
-      this.playerX = 120;
-      this.speed = 240;
-      this.shield = 100;
-      this.nitro = 50;
-      this.score = 0;
-      this.frame = 0;
-      this.enemies = [
-        { lane: 0, z: 280, speed: 110, type: 'slow' },
-        { lane: 2, z: 180, speed: 130, type: 'police' }
-      ];
-      this.missiles = [];
-    },
-    onOk() {
-      // 发射导弹
-      this.missiles.push({ x: this.playerX, y: 246, vy: -8.0 });
-      snd.playShoot();
-    },
-    update(dt) {
-      this.frame++;
-      if (keys.up) { this.lane = Math.max(0, this.lane - 1); keys.up = false; }
-      if (keys.down) { this.lane = Math.min(2, this.lane + 1); keys.down = false; }
-
-      const targetX = [64, 120, 176][this.lane];
-      this.playerX += (targetX - this.playerX) * 0.24;
-
-      // 氮气爆发检测
-      const isNitro = keys.ok && this.nitro > 10;
-      if (isNitro) {
-        this.speed = 420;
-        this.nitro = Math.max(0, this.nitro - 0.4);
-      } else {
-        this.speed = 240;
-      }
-
-      // 导弹
-      this.missiles.forEach(m => {
-        m.y += m.vy;
-        this.enemies.forEach(e => {
-          const ex = [64, 120, 176][e.lane];
-          if (Math.abs(m.x - ex) < 20 && Math.abs(m.y - e.z) < 22) {
-            e.dead = true;
-            m.dead = true;
-            this.score += 250;
-            this.nitro = Math.min(100, this.nitro + 25);
-            snd.playExplode();
-          }
-        });
-      });
-      this.missiles = this.missiles.filter(m => m.y > 0 && !m.dead);
-
-      // 敌车刷新
-      this.enemies.forEach(e => {
-        e.z += (this.speed - e.speed) * 0.035;
-        // 贴车超车 Near-Miss
-        if (!e.missed && e.z > 240 && e.z < 280 && Math.abs(this.lane - e.lane) === 1) {
-          e.missed = true;
-          this.score += 150;
-          this.nitro = Math.min(100, this.nitro + 12);
-        }
-        // 追尾
-        if (!e.dead && Math.abs(e.z - 250) < 20 && e.lane === this.lane) {
-          e.dead = true;
-          if (isNitro) {
-            // 氮气无敌撞毁
-            this.score += 300;
-            snd.playExplode();
-          } else {
-            this.shield = Math.max(0, this.shield - 25);
-            snd.playExplode();
-          }
-        }
-      });
-      this.enemies = this.enemies.filter(e => e.z < 340 && !e.dead);
-
-      if (Math.random() < 0.024 && this.enemies.length < 3) {
-        const lane = Math.floor(Math.random() * 3);
-        const type = Math.random() > 0.5 ? 'police' : 'fast';
-        this.enemies.push({ lane, z: 20, speed: type === 'police' ? 140 : 110, type });
-      }
-    },
-    draw() {
-      // 赛博公路背景
-      ctx.fillStyle = '#060a12';
-      ctx.fillRect(0, 0, 240, 320);
-
-      // 透视公路
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath();
-      ctx.moveTo(80, 0); ctx.lineTo(160, 0);
-      ctx.lineTo(240, 320); ctx.lineTo(0, 320);
-      ctx.fill();
-
-      // 红白路牙石
-      const curbOffset = (this.frame * 8) % 30;
-      for (let y = 0; y < 320; y += 30) {
-        const py = (y + curbOffset) % 320;
-        ctx.fillStyle = (Math.floor((y + curbOffset)/30) % 2 === 0) ? '#ff3344' : '#ffffff';
-        ctx.fillRect(0, py, 14, 20);
-        ctx.fillRect(226, py, 14, 20);
-      }
-
-      // 车道线
-      ctx.strokeStyle = '#ffd700';
-      ctx.setLineDash([14, 12]);
-      ctx.lineDashOffset = -this.frame * 10;
-      ctx.beginPath();
-      ctx.moveTo(106, 0); ctx.lineTo(80, 320);
-      ctx.moveTo(134, 0); ctx.lineTo(160, 320);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // 敌车
-      this.enemies.forEach(e => {
-        const ex = [64, 120, 176][e.lane];
-        PixelArtist.drawTrafficCar(ctx, ex, e.z, e.type, this.frame);
-      });
-
-      // 导弹
-      ctx.fillStyle = '#00ffff';
-      this.missiles.forEach(m => {
-        ctx.fillRect(m.x - 2, m.y - 6, 4, 12);
-      });
-
-      // 玩家赛车
-      const isNitro = keys.ok && this.nitro > 10;
-      PixelArtist.drawThunderRacerCar(ctx, this.playerX, 250, isNitro, this.frame);
-
-      // UI
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(0, 0, 240, 26);
-      ctx.fillStyle = '#ffd700';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`SCORE:${this.score}`, 8, 17);
-      ctx.fillStyle = isNitro ? '#00ffff' : '#22c55e';
-      ctx.fillText(`${this.speed} KM/H`, 96, 17);
-      ctx.fillStyle = this.shield > 30 ? '#38bdf8' : '#ef4444';
-      ctx.fillText(`SHIELD:${this.shield}%`, 160, 17);
-    }
-  },
-
-  // --------------------------------------------------------------------------
-  // [04] 像素飞鸟 HD (适度降难，手感温和，马里奥像素水管)
-  // --------------------------------------------------------------------------
-  flappy: {
-    icon: '🐦',
-    title: '像素飞鸟 HD (FLAPPY PASSPORT)',
-    desc: '★ 难度平滑调校 · 经典马里奥水管 · 动态昼夜 ★',
-    badge: 'FLAPPY HD',
-    btnUp: 'UP (轻点起飞)',
-    btnDown: 'DOWN (轻点起飞)',
-    btnOk: 'OK (跳跃/重开)',
-    help: `<strong>🐦 像素飞鸟重制亮点：</strong><br>
-           • <b>难度大幅调优</b>：水管开口缝隙拓宽至 95px，降低下坠重力，手感柔和舒适！<br>
-           • 经典像素马里奥水管结构（带凸起法兰和深色阴影边）与呆萌小黄鸟！<br>
-           • 穿越管道获得 1 分，每 10 分平滑渐变至宁静星空夜景。`,
-    init() {
-      this.bird = { y: 150, vy: 0, rot: 0, flapFrame: 0 };
-      this.pipes = [
-        { x: 260, gapY: 140 },
-        { x: 400, gapY: 170 }
-      ];
-      this.gapH = 95; // 拓宽缝隙
-      this.score = 0;
-      this.dead = false;
-    },
-    onOk() {
-      if (this.dead) {
-        this.init();
-      } else {
-        this.bird.vy = -5.0; // 减缓冲量
-        this.bird.flapFrame++;
-        snd.playJump();
-      }
+    kill(e, bonus) {
+      e.dead = true;
+      this.p.combo = this.p.comboT > 0 ? this.p.combo + 1 : 1;
+      this.p.comboT = 1100;
+      const add = (bonus + (e.score || 200)) * (this.p.combo > 1 ? this.p.combo : 1);
+      this.p.score += add;
+      FX.burst(e.x, e.y, 8, ['#ffd928', '#ff5533', '#fff']);
+      FX.float(e.x, e.y - 10, this.p.combo > 1 ? 'x' + this.p.combo : '+' + add, '#ffd928');
+      if (this.p.combo > 1) snd.playCombo(this.p.combo); else snd.playExplode();
     },
     update(dt) {
       if (this.dead) return;
-      const b = this.bird;
-      b.y += b.vy;
-      b.vy += 0.28; // 减小重力
-      b.rot = Math.min(1.0, Math.max(-0.5, b.vy * 0.1));
-
-      if (b.y >= 284 || b.y <= 10) {
-        this.dead = true;
-        snd.playExplode();
+      const p = this.p, k = dt / 16.6;
+      if (p.comboT > 0) { p.comboT -= dt; if (p.comboT <= 0) p.combo = 0; }
+      if (p.inv > 0) p.inv -= dt;
+      const sprint = keys.down, brake = keys.up;
+      const worldSpd = sprint ? 3.1 : brake ? 0.35 : 1.7;
+      this.scroll += worldSpd * k;
+      p.runFrame += (sprint ? 0.36 : brake ? 0.08 : 0.22) * k;
+      if (sprint) { p.x += 1.1 * k; p.stamina -= 0.02 * k; }
+      else if (brake) p.x -= 2.0 * k;
+      else p.x += 0.35 * k;
+      p.x = clamp(p.x, 28, 168);
+      p.y += p.vy * k; p.vy += 0.42 * k;
+      if (p.y >= 240) { p.y = 240; p.vy = 0; p.onGround = true; }
+      p.stamina = Math.max(0, p.stamina - 0.03 * k);
+      if (p.stamina <= 0) { p.lives--; p.stamina = 100; p.inv = 1200; snd.playHurt(); FX.shake = 5; if (p.lives <= 0) { this.dead = true; hsSet('adv', p.score); snd.playGameOver(); } }
+      for (const a of this.axes) {
+        if (!a.a) continue;
+        a.x += a.vx * k; a.y += a.vy * k;
+        if (a.t === 'A') a.vy += 0.26 * k;
+        a.rot += (a.t === 'P' ? 0.5 : 0.38) * k;
+        if (a.y > 280 || a.x > 255) a.a = false;
       }
-
-      this.pipes.forEach(p => {
-        p.x -= 1.6; // 稍微放慢移动速度
-        if (!p.scored && p.x < 50) {
-          p.scored = true;
-          this.score++;
-          snd.playEat();
+      this.spawn += dt;
+      if (this.spawn > 900 && this.enemies.length < 4) {
+        this.spawn = 0;
+        const r = Math.random();
+        const type = r > 0.7 ? 'bird' : r > 0.4 ? 'frog' : 'snail';
+        this.enemies.push({ x: 250, y: type === 'bird' ? 150 + Math.random() * 40 : 244, type, vx: type === 'bird' ? -2.3 : -1.05, score: type === 'bird' ? 300 : type === 'frog' ? 200 : 100, hop: 0 });
+      }
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        e.x -= (worldSpd + 0.35) * k;
+        if (e.type === 'bird') e.y += Math.sin(this.scroll * 0.04 + e.x) * 0.4;
+        if (e.type === 'frog') {
+          e.hop += dt;
+          if (e.hop > 900) { e.vy = -6; e.hop = 0; }
+          e.y += (e.vy || 0); e.vy = (e.vy || 0) + 0.28;
+          if (e.y > 244) { e.y = 244; e.vy = 0; }
         }
-        if (p.x < 74 && p.x > 34) {
-          if (b.y - 7 < p.gapY - this.gapH/2 || b.y + 7 > p.gapY + this.gapH/2) {
-            this.dead = true;
-            snd.playExplode();
+        for (const a of this.axes) {
+          if (a.a && Math.abs(a.x - e.x) < 16 && Math.abs(a.y - e.y) < 16) {
+            if (!a.pierce) a.a = false;
+            this.kill(e, 0);
           }
         }
-        if (p.x < -44) {
-          p.x = 240;
-          p.gapY = 90 + Math.random() * 110;
-          p.scored = false;
+        if (!e.dead && Math.abs(p.x - e.x) < 14 && Math.abs(p.y - e.y) < 18) {
+          if (!p.onGround && p.vy > 1.2 && p.y < e.y) {
+            this.kill(e, 50); p.vy = -6.2; p.onGround = false;
+          } else if (p.inv <= 0) {
+            p.lives--; p.inv = 1400; p.combo = 0; snd.playHurt(); FX.shake = 6;
+            if (p.lives <= 0) { this.dead = true; hsSet('adv', p.score); snd.playGameOver(); }
+          }
         }
-      });
+      }
+      this.enemies = this.enemies.filter(e => e.x > -24 && !e.dead);
+      this.axes = this.axes.filter(a => a.a);
+      if (Math.random() < 0.014 && this.items.length < 3) {
+        const t = Math.random();
+        const type = t > 0.88 ? 'egg' : t > 0.72 ? 'P' : t > 0.58 ? 'K' : t > 0.46 ? 'A' : t > 0.23 ? 'pine' : 'banana';
+        this.items.push({ x: 252, y: 236, type });
+      }
+      for (const it of this.items) {
+        it.x -= worldSpd * k;
+        if (it.x < p.x + 50 && it.x > p.x - 8) it.x -= 0.4 * k;
+        if (Math.abs(p.x - it.x) < 18 && Math.abs(p.y - it.y) < 24) {
+          it.dead = true;
+          if (it.type === 'egg') { p.lives++; p.score += 500; snd.playPower(); FX.float(it.x, it.y, '1UP', '#ff66aa'); }
+          else if (it.type === 'A' || it.type === 'K' || it.type === 'P') {
+            p.weapon = it.type; p.score += 250; snd.playPower();
+            FX.float(it.x, it.y, '[' + it.type + ']', '#ffd928');
+          } else {
+            p.stamina = Math.min(100, p.stamina + (it.type === 'banana' ? 25 : 50));
+            p.score += it.type === 'banana' ? 100 : 300; snd.playEat();
+          }
+        }
+      }
+      this.items = this.items.filter(it => it.x > -20 && !it.dead);
     },
     draw() {
-      const isNight = (this.score % 20) >= 10;
-      ctx.fillStyle = isNight ? '#0b1626' : '#38bdf8';
-      ctx.fillRect(0, 0, 240, 320);
-
-      // 经典马里奥像素水管
-      this.pipes.forEach(p => {
-        const topH = p.gapY - this.gapH/2;
-        const btmY = p.gapY + this.gapH/2;
-
-        // 管道身
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(p.x, 0, 34, topH);
-        ctx.fillRect(p.x, btmY, 34, 290 - btmY);
-
-        // 高光与暗部
-        ctx.fillStyle = '#86efac';
-        ctx.fillRect(p.x + 3, 0, 4, topH);
-        ctx.fillRect(p.x + 3, btmY, 4, 290 - btmY);
-        ctx.fillStyle = '#15803d';
-        ctx.fillRect(p.x + 28, 0, 6, topH);
-        ctx.fillRect(p.x + 28, btmY, 6, 290 - btmY);
-
-        // 凸起管口
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(p.x - 3, topH - 14, 40, 14);
-        ctx.fillRect(p.x - 3, btmY, 40, 14);
-        ctx.fillStyle = '#15803d';
-        ctx.fillRect(p.x + 30, topH - 14, 7, 14);
-        ctx.fillRect(p.x + 30, btmY, 7, 14);
-      });
-
-      // 泥土地面
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(0, 290, 240, 30);
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(0, 290, 240, 6);
-
-      // 小黄鸟
-      PixelArtist.drawPixelBird(ctx, 60, this.bird.y, this.bird.rot, this.bird.flapFrame);
-
-      // 分数
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(this.score, 120, 50);
-      ctx.textAlign = 'left';
-
-      if (this.dead) {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(30, 110, 180, 80);
-        ctx.fillStyle = '#ef4444';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText('GAME OVER', 75, 142);
-        ctx.fillStyle = '#fff';
-        ctx.font = '11px sans-serif';
-        ctx.fillText('按 OK 键重新起飞', 75, 168);
+      ctx.fillStyle = '#38bdf8'; ctx.fillRect(0, 0, W, H);
+      const c = this.scroll % 240;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillRect((180 - c + 240) % 240, 38, 44, 14);
+      ctx.fillRect((70 - c * 0.6 + 240) % 240, 62, 54, 18);
+      ctx.fillStyle = '#1e7844';
+      ctx.beginPath(); ctx.moveTo(0, 240); ctx.lineTo(70, 158); ctx.lineTo(150, 240); ctx.lineTo(210, 176); ctx.lineTo(240, 240); ctx.fill();
+      ctx.fillStyle = '#16a34a'; ctx.fillRect(0, 252, 240, 68);
+      ctx.fillStyle = '#78350f'; ctx.fillRect(0, 266, 240, 54);
+      const palm = this.scroll % 90;
+      ctx.fillStyle = '#14532d';
+      for (let i = 0; i < 4; i++) {
+        const px = ((i * 90 - palm) % 360 + 360) % 360 - 20;
+        ctx.fillRect(px + 18, 200, 6, 52);
+        ctx.beginPath(); ctx.moveTo(px + 21, 200); ctx.lineTo(px - 8, 176); ctx.lineTo(px + 8, 188); ctx.lineTo(px + 21, 196); ctx.lineTo(px + 50, 176); ctx.lineTo(px + 34, 188); ctx.fill();
       }
+      for (const it of this.items) {
+        if (it.type === 'banana') PixelArtist.drawBanana(ctx, it.x, it.y);
+        else if (it.type === 'pine') PixelArtist.drawPineapple(ctx, it.x, it.y);
+        else if (it.type === 'A' || it.type === 'K' || it.type === 'P') PixelArtist.drawLetterBadge(ctx, it.x, it.y, it.type);
+        else PixelArtist.drawEgg(ctx, it.x, it.y);
+      }
+      for (const e of this.enemies) {
+        if (e.type === 'snail') PixelArtist.drawSnail(ctx, e.x, e.y);
+        else if (e.type === 'frog') PixelArtist.drawFrog(ctx, e.x, e.y, e.y < 240);
+        else PixelArtist.drawPixelBird(ctx, e.x, e.y, 0, (Date.now() / 140) | 0);
+      }
+      for (const a of this.axes) {
+        if (a.t === 'K') {
+          ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.rot);
+          ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-8, -2, 16, 4);
+          ctx.fillStyle = '#64748b'; ctx.fillRect(4, -3, 6, 6);
+          ctx.restore();
+        } else if (a.t === 'P') {
+          ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.rot);
+          ctx.fillStyle = '#e879f9'; ctx.fillRect(-10, -10, 20, 6); ctx.fillRect(-10, 4, 20, 6);
+          ctx.fillStyle = '#f5d0fe'; ctx.fillRect(-2, -8, 4, 16);
+          ctx.restore();
+        } else PixelArtist.drawSpinningAxe(ctx, a.x, a.y, a.rot);
+      }
+      if (this.p.inv <= 0 || ((Date.now() / 80) | 0) % 2) {
+        PixelArtist.drawAdventureHero(ctx, this.p.x, this.p.y, this.p.runFrame, this.p.vy, this.p.onGround);
+      }
+      drawHud(this.p.score, () => {
+        ctx.fillStyle = '#ff4466';
+        ctx.fillText('HP ' + '♥'.repeat(Math.max(0, this.p.lives)), 86, 15);
+        ctx.fillStyle = '#ffd928'; ctx.fillText('[' + this.p.weapon + ']', 132, 15);
+        drawBar(158, 7, 74, 10, this.p.stamina / 100, this.p.stamina > 30 ? '#22c55e' : '#ef4444');
+        if (this.p.combo > 1) { ctx.fillStyle = '#00e5ff'; ctx.fillText('x' + this.p.combo, 218, 15); }
+      });
+      if (this.dead) drawOver('GAME OVER', this.p.score, 'adv');
     }
   },
 
-  // --------------------------------------------------------------------------
-  // [05] 变异乒乓 HD (速度柔和化，顺滑对打)
-  // --------------------------------------------------------------------------
-  pong: {
-    icon: '🏓',
-    title: '疯狂变异乒乓 HD (CHAOS PONG)',
-    desc: '★ 速度柔和调校 · 舒适对打 · 巨化与光速突变 ★',
-    badge: 'PONG HD',
-    btnUp: 'UP (左移)',
-    btnDown: 'DOWN (右移)',
-    btnOk: 'OK (发球/加转)',
-    help: `<strong>🏓 变异乒乓手感优化：</strong><br>
-           • 大幅降低初速度，球速递增更平缓，手感更易上手！<br>
-           • 回合对打中触发<b>巨化慢速球、霓虹光速球、弧线切削球</b>！<br>
-           • 率先赢得 5 分获胜！`,
+  contra: {
+    icon: '🔫', title: '口袋魂斗罗 HD (POCKET CONTRA)',
+    desc: '★ 自动推进 · 徽章吸向脚边 · S/L/M/P 武器字母 ★',
+    badge: 'CONTRA HD', btnUp: 'UP (翻滚跳)', btnDown: 'DOWN (匍匐)', btnOk: 'OK (开火/重开)',
+    help: `<strong>🔫 口袋魂斗罗：</strong><br>• 关卡<b>自动向右推进</b>。UP 跳，DOWN 匍匐躲弹，OK 开火。<br>• 击落飞鹰掉 <b>S 散弹 / L 激光 / M 机枪 / P 护盾</b>，字母会自己滑到脚边，不用走过去捡。<br>• 600 分召唤要塞 BOSS。`,
     init() {
-      this.playerX = 120;
-      this.aiX = 120;
-      this.paddleW = 52;
-      this.scoreP = 0;
-      this.scoreAI = 0;
-      this.round = 0;
-      this.resetBall();
-    },
-    resetBall() {
-      this.ball = {
-        x: 120, y: 160,
-        vx: (Math.random() > 0.5 ? 1 : -1) * 1.6,
-        vy: (Math.random() > 0.5 ? 1 : -1) * 2.0,
-        r: 5,
-        type: 'NORMAL'
-      };
+      this.p = { x: 48, y: 250, vy: 0, crouch: false, jump: false, rot: 0, hp: 6, gun: 'N', score: 0, inv: 0, combo: 0, comboT: 0, cool: 0 };
+      this.bullets = []; this.eb = []; this.enemies = [{ x: 210, y: 250, type: 'soldier', hp: 2 }];
+      this.cap = { x: 260, y: 148, a: true, item: null };
+      this.boss = { x: 196, y: 200, hp: 70, max: 70, a: false, phase: 1 };
+      this.scroll = 0; this.dead = false; this.win = false; this.fireHold = 0;
     },
     onOk() {
-      const b = this.ball;
-      if (b.y > 260) {
-        b.vx += (keys.up ? -2.0 : keys.down ? 2.0 : 0);
-        b.vy = -Math.abs(b.vy) * 1.15;
-        snd.playEat();
+      if (this.dead || this.win) { this.init(); return; }
+      this.fire();
+    },
+    fire() {
+      if (this.p.cool > 0) return;
+      const p = this.p, y = p.crouch ? p.y + 2 : p.y - 4;
+      snd.playShoot(p.gun === 'L' ? 'laser' : p.gun === 'S' ? 'spread' : 'normal');
+      if (p.gun === 'S') {
+        this.bullets.push({ x: p.x + 14, y, vx: 6.4, vy: -1.5, t: 'S' });
+        this.bullets.push({ x: p.x + 14, y, vx: 7.1, vy: 0, t: 'S' });
+        this.bullets.push({ x: p.x + 14, y, vx: 6.4, vy: 1.5, t: 'S' });
+        p.cool = 140;
+      } else if (p.gun === 'L') {
+        this.bullets.push({ x: p.x + 14, y, vx: 10, vy: 0, t: 'L', pierce: true });
+        p.cool = 160;
+      } else if (p.gun === 'M') {
+        this.bullets.push({ x: p.x + 14, y, vx: 8.4, vy: 0, t: 'M' });
+        p.cool = 55;
+      } else {
+        this.bullets.push({ x: p.x + 14, y, vx: 7.2, vy: 0, t: 'N' });
+        p.cool = 110;
       }
+    },
+    addKill(base, x, y) {
+      this.p.combo = this.p.comboT > 0 ? this.p.combo + 1 : 1;
+      this.p.comboT = 900;
+      const add = base * (this.p.combo > 1 ? this.p.combo : 1);
+      this.p.score += add;
+      FX.burst(x, y, 7, ['#ff3344', '#ffd928', '#fff']);
+      if (this.p.combo > 1) { FX.float(x, y - 8, 'x' + this.p.combo, '#00e5ff'); snd.playCombo(this.p.combo); }
+      else snd.playExplode();
     },
     update(dt) {
-      if (keys.up) this.playerX = Math.max(30, this.playerX - 4.0);
-      if (keys.down) this.playerX = Math.min(210, this.playerX + 4.0);
-
-      const b = this.ball;
-      b.x += b.vx;
-      b.y += b.vy;
-
-      if (b.x <= b.r || b.x >= 240 - b.r) {
-        b.vx = -b.vx;
-        snd.playJump();
+      if (this.dead || this.win) return;
+      const p = this.p, k = dt / 16.6;
+      this.scroll += 1.2 * k;
+      if (p.cool > 0) p.cool -= dt;
+      if (p.inv > 0) p.inv -= dt;
+      if (p.comboT > 0) { p.comboT -= dt; if (p.comboT <= 0) p.combo = 0; }
+      p.crouch = keys.down && !p.jump;
+      if (!p.crouch && !p.jump) p.x = Math.min(96, p.x + 0.22 * k);
+      if (p.crouch) p.x = Math.max(36, p.x - 0.05 * k);
+      if (edge('up') && !p.jump) { p.vy = -8.4; p.jump = true; snd.playJump(); }
+      if (keys.ok) { this.fireHold += dt; if (this.fireHold > 80) this.fire(); }
+      else this.fireHold = 0;
+      if (p.jump) {
+        p.y += p.vy * k; p.vy += 0.44 * k; p.rot += 0.34 * k;
+        if (p.y >= 250) { p.y = 250; p.vy = 0; p.jump = false; p.rot = 0; }
       }
-
-      if (b.y >= 292 - b.r && b.y <= 300) {
-        if (b.x >= this.playerX - this.paddleW/2 && b.x <= this.playerX + this.paddleW/2) {
-          b.vy = -Math.abs(b.vy);
-          b.vx += ((b.x - this.playerX) / (this.paddleW/2)) * 1.2;
-          this.round++;
-          this.checkMutation(b);
-          snd.playEat();
+      for (const b of this.bullets) { b.x += b.vx * k; b.y += b.vy * k; }
+      this.bullets = this.bullets.filter(b => b.x < 255 && b.y > 0 && b.y < 320 && !b.dead);
+      for (const eb of this.eb) {
+        eb.x += eb.vx * k;
+        const top = p.crouch ? p.y - 2 : p.y - 18;
+        if (p.inv <= 0 && Math.abs(eb.x - p.x) < 10 && eb.y >= top && eb.y <= p.y + 10) {
+          eb.dead = true; p.hp--; p.inv = 1000; snd.playHurt(); FX.shake = 5;
+          if (p.hp <= 0) { this.dead = true; hsSet('con', p.score); snd.playGameOver(); }
         }
       }
-
-      if (b.y <= 28 + b.r && b.y >= 20) {
-        if (b.x >= this.aiX - this.paddleW/2 && b.x <= this.aiX + this.paddleW/2) {
-          b.vy = Math.abs(b.vy);
-          this.round++;
-          this.checkMutation(b);
-          snd.playJump();
+      this.eb = this.eb.filter(eb => eb.x > -12 && !eb.dead);
+      if (Math.random() < 0.018 && this.enemies.length < 4) this.enemies.push({ x: 255, y: 250, type: 'soldier', hp: 2 });
+      for (const e of this.enemies) {
+        e.x -= 1.15 * k;
+        if (Math.random() < 0.02) this.eb.push({ x: e.x - 8, y: e.y - 6, vx: -3.7 });
+        for (const b of this.bullets) {
+          if (!b.dead && Math.abs(b.x - e.x) < 14 && Math.abs(b.y - e.y) < 16) {
+            e.hp--; if (!b.pierce) b.dead = true;
+            if (e.hp <= 0) { e.dead = true; this.addKill(150, e.x, e.y); }
+          }
         }
       }
-
-      this.aiX += (b.x - this.aiX) * 0.07;
-
-      if (b.y > 330) { this.scoreAI++; snd.playExplode(); this.resetBall(); }
-      else if (b.y < -10) { this.scoreP++; snd.playEat(); this.resetBall(); }
-    },
-    checkMutation(b) {
-      if (this.round > 0 && this.round % 4 === 0) {
-        const types = ['MEGA', 'HYPER', 'CURVE'];
-        b.type = types[Math.floor(Math.random() * types.length)];
-        if (b.type === 'MEGA') { b.r = 12; b.vy *= 0.8; }
-        if (b.type === 'HYPER') { b.r = 4; b.vy *= 1.3; }
+      this.enemies = this.enemies.filter(e => e.x > -20 && !e.dead);
+      if (this.cap.a) {
+        this.cap.x -= 1.35 * k; this.cap.y = 148 + Math.sin(this.scroll * 0.05) * 16;
+        for (const b of this.bullets) {
+          if (Math.abs(b.x - this.cap.x) < 16 && Math.abs(b.y - this.cap.y) < 12) {
+            this.cap.a = false; b.dead = true;
+            const guns = ['S', 'L', 'M', 'P'];
+            this.cap.item = { x: this.cap.x, y: this.cap.y, t: guns[(Math.random() * 4) | 0], vy: 1.6 };
+            snd.playEat();
+          }
+        }
+        if (this.cap.x < -30) { this.cap.x = 280; this.cap.a = true; }
+      }
+      if (this.cap.item) {
+        const it = this.cap.item;
+        it.y += it.vy * k; it.vy += 0.18 * k;
+        if (it.y >= 248) { it.y = 248; it.vy = 0; }
+        it.x += (p.x + 10 - it.x) * (it.vy === 0 ? 0.12 : 0.04) * k * 2.4;
+        if (Math.abs(p.x - it.x) < 28 && Math.abs(p.y - it.y) < 28) {
+          if (it.t === 'P') { p.inv = 2200; p.score += 400; FX.float(it.x, it.y, '[P] SHIELD', '#60a5fa'); }
+          else { p.gun = it.t; p.score += 300; FX.float(it.x, it.y, '[' + it.t + ']', '#ffd928'); }
+          this.cap.item = null; snd.playPower();
+        }
+        if (it.y > 310) this.cap.item = null;
+      }
+      if (p.score >= 600) this.boss.a = true;
+      if (this.boss.a && this.boss.hp > 0) {
+        this.boss.y = 200 + Math.sin(this.scroll * 0.03) * (this.boss.hp < 24 ? 28 : 16);
+        const rate = this.boss.hp < 24 ? 0.09 : this.boss.hp < 48 ? 0.06 : 0.04;
+        if (Math.random() < rate) this.eb.push({ x: this.boss.x - 16, y: this.boss.y + (Math.random() - 0.5) * 36, vx: -4.1 });
+        for (const b of this.bullets) {
+          if (!b.dead && Math.abs(b.x - this.boss.x) < 26 && Math.abs(b.y - this.boss.y) < 32) {
+            this.boss.hp--; if (!b.pierce) b.dead = true;
+            if (this.boss.hp <= 0) { this.win = true; p.score += 2000; hsSet('con', p.score); snd.playPower(); FX.burst(this.boss.x, this.boss.y, 20, ['#ffd928', '#ff3344', '#00e5ff']); }
+          }
+        }
       }
     },
     draw() {
-      ctx.fillStyle = '#062817';
-      ctx.fillRect(0, 0, 240, 320);
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      ctx.moveTo(0, 160); ctx.lineTo(240, 160);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.font = 'bold 24px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.fillText(this.scoreAI, 20, 140);
-      ctx.fillText(this.scoreP, 20, 195);
-
-      // AI 挡板
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(this.aiX - this.paddleW/2, 20, this.paddleW, 8);
-
-      // 玩家挡板 (流光霓虹)
-      ctx.fillStyle = '#00e5ff';
-      ctx.fillRect(this.playerX - this.paddleW/2, 292, this.paddleW, 8);
+      ctx.fillStyle = '#06101e'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#14301a'; ctx.fillRect(0, 200, 240, 60);
+      ctx.fillStyle = '#1b4d24'; ctx.fillRect(0, 260, 240, 60);
+      const off = this.scroll % 28;
+      ctx.fillStyle = '#0b1a10';
+      for (let x = -off; x < 240; x += 28) ctx.fillRect(x, 258, 10, 4);
+      if (this.p.inv <= 0 || ((Date.now() / 70) | 0) % 2) {
+        PixelArtist.drawContraSoldier(ctx, this.p.x, this.p.y, this.p.crouch, this.p.jump, this.p.rot);
+      }
+      for (const b of this.bullets) {
+        if (b.t === 'S') { ctx.fillStyle = '#ff2222'; ctx.fillRect(b.x - 3, b.y - 3, 7, 7); ctx.fillStyle = '#fff'; ctx.fillRect(b.x - 1, b.y - 1, 3, 3); }
+        else if (b.t === 'L') { ctx.fillStyle = '#00ffff'; ctx.fillRect(b.x - 12, b.y - 2, 24, 4); }
+        else { ctx.fillStyle = '#ffd700'; ctx.fillRect(b.x - 3, b.y - 2, 7, 3); }
+      }
       ctx.fillStyle = '#fff';
-      ctx.fillRect(this.playerX - 6, 294, 12, 4);
-
-      // 球体
-      const b = this.ball;
-      ctx.fillStyle = b.type === 'MEGA' ? '#f59e0b' : (b.type === 'HYPER' ? '#00ffff' : '#ffffff');
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
-      ctx.fill();
+      for (const eb of this.eb) ctx.fillRect(eb.x - 3, eb.y - 3, 6, 6);
+      for (const e of this.enemies) {
+        ctx.fillStyle = '#cc2222'; ctx.fillRect(e.x - 6, e.y - 14, 12, 18);
+        ctx.fillStyle = '#ffaa66'; ctx.fillRect(e.x - 4, e.y - 18, 8, 5);
+        ctx.fillStyle = '#333'; ctx.fillRect(e.x - 10, e.y - 8, 10, 4);
+      }
+      if (this.cap.a) {
+        ctx.fillStyle = '#ff0055'; ctx.fillRect(this.cap.x - 12, this.cap.y - 6, 24, 12);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 8px monospace'; ctx.fillText('FALCON', this.cap.x - 12, this.cap.y + 3);
+      }
+      if (this.cap.item) PixelArtist.drawLetterBadge(ctx, this.cap.item.x, this.cap.item.y, this.cap.item.t);
+      if (this.boss.a && this.boss.hp > 0) {
+        ctx.fillStyle = '#334155'; ctx.fillRect(this.boss.x - 24, this.boss.y - 36, 48, 72);
+        ctx.fillStyle = this.boss.hp < 24 ? '#ff0033' : '#dc2626';
+        ctx.fillRect(this.boss.x - 10, this.boss.y - 10, 20, 20);
+        drawBar(this.boss.x - 24, this.boss.y - 44, 48, 4, this.boss.hp / this.boss.max, '#ef4444');
+      }
+      drawHud(this.p.score, () => {
+        ctx.fillStyle = '#00e5ff';
+        ctx.fillText('[' + this.p.gun + '] ' + '♥'.repeat(Math.max(0, this.p.hp)), 92, 15);
+        if (this.p.combo > 1) { ctx.fillStyle = '#ffd928'; ctx.fillText('x' + this.p.combo, 210, 15); }
+      });
+      if (this.dead) drawOver('GAME OVER', this.p.score, 'con');
+      if (this.win) drawOver('STAGE CLEAR', this.p.score, 'con', 'OK TO REPLAY');
     }
   },
 
-  // --------------------------------------------------------------------------
-  // [06] 仙女棒与烛火
-  // --------------------------------------------------------------------------
+  thunderracer: {
+    icon: '🏎️', title: '雷霆飞车 HD (THUNDER RACER)',
+    desc: '★ 擦车连击 · 氮气冲撞 · 夜间赛道 · 导弹补给 ★',
+    badge: 'RACER HD', btnUp: 'UP (左变道)', btnDown: 'DOWN (右变道)', btnOk: 'OK (导弹 / 长按氮气)',
+    help: `<strong>🏎️ 雷霆飞车：</strong><br>• 点按 OK 发射导弹，<b>按住 OK</b> 喷氮气无敌冲撞。<br>• 贴身超车进入 Near-Miss 连击，夜间赛道会交替出现。<br>• 护盾耗尽结束。`,
+    init() {
+      this.lane = 1; this.playerX = 120; this.speed = 240; this.shield = 100; this.nitro = 50;
+      this.ammo = 8; this.score = 0; this.frame = 0; this.dist = 0; this.combo = 0; this.comboT = 0;
+      this.inv = 0; this.dead = false; this.okHold = 0;
+      this.enemies = [{ lane: 0, z: 80, speed: 110, type: 'slow' }, { lane: 2, z: 40, speed: 140, type: 'police' }];
+      this.missiles = []; this.items = [];
+    },
+    onOk() {
+      if (this.dead) { this.init(); return; }
+      if (this.ammo <= 0) return;
+      this.ammo--;
+      this.missiles.push({ x: this.playerX, y: 246, vy: -8 });
+      snd.playShoot();
+    },
+    update(dt) {
+      if (this.dead) return;
+      const k = dt / 16.6;
+      this.frame++;
+      if (this.inv > 0) this.inv -= dt;
+      if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
+      if (edge('up')) { this.lane = Math.max(0, this.lane - 1); snd.playTick(); }
+      if (edge('down')) { this.lane = Math.min(2, this.lane + 1); snd.playTick(); }
+      const targetX = [64, 120, 176][this.lane];
+      this.playerX += (targetX - this.playerX) * 0.26;
+      if (keys.ok) this.okHold += dt; else this.okHold = 0;
+      const isNitro = this.okHold > 180 && this.nitro > 8;
+      if (isNitro) { this.speed = 420; this.nitro = Math.max(0, this.nitro - 0.45 * k); if (this.okHold < 200) snd.playNitro(); }
+      else this.speed += (240 - this.speed) * 0.08;
+      this.dist += this.speed * 0.02 * k;
+      this.score += (this.speed * 0.004 * k) | 0;
+      const night = ((this.dist / 1800) | 0) % 2 === 1;
+      this.night = night;
+      for (const m of this.missiles) {
+        m.y += m.vy * k;
+        for (const e of this.enemies) {
+          const ex = [64, 120, 176][e.lane];
+          if (!e.dead && Math.abs(m.x - ex) < 20 && Math.abs(m.y - e.z) < 22) {
+            e.dead = true; m.dead = true; this.score += 250; this.nitro = Math.min(100, this.nitro + 18);
+            this.ammo = Math.min(20, this.ammo + 1);
+            snd.playExplode(); FX.burst(ex, e.z, 10, ['#00ffff', '#ffd928', '#fff']);
+          }
+        }
+      }
+      this.missiles = this.missiles.filter(m => m.y > 0 && !m.dead);
+      for (const e of this.enemies) {
+        e.z += (this.speed - e.speed) * 0.032 * k;
+        if (!e.missed && e.z > 236 && e.z < 278 && Math.abs(this.lane - e.lane) === 1) {
+          e.missed = true;
+          this.combo = this.comboT > 0 ? this.combo + 1 : 1;
+          this.comboT = 900;
+          const add = 150 * (this.combo > 1 ? this.combo : 1);
+          this.score += add; this.nitro = Math.min(100, this.nitro + 10 + this.combo * 2);
+          snd.playMiss(); FX.float(this.playerX, 220, this.combo > 1 ? 'NEAR x' + this.combo : 'NEAR', '#00e5ff');
+        }
+        if (!e.dead && Math.abs(e.z - 250) < 18 && e.lane === this.lane) {
+          e.dead = true;
+          if (isNitro) { this.score += 300; snd.playExplode(); FX.burst(this.playerX, 250, 12, ['#00ffff', '#ff0055']); }
+          else if (this.inv <= 0) {
+            this.shield = Math.max(0, this.shield - 22); this.inv = 700; FX.shake = 7; snd.playHurt();
+            if (this.shield <= 0) { this.dead = true; hsSet('racer', this.score); snd.playGameOver(); }
+          }
+        }
+      }
+      this.enemies = this.enemies.filter(e => e.z < 340 && !e.dead);
+      if (Math.random() < 0.026 && this.enemies.length < 4) {
+        const lane = (Math.random() * 3) | 0;
+        const type = Math.random() > 0.55 ? 'police' : (Math.random() > 0.5 ? 'fast' : 'slow');
+        this.enemies.push({ lane, z: 8, speed: type === 'police' ? 145 : 108, type });
+      }
+    },
+    draw() {
+      ctx.fillStyle = this.night ? '#02040a' : '#060a12'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = this.night ? '#0f1724' : '#1e293b';
+      ctx.beginPath(); ctx.moveTo(80, 0); ctx.lineTo(160, 0); ctx.lineTo(240, 320); ctx.lineTo(0, 320); ctx.fill();
+      const curbOffset = (this.frame * 8) % 30;
+      for (let y = 0; y < 320; y += 30) {
+        const py = (y + curbOffset) % 320;
+        ctx.fillStyle = (((y + curbOffset) / 30) | 0) % 2 === 0 ? '#ff3344' : '#ffffff';
+        ctx.fillRect(0, py, 14, 20); ctx.fillRect(226, py, 14, 20);
+      }
+      ctx.strokeStyle = '#ffd700'; ctx.setLineDash([14, 12]); ctx.lineDashOffset = -this.frame * 10;
+      ctx.beginPath(); ctx.moveTo(106, 0); ctx.lineTo(80, 320); ctx.moveTo(134, 0); ctx.lineTo(160, 320); ctx.stroke();
+      ctx.setLineDash([]);
+      for (const e of this.enemies) PixelArtist.drawTrafficCar(ctx, [64, 120, 176][e.lane], e.z, e.type, this.frame);
+      ctx.fillStyle = '#00ffff';
+      for (const m of this.missiles) ctx.fillRect(m.x - 2, m.y - 6, 4, 12);
+      const isNitro = this.okHold > 180 && this.nitro > 8;
+      if (this.inv <= 0 || ((Date.now() / 60) | 0) % 2) {
+        PixelArtist.drawThunderRacerCar(ctx, this.playerX, 250, isNitro, this.frame);
+      }
+      drawHud(this.score | 0, () => {
+        ctx.fillStyle = isNitro ? '#00ffff' : '#22c55e';
+        ctx.fillText((this.speed | 0) + 'km', 88, 15);
+        ctx.fillStyle = '#94a3b8'; ctx.fillText('M' + this.ammo, 132, 15);
+        drawBar(158, 7, 46, 8, this.shield / 100, this.shield > 30 ? '#38bdf8' : '#ef4444');
+        drawBar(206, 7, 28, 8, this.nitro / 100, '#22d3ee');
+      });
+      if (this.night) {
+        ctx.fillStyle = 'rgba(10,20,80,0.18)'; ctx.fillRect(0, 22, 240, 298);
+      }
+      if (this.dead) drawOver('CRASHED', this.score | 0, 'racer');
+    }
+  },
+
+  flappy: {
+    icon: '🐦', title: '像素飞鸟 HD (FLAPPY PASSPORT)',
+    desc: '★ 金水管双倍 · 活水管振荡 · 昼夜星空 ★',
+    badge: 'FLAPPY HD', btnUp: 'UP (拍翅)', btnDown: 'DOWN (拍翅)', btnOk: 'OK (拍翅/重开)',
+    help: `<strong>🐦 像素飞鸟：</strong><br>• 任意键拍翅。金水管得 <b>2 分</b>，高分后水管会上下浮动并加速。<br>• 每 10 分进入夜空。OK 重开保留最高分。`,
+    init() {
+      this.bird = { y: 150, vy: 0, rot: 0, flap: 0 };
+      this.pipes = [{ x: 260, gapY: 140, osc: 0, golden: false, scored: false }, { x: 390, gapY: 168, osc: 0, golden: false, scored: false }, { x: 520, gapY: 120, osc: 0, golden: false, scored: false }];
+      this.gapH = 95; this.score = 0; this.dead = false; this.ready = true; this.speed = 1.55;
+    },
+    onOk() {
+      if (this.dead) { const hi = this.hi; this.init(); this.hi = hi; return; }
+      this.ready = false; this.bird.vy = -5.0; this.bird.flap++; snd.playJump();
+    },
+    update(dt) {
+      if (this.dead || this.ready) return;
+      const k = dt / 16.6, b = this.bird;
+      b.y += b.vy * k; b.vy += 0.28 * k; b.rot = clamp(b.vy * 0.1, -0.5, 1.0);
+      if (b.y >= 284 || b.y <= 10) { this.die(); return; }
+      this.speed = Math.min(2.4, 1.55 + this.score * 0.03);
+      for (const p of this.pipes) {
+        p.x -= this.speed * k;
+        if (this.score >= 8) p.gapY += Math.sin((p.osc += 0.04 * k)) * 0.55;
+        p.gapY = clamp(p.gapY, 80, 210);
+        if (!p.scored && p.x < 50) {
+          p.scored = true; this.score += p.golden ? 2 : 1;
+          if (p.golden) { snd.playPower(); FX.float(60, b.y, 'GOLD +2', '#ffd928'); }
+          else snd.playScore();
+          hsSet('flap', this.score);
+        }
+        if (p.x < 74 && p.x > 34) {
+          if (b.y - 7 < p.gapY - this.gapH / 2 || b.y + 7 > p.gapY + this.gapH / 2) this.die();
+        }
+        if (p.x < -44) {
+          let maxX = 0; for (const q of this.pipes) if (q.x > maxX) maxX = q.x;
+          p.x = maxX + 130; p.gapY = 90 + Math.random() * 110; p.scored = false;
+          p.golden = this.score >= 5 && Math.random() < 0.18;
+          this.gapH = Math.max(68, 95 - this.score * 0.7);
+        }
+      }
+    },
+    die() { this.dead = true; hsSet('flap', this.score); snd.playExplode(); FX.shake = 5; },
+    draw() {
+      const night = (this.score % 20) >= 10;
+      ctx.fillStyle = night ? '#0b1626' : '#38bdf8'; ctx.fillRect(0, 0, W, H);
+      if (night) {
+        ctx.fillStyle = '#fff';
+        for (let i = 0; i < 18; i++) ctx.fillRect((i * 37) % 240, 12 + (i * 13) % 80, 2, 2);
+      }
+      for (const p of this.pipes) {
+        const topH = p.gapY - this.gapH / 2, btmY = p.gapY + this.gapH / 2;
+        ctx.fillStyle = p.golden ? '#eab308' : '#22c55e';
+        ctx.fillRect(p.x, 0, 34, topH); ctx.fillRect(p.x, btmY, 34, 290 - btmY);
+        ctx.fillStyle = p.golden ? '#fde68a' : '#86efac';
+        ctx.fillRect(p.x + 3, 0, 4, topH); ctx.fillRect(p.x + 3, btmY, 4, 290 - btmY);
+        ctx.fillStyle = p.golden ? '#a16207' : '#15803d';
+        ctx.fillRect(p.x + 28, 0, 6, topH); ctx.fillRect(p.x + 28, btmY, 6, 290 - btmY);
+        ctx.fillStyle = p.golden ? '#eab308' : '#22c55e';
+        ctx.fillRect(p.x - 3, topH - 14, 40, 14); ctx.fillRect(p.x - 3, btmY, 40, 14);
+      }
+      ctx.fillStyle = '#eab308'; ctx.fillRect(0, 290, 240, 30);
+      ctx.fillStyle = '#22c55e'; ctx.fillRect(0, 290, 240, 6);
+      PixelArtist.drawPixelBird(ctx, 60, this.bird.y, this.bird.rot, this.bird.flap);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 26px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(this.score, 120, 48);
+      ctx.fillStyle = '#ffd928'; ctx.font = '10px monospace';
+      ctx.fillText('BEST ' + hsGet('flap'), 120, 64);
+      ctx.textAlign = 'left';
+      if (this.ready) {
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(40, 140, 160, 36);
+        ctx.fillStyle = '#fff'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('OK TO FLAP', 120, 162); ctx.textAlign = 'left';
+      }
+      if (this.dead) drawOver('GAME OVER', this.score, 'flap');
+    }
+  },
+
+  pong: {
+    icon: '🏓', title: '疯狂变异乒乓 HD (CHAOS PONG)',
+    desc: '★ 甜区抽射 · 切削加转 · 巨化/光速/双球 ★',
+    badge: 'PONG HD', btnUp: 'UP (左移)', btnDown: 'DOWN (右移)', btnOk: 'OK (发球/切削)',
+    help: `<strong>🏓 变异乒乓：</strong><br>• 发球后对打。挡板正中击球触发<b>甜区抽射</b>。<br>• 接球瞬间按 OK 切削加转。4 拍后变异：巨化 / 光速 / 弧线 / 双球。<br>• 先到 5 分获胜。`,
+    init() {
+      this.px = 120; this.ax = 120; this.pw = 52; this.ps = 0; this.as = 0; this.round = 0;
+      this.state = 'serve'; this.winner = 0; this.balls = []; this.resetBall(1);
+    },
+    resetBall(dir) {
+      this.balls = [{ x: 120, y: dir > 0 ? 268 : 48, vx: (Math.random() > 0.5 ? 1 : -1) * 1.5, vy: dir * 2.1, r: 5, type: 'NORMAL', a: true }];
+      this.round = 0; this.state = 'serve';
+    },
+    onOk() {
+      if (this.winner) { this.init(); return; }
+      if (this.state === 'serve') { this.state = 'play'; snd.playScore(); }
+      else this.slice = 10;
+    },
+    update(dt) {
+      if (this.winner) return;
+      const k = dt / 16.6;
+      if (keys.up) this.px = Math.max(30, this.px - 4.1 * k);
+      if (keys.down) this.px = Math.min(210, this.px + 4.1 * k);
+      if (this.state === 'serve') { this.balls[0].x = this.px; return; }
+      if (this.slice > 0) this.slice--;
+      let alive = 0;
+      for (const b of this.balls) {
+        if (!b.a) continue; alive++;
+        if (b.type === 'CURVE') b.vx += Math.sin(b.y * 0.04) * 0.12;
+        b.x += b.vx * k; b.y += b.vy * k;
+        if (b.x <= b.r || b.x >= 240 - b.r) { b.vx = -b.vx; snd.playTick(); }
+        if (b.y >= 292 - b.r && b.y <= 304 && b.vy > 0 && b.x > this.px - this.pw / 2 && b.x < this.px + this.pw / 2) {
+          const off = (b.x - this.px) / (this.pw / 2);
+          b.vy = -Math.abs(b.vy) * 1.03;
+          b.vx += off * 1.15;
+          if (Math.abs(off) < 0.18 && this.slice <= 0) { b.vy *= 1.12; snd.playPower(); FX.float(b.x, 280, 'SMASH', '#00e5ff'); }
+          if (this.slice > 0) { b.vx += keys.up ? -2.2 : keys.down ? 2.2 : off * 1.4; b.type = 'CURVE'; snd.playSlice(); }
+          else snd.playScore();
+          this.round++; this.mutate(b);
+        }
+        if (b.y <= 28 + b.r && b.y >= 16 && b.vy < 0 && b.x > this.ax - this.pw / 2 && b.x < this.ax + this.pw / 2) {
+          b.vy = Math.abs(b.vy) * 1.03; this.round++; this.mutate(b); snd.playTick();
+        }
+        if (b.y > 330) { b.a = false; this.as++; snd.playHurt(); }
+        else if (b.y < -10) { b.a = false; this.ps++; snd.playEat(); }
+      }
+      this.ax += (this.balls.reduce((s, b) => b.a ? b.x : s, 120) - this.ax) * 0.075;
+      if (this.ps >= 5) { this.winner = 1; hsSet('pong', this.ps); snd.playPower(); }
+      if (this.as >= 5) { this.winner = -1; snd.playGameOver(); }
+      if (alive === 0 && !this.winner) this.resetBall(this.ps >= this.as ? 1 : -1);
+    },
+    mutate(b) {
+      if (this.round === 0 || this.round % 4) return;
+      const types = ['MEGA', 'HYPER', 'CURVE', 'DUAL'];
+      b.type = types[(Math.random() * types.length) | 0];
+      snd.playPower(); FX.float(120, 160, b.type, '#ffd928');
+      if (b.type === 'MEGA') { b.r = 12; b.vy *= 0.78; }
+      if (b.type === 'HYPER') { b.r = 3.5; b.vy *= 1.28; }
+      if (b.type === 'DUAL' && this.balls.length < 2) this.balls.push({ x: b.x, y: b.y, vx: -b.vx || 2, vy: b.vy * 0.95, r: 5, type: 'DUAL', a: true });
+    },
+    draw() {
+      ctx.fillStyle = '#062817'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.moveTo(0, 160); ctx.lineTo(240, 160); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = 'bold 24px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillText(this.as, 20, 140); ctx.fillText(this.ps, 20, 195);
+      ctx.fillStyle = '#ef4444'; ctx.fillRect(this.ax - this.pw / 2, 20, this.pw, 8);
+      ctx.fillStyle = '#00e5ff'; ctx.fillRect(this.px - this.pw / 2, 292, this.pw, 8);
+      ctx.fillStyle = '#fff'; ctx.fillRect(this.px - 5, 294, 10, 4);
+      for (const b of this.balls) {
+        if (!b.a) continue;
+        ctx.fillStyle = b.type === 'MEGA' ? '#f59e0b' : b.type === 'HYPER' ? '#00ffff' : b.type === 'CURVE' ? '#a78bfa' : '#ffffff';
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      }
+      if (this.state === 'serve') {
+        ctx.fillStyle = '#fff'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('OK TO SERVE', 120, 176); ctx.textAlign = 'left';
+      }
+      if (this.winner) drawOver(this.winner > 0 ? 'YOU WIN' : 'CPU WINS', this.ps + '-' + this.as, 'pong');
+    }
+  },
+
   sparkler: {
-    icon: '🎆',
-    title: '星火仙女棒与赛博烛火',
-    desc: '★ 真实火花散射 · 阶段里程碑彩色爆发 · 烛火融化 ★',
-    badge: 'SPARKLER',
-    btnUp: 'UP (燃速+)',
-    btnDown: 'DOWN (燃速-)',
-    btnOk: 'OK (换新/重燃/切模式)',
-    help: '按住键盘 <kbd>B</kbd> 模拟向麦克风吹气互动，轻吹激荡火花，猛吹扑灭烛火！',
+    icon: '🎆', title: '星火仙女棒与赛博烛火',
+    desc: '★ 光晕火花拖尾 · 吹气激荡 · 烛芯火苗 ★',
+    badge: 'SPARKLER', btnUp: 'UP (燃速+)', btnDown: 'DOWN (燃速-)', btnOk: 'OK (换模式/重燃)',
+    help: `按住 <kbd>B</kbd> 吹气：轻吹火花飞溅，猛吹可扑灭烛火。OK 切换仙女棒/蜡烛。25/50/75/100% 爆发彩焰。`,
     init() {
       this.mode = 'sparkler';
-      this.particles = [];
-      this.wickY = 60;
-      this.isLit = true;
+      this.parts = Array.from({ length: 160 }, () => ({ a: false }));
+      this.wick = 0; this.lit = true; this.speed = 1; this.mask = 0;
+      this.wax = 108; this.blow = 0; this.smoke = 0; this.t = 0;
     },
     onOk() {
+      if (this.mode === 'sparkler' && !this.lit) { this.wick = 0; this.lit = true; this.mask = 0; snd.playEat(); return; }
+      if (this.mode === 'candle' && !this.lit) { this.lit = true; this.smoke = 0; snd.playEat(); return; }
       this.mode = this.mode === 'sparkler' ? 'candle' : 'sparkler';
-      this.isLit = true;
-      this.wickY = 60;
-      snd.playEat();
+      this.lit = true; this.wick = 0; this.wax = 108; this.mask = 0; snd.playPower();
+    },
+    spawn(x, y, n, type, cols) {
+      let c = 0;
+      for (const p of this.parts) {
+        if (p.a) continue;
+        const ang = Math.random() * Math.PI * 2;
+        const burst = type === 'burst';
+        const sp = (burst ? 4.2 : type === 'smoke' ? 0.5 : 2.4) * (0.35 + Math.random());
+        p.a = true; p.x = x; p.y = y; p.px = x; p.py = y;
+        p.vx = Math.cos(ang) * sp + this.blow * 1.8;
+        p.vy = Math.sin(ang) * sp - this.blow * 2.2 - (burst ? 0.8 : 0);
+        p.life = burst ? 1 : type === 'smoke' ? 1.4 : 0.85 + Math.random() * 0.4;
+        p.max = p.life; p.c = cols[(Math.random() * cols.length) | 0];
+        p.t = type; p.s = burst ? 2 + Math.random() * 2.5 : type === 'smoke' ? 3 + Math.random() * 3 : 1.2 + Math.random() * 1.8;
+        if (++c >= n) break;
+      }
+    },
+    glow(x, y, r, col) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     },
     update(dt) {
-      if (this.isLit && this.mode === 'sparkler') {
-        this.wickY += 0.15;
-        if (this.wickY >= 260) this.isLit = false;
-        for (let i = 0; i < 6; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const spd = 2.5 * (0.6 + Math.random()*0.8);
-          this.particles.push({
-            x: 120, y: this.wickY,
-            vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-            life: 1.0, color: `hsl(${35 + Math.random()*25}, 100%, 70%)`
-          });
-        }
+      const k = dt / 16.6;
+      this.t += dt;
+      if (edge('up')) this.speed = Math.min(3, this.speed + 0.25);
+      if (edge('down')) this.speed = Math.max(0.35, this.speed - 0.25);
+      this.blow = keys.blow ? Math.min(1, this.blow + 0.05) : Math.max(0, this.blow - 0.04);
+      if (this.mode === 'sparkler' && this.lit) {
+        this.wick += 0.0015 * this.speed * k;
+        if (this.wick >= 1) { this.wick = 1; this.lit = false; snd.playExplode(); }
+        const y = 52 + this.wick * 188;
+        this.spawn(120 + (Math.random() - 0.5) * 4, y, 8 + (this.blow * 10) | 0, 'spark',
+          ['#ffffff', '#fff4c2', '#ffe066', '#ffb703', '#fb8500', '#ff6b35']);
+        if (Math.random() < 0.35) this.spawn(120, y, 2, 'spark', ['#fff', '#ffd166']);
+        const ms = [0.25, 0.5, 0.75, 1];
+        ms.forEach((m, i) => {
+          if (this.wick >= m && (this.mask & (1 << i)) === 0) {
+            this.mask |= 1 << i;
+            const pal = [
+              ['#FFD700', '#FFE066', '#FFFFFF', '#FFA500'],
+              ['#7DF9FF', '#00FFFF', '#38BDF8', '#FFFFFF'],
+              ['#FF4D8D', '#FF00AA', '#F472B6', '#FFFFFF'],
+              ['#FF3333', '#33FF66', '#33AAFF', '#FFFF00', '#FF00FF', '#FFFFFF']
+            ][i];
+            this.spawn(120, y, 42, 'burst', pal); snd.playPower(); FX.shake = 4;
+          }
+        });
       }
-      this.particles.forEach(p => {
-        p.x += p.vx; p.y += p.vy;
-        p.vy += 0.12;
-        p.life -= 0.04;
-      });
-      this.particles = this.particles.filter(p => p.life > 0);
+      if (this.mode === 'candle') {
+        const fx = 120 + this.blow * 10, fy = 248 - this.wax;
+        if (this.lit) {
+          this.wax = Math.max(26, this.wax - 0.018 * this.speed * k);
+          this.spawn(fx, fy - 8, 3, 'spark', ['#fff7ed', '#ffd166', '#fb923c', '#f97316']);
+          if (this.blow > 0.7) { this.smoke += dt; if (this.smoke > 220) { this.lit = false; snd.playHurt(); } }
+          else this.smoke = 0;
+        } else this.spawn(fx, fy - 4, 2, 'smoke', ['#cbd5e1', '#94a3b8', '#64748b']);
+      }
+      for (const p of this.parts) {
+        if (!p.a) continue;
+        p.px = p.x; p.py = p.y;
+        p.x += p.vx * k; p.y += p.vy * k;
+        p.vy += (p.t === 'smoke' ? -0.05 : 0.09) * k;
+        p.vx *= 0.985;
+        p.life -= (p.t === 'burst' ? 0.018 : 0.028) * k;
+        if (p.life <= 0) p.a = false;
+      }
     },
     draw() {
-      ctx.fillStyle = '#05040a';
-      ctx.fillRect(0, 0, 240, 320);
+      ctx.imageSmoothingEnabled = true;
+      const grd = ctx.createLinearGradient(0, 0, 0, H);
+      grd.addColorStop(0, '#07060f'); grd.addColorStop(1, '#12080a');
+      ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      for (let i = 0; i < 22; i++) ctx.fillRect((i * 47 + (this.t * 0.01)) % 240, 8 + (i * 17) % 90, 1, 1);
 
-      ctx.strokeStyle = '#666';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(120, 40); ctx.lineTo(120, 280);
-      ctx.stroke();
+      if (this.mode === 'sparkler') {
+        const y = 52 + this.wick * 188;
+        ctx.fillStyle = '#3f2a14'; ctx.fillRect(117, 248, 6, 28);
+        ctx.fillStyle = '#6b3f1f'; ctx.fillRect(116, 246, 8, 8);
+        ctx.fillStyle = '#c4a574'; ctx.fillRect(118, y, 4, 252 - y);
+        ctx.fillStyle = '#8b6914'; ctx.fillRect(119, y, 2, 252 - y);
+        ctx.fillStyle = '#1f2937'; ctx.fillRect(118, 40, 4, y - 40);
+        if (this.lit) {
+          ctx.globalCompositeOperation = 'lighter';
+          this.glow(120, y, 28 + this.blow * 10, 'rgba(255,180,40,0.28)');
+          this.glow(120, y, 12, 'rgba(255,255,220,0.85)');
+          ctx.globalCompositeOperation = 'source-over';
+        }
+        ctx.fillStyle = this.lit ? '#ffd928' : '#6b7280';
+        ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(this.lit ? ((this.wick * 100) | 0) + '%' : 'BURNT OUT', 120, 24);
+      } else {
+        const fy = 248 - this.wax, lean = this.blow * 10;
+        ctx.fillStyle = '#1c1917'; ctx.fillRect(96, 250, 48, 8);
+        ctx.fillStyle = '#9a3412'; ctx.fillRect(108, fy, 24, this.wax + 4);
+        ctx.fillStyle = '#c2410c'; ctx.fillRect(110, fy, 8, this.wax + 4);
+        ctx.fillStyle = '#fde68a'; ctx.fillRect(109, fy - 3, 22, 7);
+        ctx.fillStyle = '#44403c'; ctx.fillRect(118, fy - 8, 3, 8);
+        if (this.lit) {
+          const flick = Math.sin(this.t / 70) * 2 + Math.sin(this.t / 33) * 1.2;
+          ctx.globalCompositeOperation = 'lighter';
+          this.glow(120 + lean * 0.4, fy - 18 + flick, 34, 'rgba(255,140,40,0.32)');
+          this.glow(120 + lean * 0.5, fy - 20 + flick, 16, 'rgba(255,230,160,0.7)');
+          ctx.fillStyle = '#fb923c';
+          ctx.beginPath();
+          ctx.moveTo(120 + lean, fy - 6);
+          ctx.quadraticCurveTo(112 + lean, fy - 18 + flick, 120 + lean, fy - 34 + flick);
+          ctx.quadraticCurveTo(128 + lean, fy - 18 + flick, 120 + lean, fy - 6);
+          ctx.fill();
+          ctx.fillStyle = '#fff7ed';
+          ctx.beginPath();
+          ctx.moveTo(120 + lean, fy - 8);
+          ctx.quadraticCurveTo(116 + lean, fy - 16, 120 + lean, fy - 24);
+          ctx.quadraticCurveTo(124 + lean, fy - 16, 120 + lean, fy - 8);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = this.lit ? '#fdba74' : '#94a3b8';
+        ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(this.lit ? 'CANDLE' : 'SMOKING', 120, 24);
+      }
 
-      ctx.strokeStyle = '#222';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(120, this.wickY); ctx.lineTo(120, 260);
-      ctx.stroke();
-
-      this.particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
-      });
+      ctx.globalCompositeOperation = 'lighter';
+      for (const p of this.parts) {
+        if (!p.a) continue;
+        const a = Math.max(0, p.life / (p.max || 1));
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = p.c; ctx.fillStyle = p.c;
+        ctx.lineWidth = p.s;
+        ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(p.x, p.y); ctx.stroke();
+        ctx.fillRect(p.x - p.s * 0.4, p.y - p.s * 0.4, p.s, p.s);
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.imageSmoothingEnabled = false;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#94a3b8'; ctx.font = '9px monospace';
+      ctx.fillText('SPD ' + this.speed.toFixed(2) + (this.blow > 0.05 ? '  BLOW' : ''), 8, 312);
     }
   },
 
-  // --------------------------------------------------------------------------
-  // [07] 世界时钟
-  // --------------------------------------------------------------------------
   worldtime: {
-    icon: '⏰',
-    title: '世界时钟罗盘 (WORLD TIMEZONE)',
-    desc: '★ 太阳穹顶轨迹 · 全球会议对齐矩阵 ★',
-    badge: 'TIMEZONE',
-    btnUp: 'UP (上一城市)',
-    btnDown: 'DOWN (下一城市)',
-    btnOk: 'OK (切换视图)',
-    help: '按 <kbd>↑ / ↓</kbd> 轮换全球各大城市，按 <kbd>OK</kbd> 切换大时钟与对齐矩阵。',
+    icon: '⏰', title: '世界时钟罗盘 (WORLD TIMEZONE)',
+    desc: '★ 太阳穹顶 · 模拟指针 · 会议重叠黄金时段 ★',
+    badge: 'TIMEZONE', btnUp: 'UP (上一城)', btnDown: 'DOWN (下一城)', btnOk: 'OK (卡片/矩阵)',
+    help: `↑↓ 轮换城市，OK 在大时钟与会议对齐矩阵间切换。矩阵高亮全球工作时间重叠最多的整点。`,
     init() {
       this.cities = [
-        { name: '北京 BEIJING', offset: 8 },
-        { name: '东京 TOKYO', offset: 9 },
-        { name: '伦敦 LONDON', offset: 0 },
-        { name: '纽约 NEW YORK', offset: -5 },
-        { name: '旧金山 SAN FRAN', offset: -8 }
+        { name: 'BEIJING', cn: '北京', off: 8, lat: 40 },
+        { name: 'TOKYO', cn: '东京', off: 9, lat: 36 },
+        { name: 'LONDON', cn: '伦敦', off: 0, lat: 52 },
+        { name: 'PARIS', cn: '巴黎', off: 1, lat: 49 },
+        { name: 'DUBAI', cn: '迪拜', off: 4, lat: 25 },
+        { name: 'NEW YORK', cn: '纽约', off: -5, lat: 41 },
+        { name: 'SAN FRAN', cn: '旧金山', off: -8, lat: 38 },
+        { name: 'SYDNEY', cn: '悉尼', off: 10, lat: -34 }
       ];
-      this.idx = 0;
+      this.idx = 0; this.view = 0; this.tick = 0;
     },
-    onOk() {
-      this.idx = (this.idx + 1) % this.cities.length;
-      snd.playEat();
+    onOk() { this.view ^= 1; snd.playTick(); },
+    local(c, date) {
+      const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+      return new Date(utc + 3600000 * c.off);
     },
-    update(dt) {},
+    update() {
+      if (edge('up')) { this.idx = (this.idx + this.cities.length - 1) % this.cities.length; snd.playTick(); }
+      if (edge('down')) { this.idx = (this.idx + 1) % this.cities.length; snd.playTick(); }
+    },
     draw() {
-      ctx.fillStyle = '#0a1020';
-      ctx.fillRect(0, 0, 240, 320);
-
-      const now = new Date();
-      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-      const c = this.cities[this.idx];
-      const ct = new Date(utc + 3600000 * c.offset);
-
-      ctx.fillStyle = '#00e5ff';
-      ctx.font = 'bold 15px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(c.name, 120, 120);
-
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 36px monospace';
-      ctx.fillText(`${ct.getHours().toString().padStart(2,'0')}:${ct.getMinutes().toString().padStart(2,'0')}:${ct.getSeconds().toString().padStart(2,'0')}`, 120, 180);
-      ctx.textAlign = 'left';
+      const now = new Date(), c = this.cities[this.idx], ct = this.local(c, now);
+      const hr = ct.getHours(), min = ct.getMinutes(), sec = ct.getSeconds();
+      const solar = hr >= 6 && hr < 18, dusk = hr >= 18 && hr < 20;
+      ctx.fillStyle = solar ? '#1d4ed8' : dusk ? '#7c2d12' : '#020617';
+      ctx.fillRect(0, 0, W, H);
+      if (this.view === 0) {
+        ctx.fillStyle = solar ? '#93c5fd' : '#1e293b';
+        ctx.beginPath(); ctx.arc(120, 168, 78, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffd928'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(120, 168, 78, 0, Math.PI * 2); ctx.stroke();
+        const hAng = ((hr % 12) + min / 60) * 30 * Math.PI / 180;
+        const mAng = (min + sec / 60) * 6 * Math.PI / 180;
+        const sAng = sec * 6 * Math.PI / 180;
+        const hand = (ang, len, w, col) => {
+          ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+          ctx.moveTo(120, 168); ctx.lineTo(120 + Math.sin(ang) * len, 168 - Math.cos(ang) * len); ctx.stroke();
+        };
+        hand(hAng, 36, 4, '#0f172a'); hand(mAng, 52, 3, '#1e293b'); hand(sAng, 60, 1.5, '#ef4444');
+        ctx.fillStyle = '#ffd928'; ctx.beginPath(); ctx.arc(120, 168, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(c.cn + '  ' + c.name, 120, 36);
+        ctx.font = 'bold 22px monospace';
+        ctx.fillText(String(hr).padStart(2, '0') + ':' + String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0'), 120, 58);
+        ctx.fillStyle = '#ffd928'; ctx.font = '10px monospace';
+        ctx.fillText(solar ? 'DAY' : dusk ? 'DUSK' : 'NIGHT', 120, 74);
+        ctx.fillStyle = '#94a3b8'; ctx.fillText('UTC' + (c.off >= 0 ? '+' : '') + c.off, 120, 268);
+        ctx.fillText('OK MATRIX', 120, 288);
+      } else {
+        ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('MEETING MATRIX  @' + c.name, 120, 20);
+        let bestH = 9, bestN = -1;
+        const rows = [];
+        for (let h = 8; h <= 18; h++) {
+          let n = 0; const cells = [];
+          for (const city of this.cities) {
+            let lh = h + (city.off - c.off); let day = 0;
+            if (lh < 0) { lh += 24; day = -1; } if (lh >= 24) { lh -= 24; day = 1; }
+            const biz = lh >= 9 && lh < 18; if (biz) n++;
+            cells.push({ city, lh, biz, day });
+          }
+          rows.push({ h, n, cells });
+          if (n > bestN) { bestN = n; bestH = h; }
+        }
+        ctx.font = '9px monospace';
+        rows.forEach((r, i) => {
+          const y = 36 + i * 22;
+          ctx.fillStyle = r.h === bestH ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.04)';
+          ctx.fillRect(6, y, 228, 20);
+          ctx.fillStyle = r.h === bestH ? '#86efac' : '#94a3b8';
+          ctx.textAlign = 'left'; ctx.font = '9px monospace';
+          ctx.fillText(String(r.h).padStart(2, '0'), 10, y + 14);
+          this.cities.forEach((city, ci) => {
+            const cell = r.cells[ci];
+            const x = 36 + ci * 25;
+            ctx.fillStyle = cell.biz ? '#22c55e' : '#334155';
+            ctx.fillRect(x, y + 4, 22, 12);
+            ctx.fillStyle = '#fff'; ctx.font = '7px monospace';
+            ctx.fillText(String(cell.lh).padStart(2, '0'), x + 3, y + 13);
+          });
+        });
+        ctx.fillStyle = '#ffd928'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('BEST OVERLAP ' + String(bestH).padStart(2, '0') + ':00  (' + bestN + ' cities)', 120, 300);
+      }
+      ctx.textAlign = 'left'; ctx.lineWidth = 1;
     }
   }
 };
 
-// ============================================================================
-// 5. 主动画循环
-// ============================================================================
 let lastTime = performance.now();
 function gameLoop(now) {
-  const dt = Math.min(50, now - lastTime);
+  const dt = Math.min(40, now - lastTime);
   lastTime = now;
-
-  if (games[currentGame]) {
-    games[currentGame].update(dt);
-    games[currentGame].draw();
+  const g = games[currentGame];
+  if (g) {
+    if (!paused) g.update(dt);
+    ctx.save();
+    if (FX.shake > 0) ctx.translate((Math.random() - 0.5) * FX.shake, (Math.random() - 0.5) * FX.shake);
+    g.draw();
+    if (!paused) FX.update();
+    FX.draw();
+    ctx.restore();
+    if (paused) {
+      ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('PAUSED', 120, 160); ctx.textAlign = 'left';
+    }
   }
+  prev.up = keys.up; prev.down = keys.down; prev.ok = keys.ok;
   requestAnimationFrame(gameLoop);
 }
-
 games[currentGame].init();
 requestAnimationFrame(gameLoop);
 </script>

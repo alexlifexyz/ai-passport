@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Alex Arcade · 柜机</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #140c0a;
+    --cyan: #7dffb3;
+    --pink: #ff3d7f;
+    --gold: #f0c14b;
+    --text-main: #f2e2c4;
+    --text-sub: #c4b49a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .space-bg {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(circle at 50% 20%, #2a1612 0%, #140c0a 70%);
+    z-index: -1;
+  }
+
+  /* 顶栏 */
+  header {
+    background: rgba(12, 8, 7, 0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(240, 193, 75, 0.25);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .brand-back { font-family: "Bebas Neue", Impact, sans-serif; letter-spacing: 0.12em; font-size: 18px; }
+  .brand-back:hover { color: var(--gold); }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .btn-pill {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-pill:hover {
+    background: rgba(240,193,75,0.18);
+    border-color: var(--gold);
+  }
+
+  /* 双栏独立落地布局 */
+  .game-layout {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 40px;
+    align-items: center;
+    flex-grow: 1;
+  }
+
+  /* 左侧详情介绍 */
+  .game-details {
+    background: rgba(18, 24, 43, 0.6);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 24px;
+    padding: 32px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+  }
+  .game-icon-large {
+    font-size: 54px;
+    margin-bottom: 12px;
+  }
+  .game-title-lg {
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1.2;
+    background: linear-gradient(90deg, #fff 0%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  .game-sub-lg {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+  .game-desc-lg {
+    font-size: 14px;
+    color: #cbd5e1;
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  .game-tags-lg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .tag-lg {
+    background: rgba(0,240,255,0.1);
+    border: 1px solid rgba(0,240,255,0.3);
+    color: var(--cyan);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .control-card {
+    background: rgba(0,0,0,0.4);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px dashed rgba(255,255,255,0.2);
+  }
+  .control-card h4 {
+    font-size: 12px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .control-card p {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .control-card strong { color: #fff; }
+
+  /* 右侧掌机设备容器 */
+  .device-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device-shell {
+    position: relative;
+    width: 320px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%);
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 28px;
+    padding: 18px 14px 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.05);
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .device-brand {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--cyan);
+    border-bottom: 1px dashed rgba(0, 240, 255, 0.2);
+    margin-bottom: 10px;
+  }
+  .screen-bezel {
+    width: 256px;
+    height: 336px;
+    background: #000;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.95), 0 0 24px rgba(0, 240, 255, 0.2);
+    border: 2px solid #222c3d;
+  }
+  #gameCanvas {
+    width: 240px;
+    height: 320px;
+    background: #080a14;
+    border-radius: 6px;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .controls-panel {
+    margin-top: 14px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .hw-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .btn-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #2b354d, #141b2b);
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 16px;
+    color: #fff;
+    transition: transform 0.05s, background 0.05s;
+  }
+  .btn-circle.active, .btn-circle:active {
+    transform: translateY(3px) scale(0.96);
+    background: var(--cyan);
+    color: #000;
+  }
+  #btn-ok .btn-circle.active, #btn-ok .btn-circle:active {
+    background: var(--gold);
+    color: #000;
+  }
+  .btn-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #cbd5e1;
+  }
+  .key-hint { font-size: 9px; color: #64748b; }
+  kbd {
+    background: #334155; color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 9px;
+  }
+
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 20px;
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  @media (max-width: 860px) {
+    .game-layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="space-bg"></div>
+
+<header>
+  <a href="../arcade/" class="brand-back">
+    ◀ ALEX ARCADE
+  </a>
+  <div class="nav-right">
+    <button class="btn-pill" id="btn-share-link">复制链接</button>
+    <a href="../arcade/" class="btn-pill" style="background:var(--gold);color:#1a1008;border:none;">大厅十台柜机</a>
+  </div>
+</header>
+
+<div class="game-layout">
+  <!-- 左侧详情 -->
+  <div class="game-details">
+    <div class="game-icon-large" id="gIcon">🏎️</div>
+    <h1 class="game-title-lg" id="gTitle">雷霆飞车：极速武装</h1>
+    <div class="game-sub-lg" id="gSub">THUNDER RACER: ARMORED SPEED</div>
+    <p class="game-desc-lg" id="gDesc">
+      驾驶重装武装超跑在赛博高速上极速狂飙！0ms触底瞬发高爆飞弹轰碎前车，近身擦车激活倍数连击，按住OK点燃氮气暴走无敌冲撞！
+    </p>
+
+    <div class="game-tags-lg" id="gTags">
+      <span class="tag-lg">3D透视公路</span>
+      <span class="tag-lg">0ms极速飞弹</span>
+      <span class="tag-lg">擦车连击</span>
+    </div>
+
+    <div class="control-card">
+      <h4>🕹️ 掌机按键指南：</h4>
+      <p id="gHelp">
+        • <strong>UP / DOWN</strong>：左右极速切换车道躲避警车与障碍。<br>
+        • <strong>OK 键连按</strong>：无限战术充能飞弹，按多快射多快！<br>
+        • <strong>OK 键长按</strong>：点燃超频氮气，无敌冲撞沿途一切！
+      </p>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button class="btn-pill" id="btn-restart" style="background:linear-gradient(90deg,#00f0ff,#0099ff);color:#060913;font-weight:900;">
+        🔄 重新开局
+      </button>
+      <button class="btn-pill" id="btn-sound-toggle">
+        🔊 静音 / 开启音效
+      </button>
+    </div>
+  </div>
+
+  <!-- 右侧仿真掌机 -->
+  <div class="device-column">
+    <div class="device-shell">
+      <div class="device-brand">
+        <span>AI PASSPORT<span style="color:#ff0055">//</span>STANDALONE</span>
+        <span id="gBadge">THUNDER RACER</span>
+      </div>
+
+      <div class="screen-bezel">
+        <canvas id="gameCanvas" width="240" height="320"></canvas>
+      </div>
+
+      <div class="controls-panel">
+        <div class="hw-btn" id="hw-btn-up">
+          <div class="btn-circle" id="circle-up">◄</div>
+          <span class="btn-label" id="lbl-up">UP</span>
+          <span class="key-hint"><kbd>←</kbd> 或 <kbd>W</kbd></span>
+        </div>
+        <div class="hw-btn" id="hw-btn-down">
+          <div class="btn-circle" id="circle-down">►</div>
+          <span class="btn-label" id="lbl-down">DOWN</span>
+          <span class="key-hint"><kbd>→</kbd> 或 <kbd>S</kbd></span>
+        </div>
+        <div class="hw-btn" id="hw-btn-ok">
+          <div class="btn-circle" id="circle-ok">OK</div>
+          <span class="btn-label" id="lbl-ok">OK (开火)</span>
+          <span class="key-hint"><kbd>Space</kbd> / <kbd>Enter</kbd></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Alex Arcade · Independent playground for AI Passport</p>
+</footer>
+
+<script src="games-engine.js"></script>
+<script src="games-impl.js"></script>
+<script>
+const snd = new SoundEngine();
+const fx = new FXEngine();
+
+const urlParams = new URLSearchParams(window.location.search);
+let gameId = urlParams.get('id') || 'thunderracer';
+if (!GAMES[gameId]) gameId = 'thunderracer';
+
+const meta = GAME_REGISTRY.find(m => m.id === gameId);
+if (meta) {
+  document.title = `${meta.title} · Alex Indie Arcade`;
+  document.getElementById('gIcon').textContent = meta.icon;
+  document.getElementById('gTitle').textContent = meta.title;
+  document.getElementById('gSub').textContent = meta.subtitle;
+  document.getElementById('gDesc').textContent = meta.desc;
+  document.getElementById('gBadge').textContent = meta.subtitle;
+  document.getElementById('gHelp').innerHTML = meta.help;
+  document.getElementById('lbl-up').textContent = meta.upHint;
+  document.getElementById('lbl-down').textContent = meta.downHint;
+  document.getElementById('lbl-ok').textContent = meta.okHint;
+  document.getElementById('gTags').innerHTML = meta.tags.map(t => `<span class="tag-lg">${t}</span>`).join('');
+}
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let lastTime = performance.now();
+let frameCount = 0;
+const keys = { up: false, down: false, ok: false, blow: false, upEdge: false, downEdge: false, okEdge: false, okHold: false };
+const prevKeys = { up: false, down: false, ok: false };
+let okHoldTicks = 0;
+
+window.addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault();
+  snd.init();
+  if (['ArrowUp', 'ArrowLeft', 'KeyW'].includes(e.code)) {
+    keys.up = true; document.getElementById('circle-up').classList.add('active');
+  }
+  if (['ArrowDown', 'ArrowRight', 'KeyS'].includes(e.code)) {
+    keys.down = true; document.getElementById('circle-down').classList.add('active');
+  }
+  if (['Space', 'Enter'].includes(e.code)) {
+    if (!keys.ok) triggerOk();
+    keys.ok = true; document.getElementById('circle-ok').classList.add('active');
+  }
+});
+window.addEventListener('keyup', e => {
+  if (['ArrowUp', 'ArrowLeft', 'KeyW'].includes(e.code)) {
+    keys.up = false; document.getElementById('circle-up').classList.remove('active');
+  }
+  if (['ArrowDown', 'ArrowRight', 'KeyS'].includes(e.code)) {
+    keys.down = false; document.getElementById('circle-down').classList.remove('active');
+  }
+  if (['Space', 'Enter'].includes(e.code)) {
+    keys.ok = false; document.getElementById('circle-ok').classList.remove('active');
+  }
+});
+
+function bindBtn(id, circleId, keyName) {
+  const el = document.getElementById(id);
+  const circle = document.getElementById(circleId);
+  const press = (e) => {
+    if (e) e.preventDefault();
+    snd.init();
+    if (keyName === 'ok' && !keys.ok) triggerOk();
+    keys[keyName] = true; circle.classList.add('active');
+  };
+  const release = (e) => {
+    if (e) e.preventDefault();
+    keys[keyName] = false; circle.classList.remove('active');
+  };
+  el.addEventListener('mousedown', press);
+  el.addEventListener('mouseup', release);
+  el.addEventListener('touchstart', press, { passive: false });
+  el.addEventListener('touchend', release, { passive: false });
+}
+bindBtn('hw-btn-up', 'circle-up', 'up');
+bindBtn('hw-btn-down', 'circle-down', 'down');
+bindBtn('hw-btn-ok', 'circle-ok', 'ok');
+
+function triggerOk() {
+  if (GAMES[gameId] && GAMES[gameId].onOk) GAMES[gameId].onOk(snd, fx);
+}
+
+document.getElementById('btn-restart').addEventListener('click', () => {
+  if (GAMES[gameId]) {
+    fx.reset();
+    GAMES[gameId].init();
+    if (snd) snd.playClick();
+  }
+});
+document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+  snd.muted = !snd.muted;
+  document.getElementById('btn-sound-toggle').textContent = snd.muted ? '🔇 已静音' : '🔊 音效开启';
+});
+document.getElementById('btn-share-link').addEventListener('click', () => {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    alert(`🎮 游戏直达链接已复制到剪贴板！\n\n${url}`);
+  }).catch(() => prompt('复制此链接：', url));
+});
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(60, now - lastTime);
+  lastTime = now;
+  frameCount++;
+
+  keys.upEdge = keys.up && !prevKeys.up;
+  keys.downEdge = keys.down && !prevKeys.down;
+  keys.okEdge = keys.ok && !prevKeys.ok;
+  if (keys.ok) {
+    okHoldTicks++;
+    keys.okHold = (okHoldTicks > 12);
+  } else {
+    okHoldTicks = 0;
+    keys.okHold = false;
+  }
+
+  if (GAMES[gameId]) {
+    GAMES[gameId].update(dt, keys, snd, fx);
+    fx.update();
+
+    ctx.save();
+    if (fx.shake > 0) {
+      ctx.translate((Math.random() - 0.5) * fx.shake, (Math.random() - 0.5) * fx.shake);
+    }
+    GAMES[gameId].render(ctx, frameCount, fx);
+    fx.render(ctx);
+    ctx.restore();
+  }
+
+  prevKeys.up = keys.up;
+  prevKeys.down = keys.down;
+  prevKeys.ok = keys.ok;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (GAMES[gameId]) GAMES[gameId].init();
+  requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>
