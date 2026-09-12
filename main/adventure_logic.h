@@ -46,11 +46,20 @@ typedef enum {
     ADV_ENEMY_BIRD,         // 空中飞鸟：高空正弦波平飞
 } adventure_enemy_type_t;
 
-// 补给道具类型
+// 补给道具类型 (丰富经典水果盛宴 + 武器徽章 + 金蛋 + 牛奶 + 滑板)
 typedef enum {
     ADV_ITEM_BANANA = 0,    // 香蕉：恢复体力 20 点，+100 分
     ADV_ITEM_PINEAPPLE,     // 菠萝：恢复体力 50 点，+300 分
-    ADV_ITEM_EGG,           // 恐龙蛋：额外生命 +1，+500 分
+    ADV_ITEM_EGG,           // 恐龙蛋：额外生命 +1，+1000 分
+    ADV_ITEM_APPLE,         // 红苹果：恢复体力 25 点，+150 分
+    ADV_ITEM_STRAWBERRY,    // 草莓：恢复体力 15 点，+200 分
+    ADV_ITEM_WATERMELON,    // 西瓜：恢复体力 35 点，+250 分
+    ADV_ITEM_GRAPE,         // 葡萄：恢复体力 30 点，+220 分
+    ADV_ITEM_MILK,          // 牛奶瓶：体力瞬间回满 100%，+500 分
+    ADV_ITEM_BADGE_A,       // 武器徽章 [A]：石斧，+250 分
+    ADV_ITEM_BADGE_K,       // 武器徽章 [K]：直线飞刀，+350 分
+    ADV_ITEM_BADGE_P,       // 武器徽章 [P]：贯穿月刃，+500 分
+    ADV_ITEM_SKATEBOARD,    // 滑板：极速冲刺且撞怪无敌，+800 分
 } adventure_item_type_t;
 
 // 按键输入行为
@@ -76,6 +85,9 @@ typedef struct {
     bool game_over;
     bool stomp;             // 踩踏击杀
     bool extra_life;        // 拾取恐龙蛋
+    bool weapon_upgraded;   // 拾取武器徽章 [A]/[K]/[P]
+    bool milk_full;         // 牛奶全满体力
+    bool skateboard_start;  // 踏上滑板
 } adventure_events_t;
 
 // 投射物结构体
@@ -135,6 +147,8 @@ typedef struct {
     int combo;              // 当前连击数 (窗口内连续击杀)
     int combo_timer_ms;     // 连击窗口剩余时间
     int max_combo;          // 本局最高连击
+    bool has_skateboard;    // 是否装备滑板
+    int skateboard_timer_ms;// 滑板剩余无敌冲刺时间
 } adventure_player_t;
 
 // 游戏完整运行时上下文

@@ -124,23 +124,29 @@ bool adventure_logic_spawn_item(adventure_game_t *g, adventure_item_type_t type,
 
             switch (type) {
                 case ADV_ITEM_BANANA:
-                    it->w = 14;
-                    it->h = 14;
-                    it->restore_stamina = 20.0f;
-                    it->score_value = 100;
-                    break;
+                    it->w = 14; it->h = 14; it->restore_stamina = 20.0f; it->score_value = 100; break;
                 case ADV_ITEM_PINEAPPLE:
-                    it->w = 16;
-                    it->h = 18;
-                    it->restore_stamina = 50.0f;
-                    it->score_value = 300;
-                    break;
+                    it->w = 16; it->h = 18; it->restore_stamina = 50.0f; it->score_value = 300; break;
                 case ADV_ITEM_EGG:
-                    it->w = 16;
-                    it->h = 16;
-                    it->restore_stamina = 10.0f;
-                    it->score_value = 500;
-                    break;
+                    it->w = 16; it->h = 16; it->restore_stamina = 10.0f; it->score_value = 500; break;
+                case ADV_ITEM_APPLE:
+                    it->w = 14; it->h = 14; it->restore_stamina = 25.0f; it->score_value = 150; break;
+                case ADV_ITEM_STRAWBERRY:
+                    it->w = 14; it->h = 14; it->restore_stamina = 15.0f; it->score_value = 200; break;
+                case ADV_ITEM_WATERMELON:
+                    it->w = 16; it->h = 14; it->restore_stamina = 35.0f; it->score_value = 250; break;
+                case ADV_ITEM_GRAPE:
+                    it->w = 14; it->h = 16; it->restore_stamina = 30.0f; it->score_value = 220; break;
+                case ADV_ITEM_MILK:
+                    it->w = 14; it->h = 18; it->restore_stamina = 100.0f; it->score_value = 500; break;
+                case ADV_ITEM_BADGE_A:
+                    it->w = 16; it->h = 16; it->restore_stamina = 10.0f; it->score_value = 250; break;
+                case ADV_ITEM_BADGE_K:
+                    it->w = 16; it->h = 16; it->restore_stamina = 10.0f; it->score_value = 350; break;
+                case ADV_ITEM_BADGE_P:
+                    it->w = 16; it->h = 16; it->restore_stamina = 10.0f; it->score_value = 500; break;
+                case ADV_ITEM_SKATEBOARD:
+                    it->w = 18; it->h = 10; it->restore_stamina = 20.0f; it->score_value = 800; break;
             }
             return true;
         }
@@ -313,6 +319,15 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
         g->player.combo = 0;
     }
 
+    if (g->player.has_skateboard) {
+        if (g->player.skateboard_timer_ms > (int)dt_ms) {
+            g->player.skateboard_timer_ms -= (int)dt_ms;
+        } else {
+            g->player.has_skateboard = false;
+            g->player.skateboard_timer_ms = 0;
+        }
+    }
+
     // 微步积分模拟，避免高速物理穿模
     uint32_t remaining_ms = dt_ms;
     while (remaining_ms > 0) {
@@ -368,7 +383,6 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
                 continue;
             }
 
-            // 命中敌人判定
             for (int j = 0; j < ADVENTURE_MAX_ENEMIES; j++) {
                 adventure_enemy_t *e = &g->enemies[j];
                 if (!e->active) continue;
@@ -436,13 +450,20 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
                 continue;
             }
 
-            // 触碰玩家：下落踩踏优先于受伤
+            // 触碰玩家：滑板撞击 / 下落踩踏 / 受伤
             if (g->player.is_alive &&
                 adventure_check_aabb(g->player.x, g->player.y, g->player.w, g->player.h,
                                      e->x, e->y, e->w, e->h)) {
                 float player_bottom = g->player.y + (float)g->player.h;
                 float enemy_mid = e->y + (float)e->h * 0.5f;
-                if (g->player.vy > 40.0f && player_bottom <= enemy_mid + 6.0f) {
+
+                if (g->player.has_skateboard) {
+                    // 滑板冲撞击碎一切敌人
+                    e->active = false;
+                    g->events.stomp = true;
+                    g->events.hit_enemy = true;
+                    adventure_register_kill(g, e->score_value + 100);
+                } else if (g->player.vy > 40.0f && player_bottom <= enemy_mid + 6.0f) {
                     e->active = false;
                     g->player.vy = ADVENTURE_STOMP_BOUNCE;
                     g->player.on_ground = false;
@@ -469,7 +490,7 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
             }
         }
 
-        // 5. 补给水果物理与拾取
+        // 5. 补给水果与道具物理与拾取
         for (int i = 0; i < ADVENTURE_MAX_ITEMS; i++) {
             adventure_item_t *it = &g->items[i];
             if (!it->active) continue;
@@ -484,6 +505,13 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
                     it->vx = 0.0f;
                     it->on_ground = true;
                 }
+            } else {
+                // 地面道具随世界卷轴平滑向左滚动
+                it->x -= (g->player.has_skateboard ? 80.0f : 50.0f) * dt;
+                if (it->x < -30.0f) {
+                    it->active = false;
+                    continue;
+                }
             }
 
             // 玩家拾取判定
@@ -496,9 +524,26 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
                 }
                 g->player.score += it->score_value;
                 g->events.pickup_fruit = true;
+
                 if (it->type == ADV_ITEM_EGG) {
                     g->player.lives++;
                     g->events.extra_life = true;
+                } else if (it->type == ADV_ITEM_BADGE_A) {
+                    g->player.weapon = ADV_WEAPON_AXE;
+                    g->events.weapon_upgraded = true;
+                } else if (it->type == ADV_ITEM_BADGE_K) {
+                    g->player.weapon = ADV_WEAPON_KNIFE;
+                    g->events.weapon_upgraded = true;
+                } else if (it->type == ADV_ITEM_BADGE_P) {
+                    g->player.weapon = ADV_WEAPON_MOON_BLADE;
+                    g->events.weapon_upgraded = true;
+                } else if (it->type == ADV_ITEM_MILK) {
+                    g->player.stamina = ADVENTURE_MAX_STAMINA;
+                    g->events.milk_full = true;
+                } else if (it->type == ADV_ITEM_SKATEBOARD) {
+                    g->player.has_skateboard = true;
+                    g->player.skateboard_timer_ms = 8000;
+                    g->events.skateboard_start = true;
                 }
                 it->active = false;
             }
