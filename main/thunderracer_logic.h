@@ -21,7 +21,7 @@ extern "C" {
 
 // 对象池容量
 #define TR_MAX_VEHICLES          8
-#define TR_MAX_MISSILES          4
+#define TR_MAX_MISSILES          8
 #define TR_MAX_ITEMS             4
 #define TR_MAX_PARTICLES         20
 
@@ -59,6 +59,8 @@ extern "C" {
 #define TR_SCORE_POLICE_CAR      350
 #define TR_SCORE_ITEM            150
 #define TR_NITRO_REWARD_NEARMISS 20.0f
+#define TR_NEARMISS_COMBO_FRAMES 90
+#define TR_NIGHT_DISTANCE        1800
 
 // 交通车辆类型
 typedef enum {
@@ -163,6 +165,10 @@ typedef struct {
     int tick_count;         // 游戏运行总帧数
     int spawn_timer;        // 敌车生成周期计时
     int drop_counter;       // 道具掉落轮转计数器
+    int near_miss_combo;    // 近身超车连击 (窗口内连续擦车)
+    int near_miss_combo_timer;
+    int max_near_miss_combo;
+    bool night_mode;        // 夜间赛道 (里程达到阈值后交替)
 
     // 对象池
     tr_vehicle_t vehicles[TR_MAX_VEHICLES];

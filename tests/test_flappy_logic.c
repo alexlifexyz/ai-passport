@@ -204,6 +204,27 @@ int main(void)
     assert(sg->y < FLAPPY_BIRD_INIT_Y);
     printf("  ✓ 9. Global Singleton API Standard Interface OK\n");
 
+    // 10. 金水管双倍计分与难度爬升
+    flappy_logic_init_ctx(&g);
+    g.gravity = 0.0f;
+    g.turbulence_enabled = false;
+    g.vy = 0.0f;
+    g.y = 120.0f;
+    float bird_cx2 = g.x + g.w * 0.5f;
+    g.pipes[0].x = bird_cx2 - g.pipes[0].width * 0.5f + 2.0f;
+    g.pipes[0].gap_y = 90.0f;
+    g.pipes[0].gap_base_y = 90.0f;
+    g.pipes[0].gap_height = 90.0f;
+    g.pipes[0].passed = false;
+    g.pipes[0].golden = true;
+    flappy_logic_update_ctx(&g, 40);
+    assert(g.pipes[0].passed == true);
+    assert(g.score == 2);
+    assert(g.golden_count == 1);
+    assert(g.snd_golden == true);
+    assert(g.pipe_speed > FLAPPY_PIPE_SPEED);
+    printf("  ✓ 10. Golden Pipe Double Score & Speed Ramp OK\n");
+
     printf("\n[PASS] All Flappy Bird (Pixel Bird) Unit Tests Passed Successfully!\n");
     return 0;
 }

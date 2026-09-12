@@ -275,6 +275,17 @@ bool contra_logic_fire(contra_game_t *g)
     return true;
 }
 
+static void contra_register_kill(contra_game_t *g, int base_score)
+{
+    g->combo++;
+    if (g->combo > g->max_combo) {
+        g->max_combo = g->combo;
+    }
+    g->combo_timer_ms = 1600;
+    int mul = (g->combo > 1) ? g->combo : 1;
+    g->score += base_score * mul;
+}
+
 bool contra_logic_throw_bomb(contra_game_t *g)
 {
     if (!g || g->bombs <= 0) return false;
@@ -298,13 +309,13 @@ bool contra_logic_throw_bomb(contra_game_t *g)
             if (e->type == CONTRA_ENEMY_BOSS) {
                 e->boss_phase = BOSS_PHASE_DEAD;
                 g->victory = true;
-                g->score += 5000;
+                contra_register_kill(g, 5000);
                 g->snd.snd_boss_dead = true;
             } else if (e->type == CONTRA_ENEMY_CAPSULE) {
                 contra_logic_spawn_item(g, e->drop_badge, e->x, e->y);
-                g->score += 200;
+                contra_register_kill(g, 200);
             } else {
-                g->score += (e->type == CONTRA_ENEMY_TURRET) ? 300 : 100;
+                contra_register_kill(g, (e->type == CONTRA_ENEMY_TURRET) ? 300 : 100);
             }
         }
     }
@@ -418,6 +429,12 @@ void contra_logic_update(contra_game_t *g, uint32_t dt_ms)
     if (g->invincible_timer_ms > 0) {
         g->invincible_timer_ms = (g->invincible_timer_ms > (int)dt_ms) ? (g->invincible_timer_ms - (int)dt_ms) : 0;
     }
+    if (g->combo_timer_ms > 0) {
+        g->combo_timer_ms = (g->combo_timer_ms > (int)dt_ms) ? (g->combo_timer_ms - (int)dt_ms) : 0;
+        if (g->combo_timer_ms == 0) {
+            g->combo = 0;
+        }
+    }
 
     // 机枪连发
     if (g->key_ok && g->weapon_type == CONTRA_WEAPON_MACHINEGUN && g->fire_cooldown_ms == 0) {
@@ -487,15 +504,15 @@ void contra_logic_update(contra_game_t *g, uint32_t dt_ms)
                     if (e->type == CONTRA_ENEMY_BOSS) {
                         e->boss_phase = BOSS_PHASE_DEAD;
                         g->victory = true;
-                        g->score += 5000;
+                        contra_register_kill(g, 5000);
                         g->snd.snd_boss_dead = true;
                     } else if (e->type == CONTRA_ENEMY_CAPSULE) {
                         contra_logic_spawn_item(g, e->drop_badge, e->x, e->y);
                         g->snd.snd_explode = true;
-                        g->score += 200;
+                        contra_register_kill(g, 200);
                     } else {
                         g->snd.snd_explode = true;
-                        g->score += (e->type == CONTRA_ENEMY_TURRET) ? 300 : 100;
+                        contra_register_kill(g, (e->type == CONTRA_ENEMY_TURRET) ? 300 : 100);
                     }
                 } else if (e->type == CONTRA_ENEMY_BOSS) {
                     g->snd.snd_boss_hit = true;

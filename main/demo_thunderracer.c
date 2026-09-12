@@ -270,48 +270,53 @@ static void playfield_draw_cb(lv_event_t *e)
         }
     }
 
-    // 5. 玩家超跑战车 (底部真实立体渲染)
+    // 5. 玩家超跑战车 (底部真实立体渲染，撞毁时不消失并呈现爆裂烟火)
+    int px, py, pw, ph;
+    thunderracer_calc_coord(s_game.lane_x, 0.05f, &px, &py, &pw, &ph);
+    px += ox;
+    py += oy;
+    int pcx = px + pw / 2;
+    int pcy = py + ph / 2;
+
+    bool is_nitro = s_game.nitro_active;
+
     if (!s_game.game_over) {
-        int px, py, pw, ph;
-        thunderracer_calc_coord(s_game.lane_x, 0.05f, &px, &py, &pw, &ph);
-        px += ox;
-        py += oy;
-        int pcx = px + pw / 2;
-        int pcy = py + ph / 2;
-
-        bool is_nitro = s_game.nitro_active;
-
-        // 氮气与排气动态双火焰
+        // 正常行驶时的尾部双排气火焰
         int flame_h = is_nitro ? 18 + (s_frame_tick % 4) * 4 : 8 + (s_frame_tick % 3) * 2;
         uint32_t flame_color = is_nitro ? 0x00FFFF : 0xFF5500;
         draw_box(layer, pcx - 7, pcy + 18, 4, flame_h, flame_color);
         draw_box(layer, pcx + 3, pcy + 18, 4, flame_h, flame_color);
         draw_box(layer, pcx - 6, pcy + 18, 2, flame_h - 3, 0xFFFFFF);
         draw_box(layer, pcx + 4, pcy + 18, 2, flame_h - 3, 0xFFFFFF);
+    } else {
+        // 撞毁后的受创烟熏与爆炸飞火残骸 (车身依然清晰可见，绝不凭空消失)
+        draw_box(layer, pcx - 14, pcy - 12, 28, 24, 0x222222);
+        draw_box(layer, pcx - 8 + (s_frame_tick % 5), pcy - 14, 8, 8, 0xFF3300);
+        draw_box(layer, pcx + 2 - (s_frame_tick % 4), pcy - 16, 6, 10, 0xFFD700);
+    }
 
-        // 4 只宽轮毂
-        draw_box(layer, pcx - 16, pcy - 14, 4, 10, 0x111111);
-        draw_box(layer, pcx + 12, pcy - 14, 4, 10, 0x111111);
-        draw_box(layer, pcx - 17, pcy + 8, 5, 12, 0x111111);
-        draw_box(layer, pcx + 12, pcy + 8, 5, 12, 0x111111);
+    // 4 只宽轮毂
+    draw_box(layer, pcx - 16, pcy - 14, 4, 10, 0x111111);
+    draw_box(layer, pcx + 12, pcy - 14, 4, 10, 0x111111);
+    draw_box(layer, pcx - 17, pcy + 8, 5, 12, 0x111111);
+    draw_box(layer, pcx + 12, pcy + 8, 5, 12, 0x111111);
 
-        // 流线碳纤维车身
-        uint32_t body_color = is_nitro ? 0xFF0055 : 0x00E5FF;
-        draw_box(layer, pcx - 12, pcy - 16, 24, 32, body_color);
-        draw_box(layer, pcx - 6, pcy - 20, 12, 6, body_color); // 尖车头
+    // 流线碳纤维车身主体
+    uint32_t body_color = s_game.game_over ? 0x475569 : (is_nitro ? 0xFF0055 : 0x00E5FF);
+    draw_box(layer, pcx - 12, pcy - 16, 24, 32, body_color);
+    draw_box(layer, pcx - 6, pcy - 20, 12, 6, body_color); // 尖车头
 
-        // 黑色挡风玻璃与天窗
-        draw_box(layer, pcx - 6, pcy - 6, 12, 12, 0x0B1626);
-        draw_box(layer, pcx - 4, pcy - 4, 8, 3, 0x38BDF8);
+    // 黑色挡风玻璃
+    draw_box(layer, pcx - 6, pcy - 6, 12, 12, 0x0B1626);
+    draw_box(layer, pcx - 4, pcy - 4, 8, 3, s_game.game_over ? 0x1E293B : 0x38BDF8);
 
-        // 尾部 GT 扰流尾翼
-        draw_box(layer, pcx - 14, pcy + 14, 28, 4, 0xFFD700);
+    // 尾部 GT 扰流尾翼
+    draw_box(layer, pcx - 14, pcy + 14, 28, 4, s_game.game_over ? 0x334155 : 0xFFD700);
 
-        // 碰撞受创无敌闪烁力场
-        if (s_game.invincible_timer > 0 && ((s_game.invincible_timer / 3) % 2 == 0)) {
-            draw_box(layer, pcx - 18, pcy - 22, 36, 2, 0xFFFFFF);
-            draw_box(layer, pcx - 18, pcy + 22, 36, 2, 0xFFFFFF);
-        }
+    // 碰撞受创无敌闪烁力场
+    if (!s_game.game_over && s_game.invincible_timer > 0 && ((s_game.invincible_timer / 3) % 2 == 0)) {
+        draw_box(layer, pcx - 18, pcy - 22, 36, 2, 0xFFFFFF);
+        draw_box(layer, pcx - 18, pcy + 22, 36, 2, 0xFFFFFF);
     }
 }
 
@@ -330,7 +335,7 @@ static void game_timer_cb(lv_timer_t *timer)
     if (s_game.snd_crash)     send_racer_sound(TR_SND_EXPLODE);
     if (s_game.snd_gameover)  send_racer_sound(TR_SND_GAMEOVER);
 
-    // 更新 HUD
+    // 更新 HUD (精简文本与安全边距，绝不出界遮挡)
     if (s_hud_score) {
         char buf[32];
         snprintf(buf, sizeof(buf), "SCORE:%ld", (long)s_game.score);
@@ -338,20 +343,15 @@ static void game_timer_cb(lv_timer_t *timer)
     }
     if (s_hud_speed) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "%d KM/H", (int)s_game.current_speed);
+        snprintf(buf, sizeof(buf), "%dKM/H", (int)s_game.current_speed);
         lv_label_set_text(s_hud_speed, buf);
         lv_obj_set_style_text_color(s_hud_speed, s_game.nitro_active ? lv_color_hex(0x00FFFF) : lv_color_hex(0x22C55E), 0);
     }
     if (s_hud_shield) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "SHIELD:%d%%", (int)s_game.shield);
+        snprintf(buf, sizeof(buf), "HP:%d%%", (int)s_game.shield);
         lv_label_set_text(s_hud_shield, buf);
         lv_obj_set_style_text_color(s_hud_shield, s_game.shield > 30 ? lv_color_hex(0x38BDF8) : lv_color_hex(0xEF4444), 0);
-    }
-    if (s_hud_nitro) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "NITRO:%d%%", (int)s_game.nitro);
-        lv_label_set_text(s_hud_nitro, buf);
     }
 
     // 长按检测连续变道
@@ -390,6 +390,28 @@ static void game_timer_cb(lv_timer_t *timer)
         }
     }
 
+    // 阵亡撞毁醒目弹窗 (提示按 OK 立即复活重生)
+    if (s_game.game_over && !s_gameover_box) {
+        s_gameover_box = lv_obj_create(s_scr);
+        lv_obj_set_size(s_gameover_box, 190, 80);
+        lv_obj_center(s_gameover_box);
+        lv_obj_set_style_bg_color(s_gameover_box, lv_color_hex(0x0a0505), 0);
+        lv_obj_set_style_bg_opa(s_gameover_box, LV_OPA_90, 0);
+        lv_obj_set_style_border_color(s_gameover_box, lv_color_hex(0xEF4444), 0);
+        lv_obj_set_style_border_width(s_gameover_box, 2, 0);
+        lv_obj_clear_flag(s_gameover_box, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t *lbl = lv_label_create(s_gameover_box);
+        lv_label_set_text(lbl, "CAR CRASHED!\nPress OK to Respawn");
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFD700), 0);
+        lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_center(lbl);
+    } else if (!s_game.game_over && s_gameover_box) {
+        lv_obj_delete(s_gameover_box);
+        s_gameover_box = NULL;
+    }
+
     lv_obj_invalidate(s_playfield);
 }
 
@@ -419,9 +441,9 @@ void demo_thunderracer_enter(void)
     // 顶部 HUD
     lv_obj_t *hud_bar = lv_obj_create(s_scr);
     lv_obj_set_size(hud_bar, SCREEN_W, 26);
-    lv_obj_set_pos(hud_bar, 0, 0);
+    lv_obj_set_pos(hud_bar, 0, 4);
     lv_obj_set_style_bg_color(hud_bar, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_bg_opa(hud_bar, LV_OPA_70, 0);
+    lv_obj_set_style_bg_opa(hud_bar, LV_OPA_80, 0);
     lv_obj_set_style_border_width(hud_bar, 0, 0);
     lv_obj_clear_flag(hud_bar, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -429,19 +451,19 @@ void demo_thunderracer_enter(void)
     lv_label_set_text(s_hud_score, "SCORE:0");
     lv_obj_set_style_text_font(s_hud_score, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_score, lv_color_hex(0xFFD700), 0);
-    lv_obj_set_pos(s_hud_score, 6, 4);
+    lv_obj_set_pos(s_hud_score, 12, 4);
 
     s_hud_speed = lv_label_create(hud_bar);
-    lv_label_set_text(s_hud_speed, "180 KM/H");
+    lv_label_set_text(s_hud_speed, "180KM/H");
     lv_obj_set_style_text_font(s_hud_speed, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_speed, lv_color_hex(0x22C55E), 0);
     lv_obj_set_pos(s_hud_speed, 95, 4);
 
     s_hud_shield = lv_label_create(hud_bar);
-    lv_label_set_text(s_hud_shield, "SHIELD:100%");
+    lv_label_set_text(s_hud_shield, "HP:100%");
     lv_obj_set_style_text_font(s_hud_shield, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_shield, lv_color_hex(0x38BDF8), 0);
-    lv_obj_set_pos(s_hud_shield, 160, 4);
+    lv_obj_set_pos(s_hud_shield, 168, 4);
 
     // 底部操作栏提示
     s_hud_hints = lv_label_create(s_scr);
@@ -519,15 +541,16 @@ void demo_thunderracer_exit(void)
     }
 }
 
-// 硬件按键分发：0ms 触底极速响应 + 双击暂停 + 音量调节
+// 硬件按键分发：0ms 触底极速响应 + UP双击暂停 + 音量调节
 void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    // 游戏结束状态
+    // 游戏结束状态：按 OK 键即刻满血复活
     if (s_game.game_over) {
         if (btn == BSP_BTN_OK && (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS)) {
             thunderracer_init(&s_game);
             if (s_gameover_box) {
-                lv_obj_add_flag(s_gameover_box, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_delete(s_gameover_box);
+                s_gameover_box = NULL;
             }
         }
         return;
@@ -549,7 +572,7 @@ void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev)
                 lv_label_set_text_fmt(s_pause_vol_label, "VOLUME: %d%%", s_volume);
             }
             send_racer_sound(TR_SND_LANE);
-        } else if (btn == BSP_BTN_OK && (ev == BSP_BTN_CLICK || ev == BSP_BTN_DOUBLE)) {
+        } else if (btn == BSP_BTN_OK && (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS)) {
             thunderracer_toggle_pause(&s_game);
             if (s_pause_box) {
                 lv_obj_add_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
@@ -560,9 +583,22 @@ void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev)
     }
 
     // 正常比赛进行中
-    // OK 键：双击暂停；长按超频氮气；单击发射飞弹
+    // OK 键：0ms 触底瞬发飞弹！长按超频氮气加速！(解除双击冲突，连发畅快不卡顿)
     if (btn == BSP_BTN_OK) {
-        if (ev == BSP_BTN_DOUBLE) {
+        if (ev == BSP_BTN_PRESS) {
+            thunderracer_fire_missile(&s_game);
+        } else if (ev == BSP_BTN_LONG) {
+            thunderracer_trigger_nitro(&s_game);
+        }
+        return;
+    }
+
+    // UP 键：按一次即刻向左切车道 (0ms 触底响应)；双击暂停
+    if (btn == BSP_BTN_UP) {
+        if (ev == BSP_BTN_PRESS) {
+            thunderracer_steer_left(&s_game);
+            send_racer_sound(TR_SND_LANE);
+        } else if (ev == BSP_BTN_DOUBLE) {
             thunderracer_toggle_pause(&s_game);
             if (s_pause_box) {
                 if (s_pause_vol_label) {
@@ -570,19 +606,6 @@ void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev)
                 }
                 lv_obj_remove_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
             }
-            send_racer_sound(TR_SND_LANE);
-        } else if (ev == BSP_BTN_LONG) {
-            thunderracer_trigger_nitro(&s_game);
-        } else if (ev == BSP_BTN_CLICK) {
-            thunderracer_fire_missile(&s_game);
-        }
-        return;
-    }
-
-    // UP 键：按一次即刻向左切车道 (0ms 触底响应)
-    if (btn == BSP_BTN_UP) {
-        if (ev == BSP_BTN_PRESS) {
-            thunderracer_steer_left(&s_game);
             send_racer_sound(TR_SND_LANE);
         }
     }

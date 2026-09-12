@@ -480,6 +480,47 @@ static void test_companion_state_and_key_interaction(void)
     printf("  ✓ Companion State Machine & Key Handling (UP/DOWN/OK) verified OK\n");
 }
 
+static void test_clock_angles_and_overlap(void)
+{
+    printf("[TEST 8] Analog Clock Angles & Best Meeting Overlap...\n");
+
+    float h = -1.0f, m = -1.0f, s = -1.0f;
+    worldtime_clock_angles(0, 0, 0, &h, &m, &s);
+    assert(fabsf(h) < FLOAT_EPSILON);
+    assert(fabsf(m) < FLOAT_EPSILON);
+    assert(fabsf(s) < FLOAT_EPSILON);
+
+    worldtime_clock_angles(3, 0, 0, &h, &m, &s);
+    assert(fabsf(h - 90.0f) < FLOAT_EPSILON);
+    assert(fabsf(m) < FLOAT_EPSILON);
+
+    worldtime_clock_angles(15, 30, 0, &h, &m, &s);
+    assert(fabsf(h - 105.0f) < FLOAT_EPSILON); // 3:30 -> 90 + 15
+    assert(fabsf(m - 180.0f) < FLOAT_EPSILON);
+
+    worldtime_clock_angles(6, 0, 30, &h, &m, &s);
+    assert(fabsf(s - 180.0f) < FLOAT_EPSILON);
+    assert(fabsf(m - 3.0f) < FLOAT_EPSILON);
+
+    const worldtime_city_t *beijing = worldtime_find_city("Beijing");
+    assert(beijing != NULL);
+
+    int overlap = 0;
+    int best = worldtime_find_best_overlap_hour(beijing, &overlap);
+    assert(best >= 0 && best < 24);
+    assert(overlap > 0);
+
+    worldtime_meeting_matrix_t matrix;
+    worldtime_align_meeting_all(beijing, best, 0, &matrix);
+    assert(worldtime_count_business_hours(&matrix) == overlap);
+
+    assert(worldtime_find_best_overlap_hour(NULL, &overlap) == -1);
+    assert(overlap == 0);
+    assert(worldtime_count_business_hours(NULL) == 0);
+
+    printf("  ✓ Analog clock hands & global overlap finder OK\n");
+}
+
 int main(void)
 {
     printf("=================================================================\n");
@@ -493,6 +534,7 @@ int main(void)
     test_solar_day_night_and_progress();
     test_meeting_alignment_matrix();
     test_companion_state_and_key_interaction();
+    test_clock_angles_and_overlap();
 
     printf("\n>>> ALL WORLD TIMEZONE LOGIC HOST TESTS PASSED! <<<\n");
     return 0;

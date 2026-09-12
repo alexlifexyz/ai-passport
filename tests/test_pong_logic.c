@@ -27,6 +27,7 @@ int main(void)
     assert(g.balls[1].active == false);
     assert(g.balls[0].mutation == PONG_MUTATION_NORMAL);
     assert(g.balls[0].radius == PONG_BALL_DEFAULT_RADIUS);
+    assert(g.last_sweet_spot == false);
     printf("  ✓ Initialization & Default Layout OK (240x320, 0:0 Serve Ready)\n");
 
     // 2. 按键输入与挡板屏幕边界限制 (UP向左，DOWN向右，不能越出屏幕边缘)

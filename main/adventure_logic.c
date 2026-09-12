@@ -33,9 +33,18 @@ void adventure_logic_init(adventure_game_t *g)
     g->player.invincible_timer_ms = 0;
     g->player.is_alive = true;
 
+    g->player.combo = 0;
+    g->player.combo_timer_ms = 0;
+    g->player.max_combo = 0;
+
     g->game_over = false;
     g->game_time_ms = 0;
     g->shoot_cooldown_ms = 0;
+}
+
+void adventure_logic_restart(adventure_game_t *g)
+{
+    adventure_logic_init(g);
 }
 
 void adventure_logic_set_weapon(adventure_game_t *g, adventure_weapon_t weapon)
@@ -125,6 +134,12 @@ bool adventure_logic_spawn_item(adventure_game_t *g, adventure_item_type_t type,
                     it->h = 18;
                     it->restore_stamina = 50.0f;
                     it->score_value = 300;
+                    break;
+                case ADV_ITEM_EGG:
+                    it->w = 16;
+                    it->h = 16;
+                    it->restore_stamina = 10.0f;
+                    it->score_value = 500;
                     break;
             }
             return true;
@@ -227,6 +242,18 @@ bool adventure_logic_throw(adventure_game_t *g)
     return false;
 }
 
+static void adventure_register_kill(adventure_game_t *g, int score_value)
+{
+    g->player.combo++;
+    if (g->player.combo > g->player.max_combo) {
+        g->player.max_combo = g->player.combo;
+    }
+    g->player.combo_timer_ms = ADVENTURE_COMBO_WINDOW_MS;
+    int mul = (g->player.combo > 1) ? g->player.combo : 1;
+    g->player.score += score_value * mul;
+    g->events.enemy_killed = true;
+}
+
 bool adventure_logic_action(adventure_game_t *g, adventure_action_t action)
 {
     if (!g) return false;
@@ -277,6 +304,13 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
         g->player.invincible_timer_ms -= (int)dt_ms;
     } else {
         g->player.invincible_timer_ms = 0;
+    }
+
+    if (g->player.combo_timer_ms > (int)dt_ms) {
+        g->player.combo_timer_ms -= (int)dt_ms;
+    } else if (g->player.combo_timer_ms > 0) {
+        g->player.combo_timer_ms = 0;
+        g->player.combo = 0;
     }
 
     // 微步积分模拟，避免高速物理穿模
@@ -347,8 +381,7 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
 
                     if (e->hp <= 0) {
                         e->active = false;
-                        g->player.score += e->score_value;
-                        g->events.enemy_killed = true;
+                        adventure_register_kill(g, e->score_value);
                     }
 
                     if (!p->piercing) {
@@ -403,13 +436,25 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
                 continue;
             }
 
-            // 触碰玩家扣血检测
+            // 触碰玩家：下落踩踏优先于受伤
             if (g->player.is_alive &&
                 adventure_check_aabb(g->player.x, g->player.y, g->player.w, g->player.h,
                                      e->x, e->y, e->w, e->h)) {
-                if (g->player.invincible_timer_ms <= 0) {
+                float player_bottom = g->player.y + (float)g->player.h;
+                float enemy_mid = e->y + (float)e->h * 0.5f;
+                if (g->player.vy > 40.0f && player_bottom <= enemy_mid + 6.0f) {
+                    e->active = false;
+                    g->player.vy = ADVENTURE_STOMP_BOUNCE;
+                    g->player.on_ground = false;
+                    g->player.is_jumping = true;
+                    g->events.stomp = true;
+                    g->events.hit_enemy = true;
+                    adventure_register_kill(g, e->score_value + 50);
+                } else if (g->player.invincible_timer_ms <= 0) {
                     g->player.lives--;
                     g->events.player_hurt = true;
+                    g->player.combo = 0;
+                    g->player.combo_timer_ms = 0;
                     if (g->player.lives > 0) {
                         g->player.invincible_timer_ms = ADVENTURE_INVINCIBLE_MS;
                         g->player.stamina = ADVENTURE_MAX_STAMINA;
@@ -451,6 +496,10 @@ void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms)
                 }
                 g->player.score += it->score_value;
                 g->events.pickup_fruit = true;
+                if (it->type == ADV_ITEM_EGG) {
+                    g->player.lives++;
+                    g->events.extra_life = true;
+                }
                 it->active = false;
             }
         }

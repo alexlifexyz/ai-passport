@@ -35,6 +35,10 @@ void thunderracer_init(thunderracer_game_t *g)
     g->tick_count = 0;
     g->spawn_timer = 0;
     g->drop_counter = 0;
+    g->near_miss_combo = 0;
+    g->near_miss_combo_timer = 0;
+    g->max_near_miss_combo = 0;
+    g->night_mode = false;
 
     for (int i = 0; i < TR_MAX_VEHICLES; i++) {
         g->vehicles[i].active = false;
@@ -105,7 +109,7 @@ bool thunderracer_fire_missile(thunderracer_game_t *g)
             g->missiles[i].active = true;
             g->missiles[i].x = g->lane_x;
             g->missiles[i].z = 0.04f;
-            g->missiles[i].speed = 0.06f;
+            g->missiles[i].speed = 0.08f;
             g->missiles[i].damage = 1;
             g->missiles[i].guided = true;
             g->ammo--;
@@ -226,6 +230,18 @@ void thunderracer_step(thunderracer_game_t *g)
     g->tick_count++;
     if (g->invincible_timer > 0) g->invincible_timer--;
     if (g->screen_shake > 0) g->screen_shake--;
+    if (g->near_miss_combo_timer > 0) {
+        g->near_miss_combo_timer--;
+        if (g->near_miss_combo_timer == 0) {
+            g->near_miss_combo = 0;
+        }
+    }
+    g->night_mode = ((g->distance / TR_NIGHT_DISTANCE) % 2) == 1;
+
+    // 战术充能：每 30 帧 (约 0.9s) 自动装填 1 发飞弹 (上限为初始 8 发)
+    if (g->tick_count % 30 == 0 && g->ammo < TR_INIT_AMMO) {
+        g->ammo++;
+    }
 
     // 1. 车道平滑横向移动
     float target_x = thunderracer_lane_to_x(g->target_lane);
@@ -403,8 +419,18 @@ void thunderracer_step(thunderracer_game_t *g)
                 if (!v->near_miss_triggered && g->current_speed > v->speed) {
                     v->near_miss_triggered = true;
                     g->near_miss_count++;
-                    g->score += TR_SCORE_NEARMISS;
-                    g->nitro += TR_NITRO_REWARD_NEARMISS;
+                    if (g->near_miss_combo_timer > 0) {
+                        g->near_miss_combo++;
+                    } else {
+                        g->near_miss_combo = 1;
+                    }
+                    if (g->near_miss_combo > g->max_near_miss_combo) {
+                        g->max_near_miss_combo = g->near_miss_combo;
+                    }
+                    g->near_miss_combo_timer = TR_NEARMISS_COMBO_FRAMES;
+                    int mul = (g->near_miss_combo > 1) ? g->near_miss_combo : 1;
+                    g->score += TR_SCORE_NEARMISS * mul;
+                    g->nitro += TR_NITRO_REWARD_NEARMISS + (float)(mul - 1) * 4.0f;
                     if (g->nitro > g->max_nitro) {
                         g->nitro = g->max_nitro;
                     }

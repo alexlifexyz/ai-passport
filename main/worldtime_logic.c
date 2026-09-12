@@ -208,6 +208,77 @@ const char *worldtime_solar_state_name(worldtime_solar_state_t state)
     }
 }
 
+void worldtime_clock_angles(int hour, int minute, int second,
+                            float *out_hour_deg, float *out_min_deg, float *out_sec_deg)
+{
+    if (hour < 0) {
+        hour = 0;
+    }
+    hour %= 12;
+    if (minute < 0) {
+        minute = 0;
+    } else if (minute > 59) {
+        minute = 59;
+    }
+    if (second < 0) {
+        second = 0;
+    } else if (second > 59) {
+        second = 59;
+    }
+
+    if (out_sec_deg) {
+        *out_sec_deg = (float)second * 6.0f;
+    }
+    if (out_min_deg) {
+        *out_min_deg = (float)minute * 6.0f + (float)second * 0.1f;
+    }
+    if (out_hour_deg) {
+        *out_hour_deg = (float)hour * 30.0f + (float)minute * 0.5f + (float)second * (0.5f / 60.0f);
+    }
+}
+
+int worldtime_count_business_hours(const worldtime_meeting_matrix_t *matrix)
+{
+    if (!matrix) {
+        return 0;
+    }
+    int n = 0;
+    for (int i = 0; i < matrix->count; i++) {
+        if (matrix->items[i].is_business_hour) {
+            n++;
+        }
+    }
+    return n;
+}
+
+int worldtime_find_best_overlap_hour(const worldtime_city_t *base_city, int *out_count)
+{
+    if (!base_city) {
+        if (out_count) {
+            *out_count = 0;
+        }
+        return -1;
+    }
+
+    int best_hour = 9;
+    int best_count = -1;
+    for (int hour = 0; hour < 24; hour++) {
+        worldtime_meeting_matrix_t matrix;
+        memset(&matrix, 0, sizeof(matrix));
+        worldtime_align_meeting_all(base_city, hour, 0, &matrix);
+        int n = worldtime_count_business_hours(&matrix);
+        if (n > best_count) {
+            best_count = n;
+            best_hour = hour;
+        }
+    }
+
+    if (out_count) {
+        *out_count = best_count < 0 ? 0 : best_count;
+    }
+    return best_hour;
+}
+
 int worldtime_build_meeting_matrix(const worldtime_city_t *base_city,
                                   int base_hour,
                                   int base_minute,

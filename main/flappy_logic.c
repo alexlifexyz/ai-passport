@@ -21,8 +21,12 @@ static void flappy_reset_pipes(flappy_game_t *g)
         g->pipes[i].width = FLAPPY_PIPE_W;
         g->pipes[i].gap_height = g->default_gap_height;
         g->pipes[i].gap_y = flappy_rand_range(g, FLAPPY_MIN_GAP_Y, FLAPPY_MAX_GAP_Y);
+        g->pipes[i].gap_base_y = g->pipes[i].gap_y;
+        g->pipes[i].gap_osc_amp = 0.0f;
+        g->pipes[i].gap_osc_phase = 0.0f;
         g->pipes[i].x = (float)FLAPPY_SCREEN_W + 20.0f + (float)i * FLAPPY_PIPE_SPACING;
         g->pipes[i].passed = false;
+        g->pipes[i].golden = false;
     }
 }
 
@@ -106,6 +110,7 @@ void flappy_logic_init_ctx(flappy_game_t *g)
 
     g->score = 0;
     g->high_score = 0;
+    g->golden_count = 0;
     g->state = FLAPPY_STATE_PLAYING;
     g->game_over = false;
 
@@ -168,6 +173,7 @@ void flappy_logic_update_ctx(flappy_game_t *g, uint32_t dt_ms)
     g->snd_score = false;
     g->snd_hit = false;
     g->snd_die = false;
+    g->snd_golden = false;
 
     // 死亡状态处理：管道冻结停止，若在半空则受重力自然下落触地
     if (g->state == FLAPPY_STATE_GAMEOVER || g->game_over) {
@@ -239,17 +245,39 @@ void flappy_logic_update_ctx(flappy_game_t *g, uint32_t dt_ms)
         // 水平向左推移
         p->x -= g->pipe_speed * dt;
 
+        // 垂直振荡 (高分后的活水管)
+        if (p->gap_osc_amp > 0.5f) {
+            p->gap_osc_phase += dt * 2.4f;
+            float max_gap_y = (float)FLAPPY_GROUND_Y - p->gap_height - 30.0f;
+            p->gap_y = p->gap_base_y + sinf(p->gap_osc_phase) * p->gap_osc_amp;
+            if (p->gap_y < FLAPPY_MIN_GAP_Y) {
+                p->gap_y = FLAPPY_MIN_GAP_Y;
+            } else if (p->gap_y > max_gap_y) {
+                p->gap_y = max_gap_y;
+            }
+        }
+
         // 穿过水管中心线计分
         float pipe_mid_x = p->x + p->width * 0.5f;
         if (!p->passed && bird_mid_x >= pipe_mid_x) {
             p->passed = true;
-            g->score++;
+            int add = p->golden ? 2 : 1;
+            g->score += add;
             g->snd_score = true;
+            if (p->golden) {
+                g->golden_count++;
+                g->snd_golden = true;
+            }
             if (g->score > g->high_score) {
                 g->high_score = g->score;
             }
             // 昼夜模式自动切换 (每 10 分切换一次)
             g->is_night = ((g->score / 10) % 2 == 1);
+            // 分数越高水管越快，封顶避免不可读
+            g->pipe_speed = FLAPPY_PIPE_SPEED + (float)g->score * 1.8f;
+            if (g->pipe_speed > FLAPPY_PIPE_SPEED_MAX) {
+                g->pipe_speed = FLAPPY_PIPE_SPEED_MAX;
+            }
         }
 
         // 移出屏幕左侧后在右侧重新生成 (循环复用)
@@ -262,8 +290,19 @@ void flappy_logic_update_ctx(flappy_game_t *g, uint32_t dt_ms)
             }
             p->x = max_x + FLAPPY_PIPE_SPACING;
             p->passed = false;
-            p->gap_height = g->default_gap_height;
-            p->gap_y = flappy_rand_range(g, FLAPPY_MIN_GAP_Y, FLAPPY_MAX_GAP_Y);
+
+            float shrink = (float)g->score * 0.85f;
+            if (shrink > (g->default_gap_height - FLAPPY_MIN_GAP_H)) {
+                shrink = g->default_gap_height - FLAPPY_MIN_GAP_H;
+            }
+            p->gap_height = g->default_gap_height - shrink;
+
+            float max_gap_y = (float)FLAPPY_GROUND_Y - p->gap_height - 30.0f;
+            p->gap_base_y = flappy_rand_range(g, FLAPPY_MIN_GAP_Y, max_gap_y);
+            p->gap_y = p->gap_base_y;
+            p->gap_osc_phase = 0.0f;
+            p->gap_osc_amp = (g->score >= 8) ? 10.0f : 0.0f;
+            p->golden = (g->score >= 5) && ((g->rng_state & 7u) == 0u);
         }
     }
 

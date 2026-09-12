@@ -124,6 +124,16 @@ worldtime_solar_state_t worldtime_calc_solar(const worldtime_city_t *city, int h
 void worldtime_calc_solar_info(const worldtime_city_t *city, int hour, int minute, worldtime_solar_info_t *out_info);
 const char *worldtime_solar_state_name(worldtime_solar_state_t state);
 
+// 模拟时钟指针角度 (0 度 = 12 点方向，顺时针)
+void worldtime_clock_angles(int hour, int minute, int second,
+                            float *out_hour_deg, float *out_min_deg, float *out_sec_deg);
+
+// 统计矩阵中处于工作时间的城市数
+int worldtime_count_business_hours(const worldtime_meeting_matrix_t *matrix);
+
+// 以基准城市寻找全球工作时间重叠最多的整点 (返回 0~23，失败返回 -1)
+int worldtime_find_best_overlap_hour(const worldtime_city_t *base_city, int *out_count);
+
 // 5. 跨时区会议对齐矩阵
 int worldtime_build_meeting_matrix(const worldtime_city_t *base_city,
                                   int base_hour,

@@ -232,6 +232,61 @@ static void test_stamina_depletion_and_damage(void)
     printf("  ✓ Zero Lives Triggers Game Over State OK\n");
 }
 
+static void test_stomp_combo_and_egg(void)
+{
+    adventure_game_t g;
+    adventure_logic_init(&g);
+
+    // 下落踩踏：从敌人头顶落下应击杀并反弹，而不是扣血
+    g.player.x = 80.0f;
+    g.player.y = ADVENTURE_GROUND_Y - 36.0f;
+    g.player.vy = 180.0f;
+    g.player.on_ground = false;
+    g.player.is_jumping = true;
+    adventure_logic_spawn_enemy(&g, ADV_ENEMY_SNAIL, 80.0f, ADVENTURE_GROUND_Y - 14.0f);
+
+    adventure_logic_update(&g, 20);
+    assert(!g.enemies[0].active);
+    assert(g.events.stomp);
+    assert(g.player.lives == 3);
+    assert(g.player.combo == 1);
+    assert(g.player.score == 150); // 100 + 50 stomp bonus, combo 1x
+    assert(g.player.vy < 0.0f);    // 反弹向上
+
+    // 连击窗口内再杀一只，分数按 2x 计算
+    g.player.x = 40.0f;
+    g.player.y = ADVENTURE_GROUND_Y - (float)g.player.h;
+    g.player.vy = 0.0f;
+    g.player.on_ground = true;
+    adventure_logic_set_weapon(&g, ADV_WEAPON_KNIFE);
+    g.shoot_cooldown_ms = 0;
+    adventure_logic_spawn_enemy(&g, ADV_ENEMY_FROG, 90.0f, g.player.y + 4.0f);
+    assert(adventure_logic_throw(&g));
+    for (int i = 0; i < 40; i++) {
+        adventure_logic_update(&g, 20);
+        if (g.player.combo >= 2) break;
+    }
+    assert(g.player.combo == 2);
+    assert(g.player.score == 150 + 200 * 2);
+    printf("  ✓ Stomp Bounce & Combo Multiplier OK\n");
+
+    // 恐龙蛋：额外生命
+    adventure_logic_init(&g);
+    g.player.lives = 2;
+    adventure_logic_spawn_item(&g, ADV_ITEM_EGG, g.player.x, g.player.y);
+    adventure_logic_update(&g, 20);
+    assert(g.player.lives == 3);
+    assert(g.events.extra_life);
+    assert(g.player.score == 500);
+    printf("  ✓ Egg Extra Life Pickup OK\n");
+
+    adventure_logic_restart(&g);
+    assert(g.player.lives == 3);
+    assert(g.player.combo == 0);
+    assert(!g.game_over);
+    printf("  ✓ Restart Resets Run State OK\n");
+}
+
 int main(void)
 {
     printf("[TEST] Testing Adventure Island Logic...\n");
@@ -240,6 +295,7 @@ int main(void)
     test_weapons_and_combat();
     test_fruit_supply_stamina_recovery();
     test_stamina_depletion_and_damage();
+    test_stomp_combo_and_egg();
     printf("[PASS] All Adventure Island Unit Tests Passed Successfully!\n");
     return 0;
 }

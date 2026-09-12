@@ -28,6 +28,8 @@ extern "C" {
 #define ADVENTURE_MOVE_STEP       8.0f     // 单次按键移动步长
 #define ADVENTURE_SHOOT_COOLDOWN  180      // 武器投掷冷却 (毫秒)
 #define ADVENTURE_INVINCIBLE_MS   2000     // 受伤无敌时间 (毫秒)
+#define ADVENTURE_COMBO_WINDOW_MS 1800     // 连击窗口 (毫秒)
+#define ADVENTURE_STOMP_BOUNCE    (-220.0f)// 踩踏敌人后的反弹初速
 
 // 武器类型
 typedef enum {
@@ -48,6 +50,7 @@ typedef enum {
 typedef enum {
     ADV_ITEM_BANANA = 0,    // 香蕉：恢复体力 20 点，+100 分
     ADV_ITEM_PINEAPPLE,     // 菠萝：恢复体力 50 点，+300 分
+    ADV_ITEM_EGG,           // 恐龙蛋：额外生命 +1，+500 分
 } adventure_item_type_t;
 
 // 按键输入行为
@@ -71,6 +74,8 @@ typedef struct {
     bool pickup_fruit;
     bool player_hurt;
     bool game_over;
+    bool stomp;             // 踩踏击杀
+    bool extra_life;        // 拾取恐龙蛋
 } adventure_events_t;
 
 // 投射物结构体
@@ -127,6 +132,9 @@ typedef struct {
     adventure_weapon_t weapon; // 当前拥有的武器类型
     int invincible_timer_ms;// 受伤无敌剩余时间 (毫秒)
     bool is_alive;          // 是否存活
+    int combo;              // 当前连击数 (窗口内连续击杀)
+    int combo_timer_ms;     // 连击窗口剩余时间
+    int max_combo;          // 本局最高连击
 } adventure_player_t;
 
 // 游戏完整运行时上下文
@@ -149,6 +157,7 @@ typedef struct {
 
 // 核心循环与接口
 void adventure_logic_init(adventure_game_t *g);
+void adventure_logic_restart(adventure_game_t *g);
 void adventure_logic_update(adventure_game_t *g, uint32_t dt_ms);
 bool adventure_logic_action(adventure_game_t *g, adventure_action_t action);
 

@@ -250,7 +250,9 @@ void pong_logic_update(pong_game_t *g, int dt_ms)
     g->snd_mutation = false;
     g->snd_serve = false;
     g->snd_gameover = false;
+    g->snd_power = false;
     g->last_slice_hit = false;
+    g->last_sweet_spot = false;
 
     if (dt_ms <= 0) return;
     if (dt_ms > 100) dt_ms = 100;
@@ -384,6 +386,11 @@ void pong_logic_update(pong_game_t *g, int dt_ms)
 
                     float spd = sqrtf(ball->vx * ball->vx + ball->vy * ball->vy) * 1.03f;
                     if (spd < 160.0f) spd = 160.0f;
+                    if (fabsf(offset) < 0.18f && g->slice_timer_ms <= 0) {
+                        spd *= 1.12f;
+                        g->last_sweet_spot = true;
+                        g->snd_power = true;
+                    }
                     float angle = offset * 1.05f; // ~60 deg max angle
 
                     ball->vx = spd * sinf(angle);

@@ -108,6 +108,7 @@ typedef struct {
     int slice_timer_ms;
     int slice_hit_count;
     bool last_slice_hit;
+    bool last_sweet_spot;   // 挡板甜区抽射
 
     // 输入按键状态
     bool key_up;
@@ -122,6 +123,7 @@ typedef struct {
     bool snd_mutation;
     bool snd_serve;
     bool snd_gameover;
+    bool snd_power;         // 甜区抽射
 
     // 随机数发生器内部状态 (保证宿主单测和嵌入式确定性)
     uint32_t rng_state;

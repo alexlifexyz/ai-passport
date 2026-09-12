@@ -31,9 +31,11 @@ extern "C" {
 #define FLAPPY_PIPE_W          38.0f   // 水管碰撞矩形宽度
 #define FLAPPY_PIPE_GAP_H      85.0f   // 默认安全缝隙净空高度
 #define FLAPPY_PIPE_SPEED      80.0f   // 默认水管向左推进速度 (px/s)
+#define FLAPPY_PIPE_SPEED_MAX  140.0f  // 难度爬升后的水管速度上限
 #define FLAPPY_PIPE_SPACING    125.0f  // 相邻水管水平间距
 #define FLAPPY_MIN_GAP_Y       30.0f   // 缝隙顶部最小 Y
 #define FLAPPY_MAX_GAP_Y       (FLAPPY_GROUND_Y - FLAPPY_PIPE_GAP_H - 30.0f) // 165.0f
+#define FLAPPY_MIN_GAP_H       62.0f   // 难度爬升后的最小缝隙
 
 // 游戏状态枚举
 typedef enum {
@@ -46,10 +48,14 @@ typedef enum {
 typedef struct {
     float x;           // 水管左上角水平坐标
     float gap_y;       // 上水管下沿 Y 坐标 (即缝隙顶部)
+    float gap_base_y;  // 缝隙基准高度 (振荡前)
     float gap_height;  // 缝隙净空高度 (上水管下沿至下水管上沿)
+    float gap_osc_amp; // 垂直振荡幅度 (0 为静止水管)
+    float gap_osc_phase;
     float width;       // 水管矩形宽度
     bool passed;       // 小鸟中心线是否已穿过并计分
     bool active;       // 是否处于激活状态
+    bool golden;       // 金水管：穿越得 2 分
 } flappy_pipe_t;
 
 // 游戏核心数据模型
@@ -80,6 +86,7 @@ typedef struct {
     // 计分与状态
     int score;               // 当前得分
     int high_score;          // 历史最高分
+    int golden_count;        // 本局穿越金水管次数
     flappy_state_t state;    // 游戏状态
     bool game_over;          // 是否已死亡 (兼容 state == GAMEOVER)
     uint32_t state_time_ms;  // 当前状态持续毫秒数
@@ -93,6 +100,7 @@ typedef struct {
     bool snd_score;          // 触发成功穿越计分音效
     bool snd_hit;            // 触发撞击音效
     bool snd_die;            // 触发阵亡坠落音效
+    bool snd_golden;         // 触发金水管加分音效
 } flappy_game_t;
 
 // ================= 全局默认实例标准接口 =================

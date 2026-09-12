@@ -368,6 +368,39 @@ static void test_key_input_dispatch(void)
     printf("  ✓ UP/DOWN/OK Button Event Handling OK\n");
 }
 
+static void test_near_miss_combo_and_night(void)
+{
+    printf("[TEST 11] Near-Miss Combo Chain & Night Cycle...\n");
+    thunderracer_game_t g;
+    thunderracer_init(&g);
+
+    g.current_speed = 240.0f;
+    g.lane_x = 0.0f;
+    g.target_lane = 1;
+
+    thunderracer_spawn_vehicle(&g, TR_VEHICLE_SLOW, 2, 0.05f, 90.0f, 1);
+    g.vehicles[0].x = 0.35f;
+    thunderracer_step(&g);
+    assert(g.near_miss_combo == 1);
+    assert(g.score >= TR_SCORE_NEARMISS);
+
+    // 连击窗口内再擦一辆，分数按 2x 叠加
+    int score_after_first = g.score;
+    thunderracer_spawn_vehicle(&g, TR_VEHICLE_SLOW, 0, 0.05f, 90.0f, 1);
+    g.vehicles[1].x = -0.35f;
+    g.vehicles[1].near_miss_triggered = false;
+    thunderracer_step(&g);
+    assert(g.near_miss_combo == 2);
+    assert(g.max_near_miss_combo == 2);
+    assert(g.score >= score_after_first + TR_SCORE_NEARMISS * 2);
+
+    g.distance = TR_NIGHT_DISTANCE;
+    thunderracer_step(&g);
+    assert(g.night_mode == true);
+
+    printf("  ✓ Near-Miss Combo Multiplier & Night Mode OK\n");
+}
+
 int main(void)
 {
     printf("\n=======================================================\n");
@@ -384,9 +417,10 @@ int main(void)
     test_item_pickup_system();
     test_perspective_projection_math();
     test_key_input_dispatch();
+    test_near_miss_combo_and_night();
 
     printf("\n=======================================================\n");
-    printf("  ✓ [PASS] All 10 Thunder Racer Unit Tests Passed!     \n");
+    printf("  ✓ [PASS] All 11 Thunder Racer Unit Tests Passed!     \n");
     printf("=======================================================\n\n");
     return 0;
 }

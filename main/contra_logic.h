@@ -158,6 +158,9 @@ typedef struct {
 
     // 全局状态
     int score;
+    int combo;
+    int combo_timer_ms;
+    int max_combo;
     uint32_t game_time_ms;
     bool paused;
     bool game_over;
