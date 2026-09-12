@@ -62,7 +62,6 @@ static uint32_t s_spawn_capsule_timer = 0;
 static uint32_t s_spawn_turret_timer = 0;
 static float s_jump_rot = 0.0f;
 static int s_ok_hold_ms = 0;
-static bool s_ok_is_down = false;
 static int s_bomb_flash_frames = 0;
 static bool s_boss_spawned = false;
 
@@ -658,23 +657,38 @@ static void game_timer_cb(lv_timer_t *timer)
             }
         }
 
-        // 按住 OK 键自动连发射击
-        if (s_ok_is_down) {
+        // 硬件按键实时电平采样，支持持续匍匐、自动连发与长按引爆炸弹
+        int mv = bsp_button_read_mv();
+        bool up_held = (mv >= 0 && mv < 150);
+        bool dn_held = (mv >= 150 && mv < 447);
+        bool ok_held = (mv >= 447 && mv < 1900);
+
+        if (dn_held) {
+            contra_logic_btn_down(&s_game, true);
+        } else if (s_game.is_crouching) {
+            contra_logic_btn_down(&s_game, false);
+        }
+
+        if (!up_held && s_game.key_up) {
+            contra_logic_btn_up(&s_game, false);
+        }
+
+        if (ok_held) {
             s_ok_hold_ms += 30;
             if (s_ok_hold_ms >= 500) {
-                // 长按 500ms 触发震撼全屏炸弹！
-                if (s_game.bombs > 0) {
-                    if (contra_logic_throw_bomb(&s_game)) {
-                        s_bomb_flash_frames = 3;
-                        send_contra_sound(CONTRA_SND_BOMB);
-                    }
-                    s_ok_hold_ms = 0; // 重置长按计时
+                if (s_game.bombs > 0 && contra_logic_throw_bomb(&s_game)) {
+                    s_bomb_flash_frames = 3;
+                    send_contra_sound(CONTRA_SND_BOMB);
                 }
+                s_ok_hold_ms = 0;
             } else if (s_game.fire_cooldown_ms == 0) {
                 contra_logic_fire(&s_game);
             }
         } else {
             s_ok_hold_ms = 0;
+            if (s_game.key_ok) {
+                contra_logic_btn_ok(&s_game, false);
+            }
         }
 
         // 步进核心物理与战斗逻辑
@@ -815,7 +829,6 @@ void demo_contra_enter(void)
     s_paused = false;
     s_boss_spawned = false;
     s_ok_hold_ms = 0;
-    s_ok_is_down = false;
     s_bomb_flash_frames = 0;
 
     if (!s_snd_queue) {
@@ -991,16 +1004,10 @@ void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 
     // 正常战斗按键处理
     if (btn == BSP_BTN_OK) {
-        if (ev == BSP_BTN_PRESS) {
-            s_ok_is_down = true;
-            s_ok_hold_ms = 0;
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
             contra_logic_btn_ok(&s_game, true);
-        } else if (ev == BSP_BTN_RELEASE) {
-            s_ok_is_down = false;
-            s_ok_hold_ms = 0;
-            contra_logic_btn_ok(&s_game, false);
-        } else if (ev == BSP_BTN_DOUBLE) {
-            // 双击 OK 也能快捷投掷全屏炸弹
+        } else if (ev == BSP_BTN_DOUBLE || ev == BSP_BTN_LONG) {
+            // 双击或长按 OK 投掷全屏炸弹
             if (s_game.bombs > 0 && contra_logic_throw_bomb(&s_game)) {
                 s_bomb_flash_frames = 3;
                 send_contra_sound(CONTRA_SND_BOMB);
@@ -1010,11 +1017,9 @@ void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev)
     }
 
     if (btn == BSP_BTN_UP) {
-        if (ev == BSP_BTN_PRESS) {
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
             contra_logic_btn_up(&s_game, true);
             send_contra_sound(CONTRA_SND_JUMP);
-        } else if (ev == BSP_BTN_RELEASE) {
-            contra_logic_btn_up(&s_game, false);
         } else if (ev == BSP_BTN_DOUBLE) {
             s_paused = true;
             if (s_pause_box) {
@@ -1025,10 +1030,8 @@ void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev)
             }
         }
     } else if (btn == BSP_BTN_DOWN) {
-        if (ev == BSP_BTN_PRESS) {
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
             contra_logic_btn_down(&s_game, true);
-        } else if (ev == BSP_BTN_RELEASE) {
-            contra_logic_btn_down(&s_game, false);
         }
     }
 }
