@@ -107,6 +107,7 @@ typedef struct {
     int combo_timer;     // 连击衰减计时
     int invincible_timer;
     int shoot_timer;
+    int buff_timer;      // 武器强化法宝限时倒计时 (ticks)
 
     // 暂停状态
     bool paused;

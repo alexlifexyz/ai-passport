@@ -9,17 +9,18 @@ int main(void)
     thunder_game_t g;
     thunder_init(&g);
 
-    // 1. 验证初始状态 (6 HP, 4 核弹, 1 护盾, 僚机就绪)
-    assert(g.player_hp == 6);
-    assert(g.player_max_hp == 6);
-    assert(g.shield == 1);
-    assert(g.bombs == 4);
-    assert(g.weapon_level == 1);
-    assert(g.has_wingman == true);
+    // 1. 验证初始状态 (5 HP, 2 核弹, 0 护盾, 基础平民战机)
+    assert(g.player_hp == 5);
+    assert(g.player_max_hp == 5);
+    assert(g.shield == 0);
+    assert(g.bombs == 2);
+    assert(g.weapon_level == 0);
+    assert(g.has_wingman == false);
+    assert(g.buff_timer == 0);
     assert(!g.paused);
     assert(g.score == 0);
     assert(!g.game_over);
-    printf("  ✓ Initialization OK (6 HP, 4 Bombs, Shield & Wingman)\n");
+    printf("  ✓ Initialization OK (5 HP, 2 Bombs, Base Guns, No Buff)\n");
 
     // 2. 验证全向 4 向移动与边界限制 (上下左右)
     for (int i = 0; i < 30; i++) thunder_move_left(&g);
@@ -47,18 +48,38 @@ int main(void)
     assert(g.paused == false);
     printf("  ✓ Game Pause & Freeze Logic OK\n");
 
-    // 4. 验证开局高能自动开火 (主炮 + 僚机)
+    // 4. 验证开局基础平民机枪双发 (伤害 1，无秒杀)
     g.shoot_timer = THUNDER_SHOOT_INTERVAL - 1;
     thunder_step(&g);
     int bullet_count = 0;
     for (int i = 0; i < THUNDER_MAX_BULLETS; i++) {
         if (g.bullets[i].active) bullet_count++;
     }
-    assert(bullet_count >= 5); // 3 主炮 + 2 僚机
-    printf("  ✓ High-Energy 3-Way Laser + Dual Wingman Spawning OK\n");
+    assert(bullet_count == 2); // 基础双发细光
+    printf("  ✓ Base 2-Way Machine Gun Spawning OK\n");
+
+    // 4.1 验证捡法宝强化与限时倒计时衰减 (15秒后自动复原)
+    g.items[0].active = true;
+    g.items[0].type = ITEM_TYPE_POWER;
+    g.items[0].w = 14;
+    g.items[0].h = 14;
+    g.items[0].x = g.player_x;
+    g.items[0].y = g.player_y;
+    thunder_step(&g);
+    assert(g.weapon_level == 2);
+    assert(g.has_wingman == true);
+    assert(g.buff_timer > 400); // 15秒倒计时
+    // 推进倒计时至过期
+    g.buff_timer = 1;
+    thunder_step(&g);
+    assert(g.weapon_level == 0); // 自动复原基础状态
+    assert(g.has_wingman == false);
+    printf("  ✓ Timed Powerup & Expiry Reset Logic OK\n");
 
     // 5. 验证 S型波与烈焰弹道
     g.weapon_style = WEAPON_STYLE_WAVE;
+    g.weapon_level = 2;
+    g.buff_timer = 300;
     g.shoot_timer = THUNDER_SHOOT_INTERVAL - 1;
     thunder_step(&g);
     bool found_wave = false;
@@ -97,7 +118,7 @@ int main(void)
 
     // 7. 验证护盾抵挡伤害
     g.shield = 1;
-    g.player_hp = 6;
+    g.player_hp = 5;
     g.invincible_timer = 0;
     g.enemies[0].active = true;
     g.enemies[0].w = 20;
@@ -106,16 +127,17 @@ int main(void)
     g.enemies[0].y = g.player_y;
     thunder_step(&g);
     assert(g.shield == 0);
-    assert(g.player_hp == 6); // 护盾吸收伤害，血量不减！
+    assert(g.player_hp == 5); // 护盾吸收伤害，血量不减！
     printf("  ✓ Ion Shield Damage Absorption OK\n");
 
     // 8. 验证全屏核弹清屏效果
+    g.bombs = 2;
     g.enemy_bullets[0].active = true;
     g.enemy_bullets[1].active = true;
     g.enemies[0].active = true;
     g.enemies[0].hp = 5;
     assert(thunder_use_bomb(&g) == true);
-    assert(g.bombs == 3);
+    assert(g.bombs == 1);
     assert(!g.enemy_bullets[0].active);
     assert(!g.enemy_bullets[1].active);
     assert(!g.enemies[0].active);

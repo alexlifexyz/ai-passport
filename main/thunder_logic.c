@@ -12,13 +12,14 @@ void thunder_init(thunder_game_t *g)
     g->player_h = 28;
     g->player_x = (SCREEN_W - g->player_w) / 2.0f;
     g->player_y = 260.0f;
-    g->player_hp = 6;
-    g->player_max_hp = 6;
-    g->shield = 1;         // 初始带 1 层能量护盾
-    g->bombs = 4;
-    g->weapon_level = 1;
+    g->player_hp = 5;
+    g->player_max_hp = 5;
+    g->shield = 0;         // 初始无护盾，拾取[S]法宝激活
+    g->bombs = 2;
+    g->weapon_level = 0;   // 初始平民基础机枪
     g->weapon_style = WEAPON_STYLE_VULCAN;
-    g->has_wingman = true; // 初始标配双子浮游僚机
+    g->has_wingman = false;// 初始无僚机，拾取法宝限时获得
+    g->buff_timer = 0;
     g->combo = 0;
     g->combo_timer = 0;
     g->score = 0;
@@ -54,14 +55,14 @@ void thunder_move_right(thunder_game_t *g)
 void thunder_move_up(thunder_game_t *g)
 {
     if (!g || g->game_over || g->paused) return;
-    g->player_y -= 16.0f;
+    g->player_y -= 26.0f; // 大步长向上推进
     if (g->player_y < 45.0f) g->player_y = 45.0f; // 避开顶部 HUD
 }
 
 void thunder_move_down(thunder_game_t *g)
 {
     if (!g || g->game_over || g->paused) return;
-    g->player_y += 16.0f;
+    g->player_y += 26.0f; // 大步长向下拉退
     if (g->player_y > 275.0f) g->player_y = 275.0f; // 避开底部操作区
 }
 
@@ -170,6 +171,16 @@ void thunder_step(thunder_game_t *g)
     g->wave_tick++;
     if (g->invincible_timer > 0) g->invincible_timer--;
 
+    // 强化法宝限时倒计时 (15 秒 = 450 ticks, 归零恢复基础平民机枪)
+    if (g->buff_timer > 0) {
+        g->buff_timer--;
+        if (g->buff_timer == 0) {
+            g->weapon_level = 0;
+            g->weapon_style = WEAPON_STYLE_VULCAN;
+            g->has_wingman = false;
+        }
+    }
+
     // 连击计时
     if (g->combo_timer > 0) {
         g->combo_timer--;
@@ -206,66 +217,39 @@ void thunder_step(thunder_game_t *g)
     }
     if (g->screen_shake > 0) g->screen_shake--;
 
-    // 1. 玩家自动开火 (根据三大弹道流派发射)
+    // 1. 玩家自动开火 (基础平民机枪 vs 限时三大神装法宝)
     g->shoot_timer++;
     if (g->shoot_timer >= THUNDER_SHOOT_INTERVAL) {
         g->shoot_timer = 0;
 
-        if (g->weapon_style == WEAPON_STYLE_VULCAN) {
-            // 突击神火流：直线穿甲激光
+        if (g->weapon_level == 0) {
+            // 基础普通战机：双发经典细光机枪 (伤害 1，手感清脆，需灵活走位)
             g->snd_laser = true;
-            if (g->weapon_level == 1) {
-                spawn_bullet(g, g->player_x + 13, g->player_y - 2, 0, -13.0f, 4, 14, 2, BULLET_TRAJ_LINE, 0xFFD928);
-                spawn_bullet(g, g->player_x + 2,  g->player_y,     0, -12.0f, 4, 12, 1, BULLET_TRAJ_LINE, 0x00E5FF);
-                spawn_bullet(g, g->player_x + 24, g->player_y,     0, -12.0f, 4, 12, 1, BULLET_TRAJ_LINE, 0x00E5FF);
-            } else if (g->weapon_level == 2) {
-                spawn_bullet(g, g->player_x + 10, g->player_y - 3, -0.5f, -13.0f, 5, 14, 3, BULLET_TRAJ_LINE, 0xFFEA00);
-                spawn_bullet(g, g->player_x + 16, g->player_y - 3,  0.5f, -13.0f, 5, 14, 3, BULLET_TRAJ_LINE, 0xFFEA00);
-                spawn_bullet(g, g->player_x + 1,  g->player_y,     -2.0f, -12.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0x00E5FF);
-                spawn_bullet(g, g->player_x + 25, g->player_y,      2.0f, -12.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0x00E5FF);
-            } else if (g->weapon_level == 3) {
-                spawn_bullet(g, g->player_x + 11, g->player_y - 4, 0, -14.0f, 8, 16, 4, BULLET_TRAJ_LINE, 0xFF00BB);
-                spawn_bullet(g, g->player_x + 5,  g->player_y - 1, -1.2f, -13.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0xFFD928);
-                spawn_bullet(g, g->player_x + 21, g->player_y - 1,  1.2f, -13.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0xFFD928);
-                spawn_bullet(g, g->player_x + 0,  g->player_y + 2, -2.8f, -12.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0x00E5FF);
-                spawn_bullet(g, g->player_x + 26, g->player_y + 2,  2.8f, -12.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0x00E5FF);
-            } else {
-                spawn_bullet(g, g->player_x + 10, g->player_y - 6, 0, -15.0f, 10, 18, 8, BULLET_TRAJ_LINE, 0xFFFFFF);
-                spawn_bullet(g, g->player_x + 4,  g->player_y - 3, -0.8f, -14.0f, 6, 14, 4, BULLET_TRAJ_LINE, 0xFF00BB);
-                spawn_bullet(g, g->player_x + 20, g->player_y - 3,  0.8f, -14.0f, 6, 14, 4, BULLET_TRAJ_LINE, 0xFF00BB);
-                spawn_bullet(g, g->player_x + 0,  g->player_y,     -2.0f, -13.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0xFFEA00);
-                spawn_bullet(g, g->player_x + 26, g->player_y,      2.0f, -13.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0xFFEA00);
-                spawn_bullet(g, g->player_x - 3,  g->player_y + 3, -3.6f, -12.0f, 4, 10, 2, BULLET_TRAJ_LINE, 0x00E5FF);
-                spawn_bullet(g, g->player_x + 29, g->player_y + 3,  3.6f, -12.0f, 4, 10, 2, BULLET_TRAJ_LINE, 0x00E5FF);
-            }
+            spawn_bullet(g, g->player_x + 6,  g->player_y - 2, 0, -11.5f, 3, 10, 1, BULLET_TRAJ_LINE, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 20, g->player_y - 2, 0, -11.5f, 3, 10, 1, BULLET_TRAJ_LINE, 0x00E5FF);
+        } else if (g->weapon_style == WEAPON_STYLE_VULCAN) {
+            // 限时法宝 [P]：超能突击神火激光 (扇形 4 连发，伤害 2~3)
+            g->snd_laser = true;
+            spawn_bullet(g, g->player_x + 10, g->player_y - 3, -0.6f, -13.0f, 5, 14, 3, BULLET_TRAJ_LINE, 0xFFEA00);
+            spawn_bullet(g, g->player_x + 16, g->player_y - 3,  0.6f, -13.0f, 5, 14, 3, BULLET_TRAJ_LINE, 0xFFEA00);
+            spawn_bullet(g, g->player_x + 2,  g->player_y,     -2.0f, -12.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0x00E5FF);
+            spawn_bullet(g, g->player_x + 24, g->player_y,      2.0f, -12.0f, 4, 12, 2, BULLET_TRAJ_LINE, 0x00E5FF);
         } else if (g->weapon_style == WEAPON_STYLE_WAVE) {
-            // 幻影波动流：S型蛇形回旋摆动弹幕
+            // 限时法宝 [W]：幻影 S 型正弦蛇形波刃 (弧线回旋，伤害 3)
             g->snd_wave = true;
-            int wave_dmg = (g->weapon_level >= 3) ? 4 : 2;
-            spawn_bullet(g, g->player_x + 8,  g->player_y - 2, -0.6f, -12.0f, 6, 12, wave_dmg, BULLET_TRAJ_WAVE, 0x00FFCC);
-            spawn_bullet(g, g->player_x + 18, g->player_y - 2,  0.6f, -12.0f, 6, 12, wave_dmg, BULLET_TRAJ_WAVE, 0x00FFCC);
-            if (g->weapon_level >= 2) {
-                spawn_bullet(g, g->player_x + 2,  g->player_y, -1.5f, -11.0f, 5, 10, 2, BULLET_TRAJ_WAVE, 0x88FF00);
-                spawn_bullet(g, g->player_x + 24, g->player_y,  1.5f, -11.0f, 5, 10, 2, BULLET_TRAJ_WAVE, 0x88FF00);
-            }
-            if (g->weapon_level >= 4) {
-                spawn_bullet(g, g->player_x + 13, g->player_y - 6, 0, -14.0f, 10, 16, 7, BULLET_TRAJ_WAVE, 0xFF00FF);
-            }
+            spawn_bullet(g, g->player_x + 8,  g->player_y - 2, -0.6f, -12.0f, 6, 12, 3, BULLET_TRAJ_WAVE, 0x00FFCC);
+            spawn_bullet(g, g->player_x + 18, g->player_y - 2,  0.6f, -12.0f, 6, 12, 3, BULLET_TRAJ_WAVE, 0x00FFCC);
+            spawn_bullet(g, g->player_x + 2,  g->player_y,     -1.6f, -11.0f, 5, 10, 2, BULLET_TRAJ_WAVE, 0x88FF00);
+            spawn_bullet(g, g->player_x + 24, g->player_y,      1.6f, -11.0f, 5, 10, 2, BULLET_TRAJ_WAVE, 0x88FF00);
         } else {
-            // 炼狱烈焰流：狂暴爆轰火球
+            // 限时法宝 [F]：炼狱爆轰烈焰火球 (高爆破甲，伤害 4)
             g->snd_fire = true;
-            int fire_dmg = (g->weapon_level >= 3) ? 5 : 3;
-            spawn_bullet(g, g->player_x + 11, g->player_y - 4, 0, -11.0f, 8, 12, fire_dmg, BULLET_TRAJ_FIRE, 0xFF3300);
-            if (g->weapon_level >= 2) {
-                spawn_bullet(g, g->player_x + 3,  g->player_y - 1, -1.0f, -10.5f, 6, 10, 2, BULLET_TRAJ_FIRE, 0xFF6600);
-                spawn_bullet(g, g->player_x + 21, g->player_y - 1,  1.0f, -10.5f, 6, 10, 2, BULLET_TRAJ_FIRE, 0xFF6600);
-            }
-            if (g->weapon_level >= 4) {
-                spawn_bullet(g, g->player_x + 10, g->player_y - 8, 0, -13.0f, 12, 16, 8, BULLET_TRAJ_FIRE, 0xFFCC00);
-            }
+            spawn_bullet(g, g->player_x + 11, g->player_y - 4, 0, -11.0f, 8, 12, 4, BULLET_TRAJ_FIRE, 0xFF3300);
+            spawn_bullet(g, g->player_x + 3,  g->player_y - 1, -1.0f, -10.5f, 6, 10, 2, BULLET_TRAJ_FIRE, 0xFF6600);
+            spawn_bullet(g, g->player_x + 21, g->player_y - 1,  1.0f, -10.5f, 6, 10, 2, BULLET_TRAJ_FIRE, 0xFF6600);
         }
 
-        // 双子浮游僚机协同开火
+        // 双子浮游僚机协同开火 (仅在强化状态激活)
         if (g->has_wingman) {
             spawn_bullet(g, g->player_x - 10, g->player_y + 8, -1.2f, -12.0f, 3, 8, 1, BULLET_TRAJ_LINE, 0x00E5FF);
             spawn_bullet(g, g->player_x + 36, g->player_y + 8,  1.2f, -12.0f, 3, 8, 1, BULLET_TRAJ_LINE, 0x00E5FF);
@@ -339,13 +323,20 @@ void thunder_step(thunder_game_t *g)
                 g->items[i].y < g->player_y + g->player_h && g->items[i].y + g->items[i].h > g->player_y) {
                 g->snd_powerup = true;
                 if (g->items[i].type == ITEM_TYPE_POWER) {
-                    if (g->weapon_level < 4) g->weapon_level++;
+                    g->weapon_style = WEAPON_STYLE_VULCAN;
+                    g->weapon_level = 2;
+                    g->has_wingman = true;
+                    g->buff_timer = 450; // 限时强化 15 秒
                 } else if (g->items[i].type == ITEM_TYPE_WAVE) {
                     g->weapon_style = WEAPON_STYLE_WAVE;
-                    if (g->weapon_level < 4) g->weapon_level++;
+                    g->weapon_level = 2;
+                    g->has_wingman = true;
+                    g->buff_timer = 450; // 限时强化 15 秒
                 } else if (g->items[i].type == ITEM_TYPE_FIRE) {
                     g->weapon_style = WEAPON_STYLE_FIRE;
-                    if (g->weapon_level < 4) g->weapon_level++;
+                    g->weapon_level = 2;
+                    g->has_wingman = false;
+                    g->buff_timer = 450; // 限时强化 15 秒
                 } else if (g->items[i].type == ITEM_TYPE_SHIELD) {
                     if (g->shield < 2) g->shield++;
                 } else if (g->items[i].type == ITEM_TYPE_BOMB) {

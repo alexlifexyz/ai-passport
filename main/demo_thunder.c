@@ -568,7 +568,19 @@ static void on_playfield_draw(lv_event_t *e)
         draw_heart(layer, start_heart_x + h * heart_pitch, 8, h < s_game.player_hp);
     }
 
-    // 8.2 BOSS 预警血条
+    // 8.2 武器强化法宝限时倒计时条 (满格 450 ticks = 15 秒，实时倒计时)
+    if (s_game.buff_timer > 0) {
+        int bar_max_w = 56;
+        int bar_w = (s_game.buff_timer * bar_max_w) / 450;
+        uint32_t buff_col = (s_game.weapon_style == WEAPON_STYLE_FIRE) ? 0xFF3300 :
+                            ((s_game.weapon_style == WEAPON_STYLE_WAVE) ? 0x00FFCC : 0xFFD928);
+        draw_box(layer, (SCREEN_W - bar_max_w) / 2, 20, bar_max_w, 3, 0x112233);
+        if (bar_w > 0) {
+            draw_box(layer, (SCREEN_W - bar_max_w) / 2, 20, bar_w, 3, buff_col);
+        }
+    }
+
+    // 8.3 BOSS 预警血条
     if (s_game.boss_active && s_game.boss_idx >= 0 && s_game.enemies[s_game.boss_idx].active) {
         enemy_t *b = &s_game.enemies[s_game.boss_idx];
         draw_box(layer, 20, 26, 200, 8, 0x000000);
@@ -854,7 +866,7 @@ void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev)
                 lv_obj_remove_flag(s_pause_box, LV_OBJ_FLAG_HIDDEN);
             }
             send_sound(SND_PAUSE);
-        } else if (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS) {
+        } else if (ev == BSP_BTN_CLICK) {
             if (thunder_use_bomb(&s_game)) {
                 s_flash_timer = 3;
                 send_sound(SND_BOMB);
@@ -863,19 +875,21 @@ void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev)
         return;
     }
 
-    // UP 键：单击向左；双击或长按向前突进（向上）
+    // UP 键：单击向左；双击大步向前突进（向上）
     if (btn == BSP_BTN_UP) {
         if (ev == BSP_BTN_DOUBLE || ev == BSP_BTN_LONG) {
             thunder_move_up(&s_game);
-        } else if (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS) {
+            send_sound(SND_POWERUP); // 喷气推进音效反馈
+        } else if (ev == BSP_BTN_CLICK) {
             thunder_move_left(&s_game);
         }
     }
-    // DOWN 键：单击向右；双击或长按向后拉退（向下）
+    // DOWN 键：单击向右；双击大步向后拉退（向下）
     else if (btn == BSP_BTN_DOWN) {
         if (ev == BSP_BTN_DOUBLE || ev == BSP_BTN_LONG) {
             thunder_move_down(&s_game);
-        } else if (ev == BSP_BTN_CLICK || ev == BSP_BTN_PRESS) {
+            send_sound(SND_HIT); // 喷气后撤音效反馈
+        } else if (ev == BSP_BTN_CLICK) {
             thunder_move_right(&s_game);
         }
     }

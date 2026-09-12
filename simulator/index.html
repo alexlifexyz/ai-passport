@@ -357,10 +357,12 @@ const player = {
   w: 30,
   h: 28,
   speed: 4.0,
-  hp: 6,
-  maxHp: 6,
-  bombs: 4,
-  weaponLevel: 1, // 1: 强力三联激光, 2: 四联重炮, 3: 狂暴等离子(秒杀轰炸机), 4: 终极歼星光幕
+  hp: 5,
+  maxHp: 5,
+  bombs: 2,
+  weaponLevel: 0, // 0: 平民经典双发机枪 (伤害1); 捡到法宝限时强化 15 秒!
+  weaponStyle: 'vulcan',
+  buffTimer: 0,
   shootTimer: 0,
   shootInterval: 12, // 连发频率
   invincibleTimer: 0,
@@ -549,43 +551,54 @@ function update() {
 
   if (player.invincibleTimer > 0) player.invincibleTimer--;
 
+  // 强化法宝限时倒计时 (15 秒 = 450 帧，耗尽自动复原基础状态)
+  if (player.buffTimer > 0) {
+    player.buffTimer--;
+    if (player.buffTimer === 0) {
+      player.weaponLevel = 0;
+      player.weaponStyle = 'vulcan';
+    }
+  }
+
   // 战机自动开火
   player.shootTimer++;
   if (player.shootTimer >= player.shootInterval) {
     player.shootTimer = 0;
     snd.playLaser();
 
-    if (player.weaponLevel === 1) { // 开局三发高能激光 (中间穿甲 dmg 2, 左右光刃 dmg 1)
-      bullets.push({ x: player.x + 13, y: player.y - 2, w: 4, h: 12, vy: -7.5, dmg: 2, color: '#ffd928' });
-      bullets.push({ x: player.x + 2,  y: player.y,     w: 4, h: 10, vy: -7,   dmg: 1, color: '#00e5ff' });
-      bullets.push({ x: player.x + 24, y: player.y,     w: 4, h: 10, vy: -7,   dmg: 1, color: '#00e5ff' });
-    } else if (player.weaponLevel === 2) { // 四发重型等离子加农炮
+    if (player.weaponLevel === 0) {
+      // 基础普通机枪：双发细光，伤害 1，不秒杀，需要走位对准
+      bullets.push({ x: player.x + 6,  y: player.y - 2, w: 3, h: 10, vy: -7.5, dmg: 1, color: '#00e5ff' });
+      bullets.push({ x: player.x + 20, y: player.y - 2, w: 3, h: 10, vy: -7.5, dmg: 1, color: '#00e5ff' });
+    } else if (player.weaponStyle === 'wave') {
+      // 限时法宝 [W]：S型正弦蛇形光刃 (大范围收割)
+      bullets.push({ x: player.x + 8,  y: player.y - 2, w: 6, h: 12, vy: -7.5, dmg: 3, color: '#00ffcc', traj: 'wave', phase: 0, baseX: player.x + 8 });
+      bullets.push({ x: player.x + 18, y: player.y - 2, w: 6, h: 12, vy: -7.5, dmg: 3, color: '#00ffcc', traj: 'wave', phase: Math.PI, baseX: player.x + 18 });
+    } else if (player.weaponStyle === 'fire') {
+      // 限时法宝 [F]：狂暴爆轰火球 (高爆破甲)
+      bullets.push({ x: player.x + 11, y: player.y - 4, w: 8, h: 12, vy: -6.8, dmg: 4, color: '#ff3300' });
+      bullets.push({ x: player.x + 3,  y: player.y - 1, w: 6, h: 10, vy: -6.5, vx: -0.6, dmg: 2, color: '#ff6600' });
+      bullets.push({ x: player.x + 21, y: player.y - 1, w: 6, h: 10, vy: -6.5, vx:  0.6, dmg: 2, color: '#ff6600' });
+    } else {
+      // 限时法宝 [P]：超能神火激光 4 连发
       bullets.push({ x: player.x + 10, y: player.y - 3, w: 5, h: 12, vy: -7.5, vx: -0.3, dmg: 3, color: '#ffea00' });
       bullets.push({ x: player.x + 16, y: player.y - 3, w: 5, h: 12, vy: -7.5, vx:  0.3, dmg: 3, color: '#ffea00' });
-      bullets.push({ x: player.x + 1,  y: player.y,     w: 4, h: 10, vy: -7,   vx: -1.2, dmg: 2, color: '#00e5ff' });
+      bullets.push({ x: player.x + 2,  y: player.y,     w: 4, h: 10, vy: -7,   vx: -1.2, dmg: 2, color: '#00e5ff' });
       bullets.push({ x: player.x + 25, y: player.y,     w: 4, h: 10, vy: -7,   vx:  1.2, dmg: 2, color: '#00e5ff' });
-    } else if (player.weaponLevel === 3) { // 五发狂暴等离子歼灭炮 (中间单发 dmg 4 秒杀轰炸机!)
-      bullets.push({ x: player.x + 11, y: player.y - 4, w: 8, h: 14, vy: -8,   dmg: 4, color: '#ff00bb' });
-      bullets.push({ x: player.x + 5,  y: player.y - 1, w: 4, h: 10, vy: -7.5, vx: -0.8, dmg: 2, color: '#ffd928' });
-      bullets.push({ x: player.x + 21, y: player.y - 1, w: 4, h: 10, vy: -7.5, vx:  0.8, dmg: 2, color: '#ffd928' });
-      bullets.push({ x: player.x + 0,  y: player.y + 2, w: 4, h: 10, vy: -7,   vx: -1.8, dmg: 2, color: '#00e5ff' });
-      bullets.push({ x: player.x + 26, y: player.y + 2, w: 4, h: 10, vy: -7,   vx:  1.8, dmg: 2, color: '#00e5ff' });
-    } else { // 七发终极超载·歼星光幕 (中间超级死光 dmg 8 摧枯拉朽，两侧 dmg 4 秒杀轰炸机!)
-      bullets.push({ x: player.x + 10, y: player.y - 6, w: 10, h: 16, vy: -8.5, dmg: 8, color: '#ffffff' });
-      bullets.push({ x: player.x + 4,  y: player.y - 3, w: 6,  h: 12, vy: -8,   vx: -0.6, dmg: 4, color: '#ff00bb' });
-      bullets.push({ x: player.x + 20, y: player.y - 3, w: 6,  h: 12, vy: -8,   vx:  0.6, dmg: 4, color: '#ff00bb' });
-      bullets.push({ x: player.x + 0,  y: player.y,     w: 4,  h: 10, vy: -7.5, vx: -1.4, dmg: 2, color: '#ffea00' });
-      bullets.push({ x: player.x + 26, y: player.y,     w: 4,  h: 10, vy: -7.5, vx:  1.4, dmg: 2, color: '#ffea00' });
-      bullets.push({ x: player.x - 3,  y: player.y + 3, w: 4,  h: 8,  vy: -7,   vx: -2.2, dmg: 2, color: '#00e5ff' });
-      bullets.push({ x: player.x + 29, y: player.y + 3, w: 4,  h: 8,  vy: -7,   vx:  2.2, dmg: 2, color: '#00e5ff' });
     }
   }
 
   // 玩家子弹移动
   bullets.forEach((b, idx) => {
     b.y += b.vy;
-    if (b.vx) b.x += b.vx;
-    if (b.y < -15) bullets.splice(idx, 1);
+    if (b.traj === 'wave') {
+      b.phase = (b.phase || 0) + 0.28;
+      b.baseX = (b.baseX || b.x) + (b.vx || 0);
+      b.x = b.baseX + Math.sin(b.phase) * 16;
+    } else if (b.vx) {
+      b.x += b.vx;
+    }
+    if (b.y < -15 || b.x < -20 || b.x > 260) bullets.splice(idx, 1);
   });
 
   // 敌机子弹移动
@@ -621,7 +634,19 @@ function update() {
         it.y < player.y + player.h && it.y + it.h > player.y) {
       snd.playPowerup();
       if (it.type === 'P') {
-        if (player.weaponLevel < 4) player.weaponLevel++;
+        player.weaponStyle = 'vulcan';
+        player.weaponLevel = 2;
+        player.buffTimer = 450; // 15秒强化
+        score += 50;
+      } else if (it.type === 'W') {
+        player.weaponStyle = 'wave';
+        player.weaponLevel = 2;
+        player.buffTimer = 450; // 15秒强化
+        score += 50;
+      } else if (it.type === 'F') {
+        player.weaponStyle = 'fire';
+        player.weaponLevel = 2;
+        player.buffTimer = 450; // 15秒强化
         score += 50;
       } else if (it.type === 'B') {
         player.bombs++;
@@ -666,8 +691,8 @@ function update() {
           score += (e.type === 'bomber' ? 30 : 10);
 
           // 掉落补给
-          if (Math.random() < 0.25) {
-            const types = ['P', 'B', 'H'];
+          if (Math.random() < 0.28) {
+            const types = ['P', 'W', 'F', 'B', 'H'];
             items.push({
               type: types[Math.floor(Math.random() * types.length)],
               x: e.x + e.w/2 - 7,
@@ -818,6 +843,16 @@ function render() {
 
   ctx.fillStyle = '#00e5ff';
   ctx.fillText(`💣x${player.bombs}`, 186, 16);
+
+  // 武器强化法宝限时倒计时条 (满格 450 帧 = 15 秒)
+  if (player.buffTimer > 0) {
+    const barW = (player.buffTimer / 450) * 60;
+    const col = player.weaponStyle === 'fire' ? '#ff3300' : (player.weaponStyle === 'wave' ? '#00ffcc' : '#ffd928');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(90, 24, 60, 4);
+    ctx.fillStyle = col;
+    ctx.fillRect(90, 24, barW, 4);
+  }
 
   // BOSS 血条
   if (boss) {
