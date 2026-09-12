@@ -36,4 +36,7 @@ void demo_low_power_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 void demo_thunder_enter(void); void demo_thunder_exit(void);
 void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
+void demo_thunderracer_enter(void); void demo_thunderracer_exit(void);
+void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+
 
