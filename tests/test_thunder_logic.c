@@ -68,7 +68,7 @@ int main(void)
     thunder_step(&g);
     assert(g.weapon_level == 2);
     assert(g.has_wingman == true);
-    assert(g.buff_timer > 400); // 15秒倒计时
+    assert(g.buff_timer > 280); // 10秒倒计时 (300 ticks)
     // 推进倒计时至过期
     g.buff_timer = 1;
     thunder_step(&g);

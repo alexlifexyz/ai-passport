@@ -165,8 +165,9 @@
 </head>
 <body>
 
-<div class="nav-tabs" style="display:flex;gap:12px;margin-bottom:14px;">
-  <a href="flydriver.html" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.15);">🏎️ 果蝇超跑 (FlyDriver) [新]</a>
+<div class="nav-tabs" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;justify-content:center;">
+  <a href="hub.html" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:800;text-decoration:none;background:linear-gradient(90deg,#ffd700,#ff3366);color:#000;box-shadow:0 0 16px rgba(255,215,0,0.6);">🌟 7合1全新玩法中心 (Hub) [热]</a>
+  <a href="flydriver.html" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.15);">🏎️ 果蝇超跑 (FlyDriver)</a>
   <a href="flysaber.html" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.15);">🪰 果蝇光剑 (FlySaber)</a>
   <a href="index.html" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;background:linear-gradient(90deg,#00e5ff,#ffd928);color:#000;box-shadow:0 0 12px rgba(0,229,255,0.5);">⚡ 雷霆战机 (Thunder)</a>
 </div>
@@ -636,17 +637,17 @@ function update() {
       if (it.type === 'P') {
         player.weaponStyle = 'vulcan';
         player.weaponLevel = 2;
-        player.buffTimer = 450; // 15秒强化
+        player.buffTimer = 300; // 10秒强化
         score += 50;
       } else if (it.type === 'W') {
         player.weaponStyle = 'wave';
         player.weaponLevel = 2;
-        player.buffTimer = 450; // 15秒强化
+        player.buffTimer = 300; // 10秒强化
         score += 50;
       } else if (it.type === 'F') {
         player.weaponStyle = 'fire';
         player.weaponLevel = 2;
-        player.buffTimer = 450; // 15秒强化
+        player.buffTimer = 300; // 10秒强化
         score += 50;
       } else if (it.type === 'B') {
         player.bombs++;
@@ -846,7 +847,7 @@ function render() {
 
   // 武器强化法宝限时倒计时条 (满格 450 帧 = 15 秒)
   if (player.buffTimer > 0) {
-    const barW = (player.buffTimer / 450) * 60;
+    const barW = (player.buffTimer / 300) * 60;
     const col = player.weaponStyle === 'fire' ? '#ff3300' : (player.weaponStyle === 'wave' ? '#00ffcc' : '#ffd928');
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(90, 24, 60, 4);

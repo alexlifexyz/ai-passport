@@ -5,6 +5,7 @@
 #include "bsp_display.h"
 #include "bsp_audio.h"
 #include "bsp_battery.h"
+#include "bsp_button.h"
 #include "lvgl.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -53,6 +54,8 @@ static uint8_t s_volume = 80;
 static QueueHandle_t s_snd_queue;
 static TaskHandle_t s_snd_task;
 static int s_flash_timer = 0;
+static int s_up_hold_ticks = 0;
+static int s_down_hold_ticks = 0;
 
 static void send_sound(thunder_snd_t snd)
 {
@@ -568,10 +571,10 @@ static void on_playfield_draw(lv_event_t *e)
         draw_heart(layer, start_heart_x + h * heart_pitch, 8, h < s_game.player_hp);
     }
 
-    // 8.2 武器强化法宝限时倒计时条 (满格 450 ticks = 15 秒，实时倒计时)
+    // 8.2 武器强化法宝限时倒计时条 (满格 300 ticks = 10 秒，实时倒计时)
     if (s_game.buff_timer > 0) {
         int bar_max_w = 56;
-        int bar_w = (s_game.buff_timer * bar_max_w) / 450;
+        int bar_w = (s_game.buff_timer * bar_max_w) / 300;
         uint32_t buff_col = (s_game.weapon_style == WEAPON_STYLE_FIRE) ? 0xFF3300 :
                             ((s_game.weapon_style == WEAPON_STYLE_WAVE) ? 0x00FFCC : 0xFFD928);
         draw_box(layer, (SCREEN_W - bar_max_w) / 2, 20, bar_max_w, 3, 0x112233);
@@ -617,6 +620,28 @@ static void game_timer_cb(lv_timer_t *timer)
         if (s_game.snd_pause) send_sound(SND_PAUSE);
         if (s_game.snd_hit) send_sound(SND_HIT);
         if (s_game.snd_powerup) send_sound(SND_POWERUP);
+
+        // 长按平滑极速移动 (无需反复抬手点击，按住持续滑行)
+        if (!s_game.paused) {
+            int mv = bsp_button_read_mv();
+            if (mv >= 0 && mv < 150) { // 按住 UP 键
+                s_up_hold_ticks++;
+                if (s_up_hold_ticks > 4) { // 按住超 120ms 开始持续平滑滑行
+                    thunder_move_left(&s_game);
+                }
+            } else {
+                s_up_hold_ticks = 0;
+            }
+
+            if (mv >= 150 && mv < 447) { // 按住 DOWN 键
+                s_down_hold_ticks++;
+                if (s_down_hold_ticks > 4) { // 按住超 120ms 开始持续平滑滑行
+                    thunder_move_right(&s_game);
+                }
+            } else {
+                s_down_hold_ticks = 0;
+            }
+        }
 
         // 暂停状态控制弹窗显隐与音量刷新
         if (s_pause_box) {
@@ -714,7 +739,7 @@ void demo_thunder_enter(void)
     lv_obj_set_pos(s_hud_hints, 0, 303);
     lv_obj_set_size(s_hud_hints, 240, 16);
     lv_obj_set_style_text_align(s_hud_hints, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(s_hud_hints, "UP:L DN:R 2x:UD OK:PAUSE");
+    lv_label_set_text(s_hud_hints, "UP:L  DN:R  HOLD:RUN  OK:BOMB");
     lv_obj_set_style_text_font(s_hud_hints, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_hints, lv_color_hex(0xFFD928), 0);
 
@@ -875,21 +900,15 @@ void demo_thunder_key(bsp_btn_t btn, bsp_btn_ev_t ev)
         return;
     }
 
-    // UP 键：单击向左；双击大步向前突进（向上）
+    // UP 键：按一次即刻向左移动 (0ms 延迟响应，长按持续连移在 timer_cb 中处理)
     if (btn == BSP_BTN_UP) {
-        if (ev == BSP_BTN_DOUBLE || ev == BSP_BTN_LONG) {
-            thunder_move_up(&s_game);
-            send_sound(SND_POWERUP); // 喷气推进音效反馈
-        } else if (ev == BSP_BTN_CLICK) {
+        if (ev == BSP_BTN_PRESS) {
             thunder_move_left(&s_game);
         }
     }
-    // DOWN 键：单击向右；双击大步向后拉退（向下）
+    // DOWN 键：按一次即刻向右移动 (0ms 延迟响应，长按持续连移在 timer_cb 中处理)
     else if (btn == BSP_BTN_DOWN) {
-        if (ev == BSP_BTN_DOUBLE || ev == BSP_BTN_LONG) {
-            thunder_move_down(&s_game);
-            send_sound(SND_HIT); // 喷气后撤音效反馈
-        } else if (ev == BSP_BTN_CLICK) {
+        if (ev == BSP_BTN_PRESS) {
             thunder_move_right(&s_game);
         }
     }

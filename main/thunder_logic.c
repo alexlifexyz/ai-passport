@@ -326,17 +326,17 @@ void thunder_step(thunder_game_t *g)
                     g->weapon_style = WEAPON_STYLE_VULCAN;
                     g->weapon_level = 2;
                     g->has_wingman = true;
-                    g->buff_timer = 450; // 限时强化 15 秒
+                    g->buff_timer = 300; // 限时强化 10 秒左右
                 } else if (g->items[i].type == ITEM_TYPE_WAVE) {
                     g->weapon_style = WEAPON_STYLE_WAVE;
                     g->weapon_level = 2;
                     g->has_wingman = true;
-                    g->buff_timer = 450; // 限时强化 15 秒
+                    g->buff_timer = 300; // 限时强化 10 秒左右
                 } else if (g->items[i].type == ITEM_TYPE_FIRE) {
                     g->weapon_style = WEAPON_STYLE_FIRE;
                     g->weapon_level = 2;
                     g->has_wingman = false;
-                    g->buff_timer = 450; // 限时强化 15 秒
+                    g->buff_timer = 300; // 限时强化 10 秒左右
                 } else if (g->items[i].type == ITEM_TYPE_SHIELD) {
                     if (g->shield < 2) g->shield++;
                 } else if (g->items[i].type == ITEM_TYPE_BOMB) {
