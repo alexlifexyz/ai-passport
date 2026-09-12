@@ -209,6 +209,7 @@
 
 <!-- 游戏切换栏 -->
 <div class="game-tabs" id="gameTabs">
+  <a class="tab-btn" href="../arcade/" style="text-decoration:none;background:rgba(240,193,75,0.18);color:#f0c14b;">◀ 大厅</a>
   <button class="tab-btn active" data-game="adventure">🏝️ 像素冒险岛 HD</button>
   <button class="tab-btn" data-game="contra">🔫 口袋魂斗罗 HD</button>
   <button class="tab-btn" data-game="thunderracer">🏎️ 雷霆飞车 HD</button>
@@ -216,7 +217,7 @@
   <button class="tab-btn" data-game="pong">🏓 变异乒乓 HD</button>
   <button class="tab-btn" data-game="sparkler">🎆 仙女棒与烛火</button>
   <button class="tab-btn" data-game="worldtime">⏰ 世界时钟罗盘</button>
-  <a class="tab-btn" href="index.html" style="text-decoration:none;background:rgba(0,229,255,0.15);color:#00e5ff;">⚡ 雷霆战机 ↗</a>
+  <a class="tab-btn" href="thunder.html" style="text-decoration:none;background:rgba(0,229,255,0.15);color:#00e5ff;">⚡ 雷霆战机 ↗</a>
   <a class="tab-btn" href="flydriver.html" style="text-decoration:none;background:rgba(255,215,0,0.15);color:#ffd700;">🏎️ 果蝇超跑 ↗</a>
   <a class="tab-btn" href="flysaber.html" style="text-decoration:none;background:rgba(255,51,102,0.15);color:#ff3366;">🪰 果蝇光剑 ↗</a>
 </div>
@@ -1545,7 +1546,24 @@ function gameLoop(now) {
   prev.up = keys.up; prev.down = keys.down; prev.ok = keys.ok;
   requestAnimationFrame(gameLoop);
 }
-games[currentGame].init();
+{
+  const boot = new URLSearchParams(location.search).get('game');
+  if (boot && games[boot]) {
+    currentGame = boot;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.game === boot);
+    });
+  }
+  if (games[currentGame].init) games[currentGame].init();
+  const g = games[currentGame];
+  document.getElementById('gameTitle').innerHTML = `<span>${g.icon}</span> ${g.title}`;
+  document.getElementById('gameDesc').textContent = g.desc;
+  document.getElementById('badgeGameName').textContent = g.badge;
+  document.getElementById('lbl-up').textContent = g.btnUp;
+  document.getElementById('lbl-down').textContent = g.btnDown;
+  document.getElementById('lbl-ok').textContent = g.btnOk;
+  document.getElementById('gameHelp').innerHTML = g.help;
+}
 requestAnimationFrame(gameLoop);
 </script>
 </body>
