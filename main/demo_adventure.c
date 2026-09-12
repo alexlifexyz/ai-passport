@@ -225,6 +225,7 @@ static void adv_audio_task(void *arg)
                                 bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                             }
                         }
+                    }
                 }
             }
         }
