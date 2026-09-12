@@ -286,7 +286,22 @@ static void test_capsule_and_upgrade(void)
     contra_logic_update(&g, 10);
     assert(g.weapon_type == CONTRA_WEAPON_MACHINEGUN);
 
-    printf("  ✓ Flying Capsule Shootdown & S/L/M Weapon Upgrades OK\n");
+    // 7. 落地徽章自动滑向玩家（无前进键也能吃到 L/P）
+    contra_logic_init(&g);
+    g.player_x = 40.0f;
+    int far = contra_logic_spawn_item(&g, CONTRA_BADGE_L, 180.0f, CONTRA_GROUND_Y - 12.0f);
+    assert(far >= 0);
+    g.items[far].vy = 0.0f;
+    g.items[far].y = CONTRA_GROUND_Y - (float)g.items[far].h;
+    float far_x = g.items[far].x;
+    for (int i = 0; i < 120; i++) {
+        contra_logic_update(&g, 20);
+        if (!g.items[far].active) break;
+    }
+    assert(!g.items[far].active);
+    assert(g.weapon_type == CONTRA_WEAPON_LASER);
+    assert(far_x > g.player_x); // 确实是从远处滑过来的
+    printf("  ✓ Flying Capsule Shootdown, S/L/M Upgrades & Ground Badge Magnet OK\n");
 }
 
 static void test_turret_and_boss(void)

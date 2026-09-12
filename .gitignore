@@ -9,3 +9,6 @@ managed_components/
 scratch/
 __pycache__/
 *.pyc
+.DS_Store
+build_cloud/
+*.bin

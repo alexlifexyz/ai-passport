@@ -720,6 +720,20 @@ void contra_logic_update(contra_game_t *g, uint32_t dt_ms)
             it->vy = 0.0f;
         }
 
+        // 三键没有独立前进：落地后徽章自动滑向玩家，避免打出 L/S/M/P 却捡不到
+        if (it->vy == 0.0f) {
+            float target_x = g->player_x + (float)g->player_w * 0.5f - (float)it->w * 0.5f;
+            float dx = target_x - it->x;
+            float step = 95.0f * dt;
+            if (dx > step) {
+                it->x += step;
+            } else if (dx < -step) {
+                it->x -= step;
+            } else {
+                it->x = target_x;
+            }
+        }
+
         if (check_collision(it->x, it->y, it->w, it->h,
                             g->player_x, g->player_y, g->player_w, g->player_h)) {
             it->active = false;

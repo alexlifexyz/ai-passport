@@ -185,11 +185,12 @@ static void playfield_draw_cb(lv_event_t *e)
     int ox = lv_obj_get_x(obj);
     int oy = lv_obj_get_y(obj);
 
-    // 1. 夜空与赛博公路背景
-    draw_box(layer, 0, 0, SCREEN_W, SCREEN_H, 0x060A14);
+    // 1. 夜空与赛博公路背景 (里程达到阈值后切夜间配色)
+    draw_box(layer, 0, 0, SCREEN_W, SCREEN_H, s_game.night_mode ? 0x02040A : 0x060A14);
 
     // 透视公路 (梯形渲染：顶部宽 80，底部宽 240)
-    draw_box(layer, ox + 0, oy + 40, SCREEN_W, SCREEN_H - 40, 0x1A2333);
+    draw_box(layer, ox + 0, oy + 40, SCREEN_W, SCREEN_H - 40,
+             s_game.night_mode ? 0x0B1220 : 0x1A2333);
 
     // 斑马线路牙石 (红白相间滚动)
     int curb_step = (s_frame_tick * 8) % 30;
@@ -338,8 +339,14 @@ static void game_timer_cb(lv_timer_t *timer)
     // 更新 HUD (精简文本与安全边距，绝不出界遮挡)
     if (s_hud_score) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "SCORE:%ld", (long)s_game.score);
+        if (s_game.near_miss_combo > 1) {
+            snprintf(buf, sizeof(buf), "x%d %ld", s_game.near_miss_combo, (long)s_game.score);
+        } else {
+            snprintf(buf, sizeof(buf), "SCORE:%ld", (long)s_game.score);
+        }
         lv_label_set_text(s_hud_score, buf);
+        lv_obj_set_style_text_color(s_hud_score,
+            s_game.near_miss_combo > 1 ? lv_color_hex(0x00E5FF) : lv_color_hex(0xFFD700), 0);
     }
     if (s_hud_speed) {
         char buf[32];

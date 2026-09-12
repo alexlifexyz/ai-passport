@@ -14,6 +14,8 @@ idf_component_register(
          "thunder_logic.c"
          "demo_thunderracer.c"
          "thunderracer_logic.c"
+         "demo_adventure.c"
+         "adventure_logic.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )
