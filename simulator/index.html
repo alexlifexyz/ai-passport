@@ -366,7 +366,7 @@ const player = {
   invincibleTimer: 0,
 };
 
-let keys = { left: false, right: false };
+let keys = { left: false, right: false, up: false, down: false };
 let bullets = [];
 let enemyBullets = [];
 let enemies = [];
@@ -374,6 +374,7 @@ let items = [];
 let particles = [];
 let score = 0;
 let gameOver = false;
+let paused = false;
 let waveTimer = 0;
 let boss = null;
 let screenShake = 0;
@@ -532,7 +533,7 @@ function spawnEnemies() {
 
 // 游戏主循环更新
 function update() {
-  if (gameOver) return;
+  if (gameOver || paused) return;
 
   // 星空滚动
   stars.forEach(s => {
@@ -540,9 +541,11 @@ function update() {
     if (s.y > 320) { s.y = 0; s.x = Math.random() * 240; }
   });
 
-  // 玩家左右移动
+  // 玩家4向自由移动
   if (keys.left && player.x > 4) player.x -= player.speed;
   if (keys.right && player.x < 240 - player.w - 4) player.x += player.speed;
+  if (keys.up && player.y > 45) player.y -= player.speed;
+  if (keys.down && player.y < 275) player.y += player.speed;
 
   if (player.invincibleTimer > 0) player.invincibleTimer--;
 
@@ -883,13 +886,23 @@ bindKeyBtn('btn-ok', () => {
 
 // 键盘按键映射
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'a' || e.key === 'A') {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
     keys.left = true;
     document.querySelector('#btn-up .btn-circle').classList.add('active');
   }
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'd' || e.key === 'D') {
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
     keys.right = true;
     document.querySelector('#btn-down .btn-circle').classList.add('active');
+  }
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+    keys.up = true;
+  }
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+    keys.down = true;
+  }
+  if (e.key === 'p' || e.key === 'P') {
+    paused = !paused;
+    snd.playHit();
   }
   if (e.key === ' ' || e.key === 'Enter') {
     document.querySelector('#btn-ok .btn-circle').classList.add('active');
@@ -902,13 +915,19 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'a' || e.key === 'A') {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
     keys.left = false;
     document.querySelector('#btn-up .btn-circle').classList.remove('active');
   }
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'd' || e.key === 'D') {
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
     keys.right = false;
     document.querySelector('#btn-down .btn-circle').classList.remove('active');
+  }
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+    keys.up = false;
+  }
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+    keys.down = false;
   }
   if (e.key === ' ' || e.key === 'Enter') {
     document.querySelector('#btn-ok .btn-circle').classList.remove('active');
