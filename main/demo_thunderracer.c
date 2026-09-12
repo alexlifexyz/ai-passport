@@ -207,33 +207,32 @@ static void playfield_draw_cb(lv_event_t *e)
     // 2. 前方交通车辆
     for (int i = 0; i < TR_MAX_VEHICLES; i++) {
         if (s_game.vehicles[i].active) {
-            thunderracer_vehicle_t *v = &s_game.vehicles[i];
-            int vx, vy;
-            float scale;
-            thunderracer_calc_coord(v->lane_x, v->z, &vx, &vy, &scale);
+            tr_vehicle_t *v = &s_game.vehicles[i];
+            int vx, vy, vw, vh;
+            thunderracer_calc_coord(v->x, v->z, &vx, &vy, &vw, &vh);
             vx += ox;
             vy += oy;
 
-            int cw = (int)(24.0f * scale);
-            int ch = (int)(32.0f * scale);
+            int cw = vw;
+            int ch = vh;
             if (cw < 10) cw = 10;
             if (ch < 14) ch = 14;
 
             if (v->type == TR_VEHICLE_POLICE) {
                 // 黑白特勤警车 (车顶红蓝爆闪)
-                draw_box(layer, vx - cw/2, vy - ch/2, cw, ch, 0x111111);
-                draw_box(layer, vx - cw/4, vy - ch/4, cw/2, ch/2, 0xFFFFFF);
+                draw_box(layer, vx, vy, cw, ch, 0x111111);
+                draw_box(layer, vx + cw/4, vy + ch/4, cw/2, ch/2, 0xFFFFFF);
                 bool blink = ((s_frame_tick / 4) % 2 == 0);
-                draw_box(layer, vx - 4, vy - 2, 4, 4, blink ? 0xFF0033 : 0x0066FF);
-                draw_box(layer, vx + 0, vy - 2, 4, 4, blink ? 0x0066FF : 0xFF0033);
+                draw_box(layer, vx + cw/2 - 4, vy + ch/2 - 2, 4, 4, blink ? 0xFF0033 : 0x0066FF);
+                draw_box(layer, vx + cw/2, vy + ch/2 - 2, 4, 4, blink ? 0x0066FF : 0xFF0033);
             } else if (v->type == TR_VEHICLE_WEAVER) {
                 // 黄色运动轿跑
-                draw_box(layer, vx - cw/2, vy - ch/2, cw, ch, 0xF59E0B);
-                draw_box(layer, vx - cw/4, vy - ch/4, cw/2, ch/3, 0x1E293B);
+                draw_box(layer, vx, vy, cw, ch, 0xF59E0B);
+                draw_box(layer, vx + cw/4, vy + ch/4, cw/2, ch/3, 0x1E293B);
             } else {
                 // 红色慢速民用巡航车
-                draw_box(layer, vx - cw/2, vy - ch/2, cw, ch, 0xEF4444);
-                draw_box(layer, vx - cw/4, vy - ch/4, cw/2, ch/3, 0x1E293B);
+                draw_box(layer, vx, vy, cw, ch, 0xEF4444);
+                draw_box(layer, vx + cw/4, vy + ch/4, cw/2, ch/3, 0x1E293B);
             }
         }
     }
@@ -241,72 +240,71 @@ static void playfield_draw_cb(lv_event_t *e)
     // 3. 玩家发射的前向飞弹
     for (int i = 0; i < TR_MAX_MISSILES; i++) {
         if (s_game.missiles[i].active) {
-            thunderracer_missile_t *m = &s_game.missiles[i];
-            int mx, my;
-            float ms;
-            thunderracer_calc_coord(m->lane_x, m->z, &mx, &my, &ms);
+            tr_missile_t *m = &s_game.missiles[i];
+            int mx, my, mw, mh;
+            thunderracer_calc_coord(m->x, m->z, &mx, &my, &mw, &mh);
             mx += ox;
             my += oy;
-            draw_box(layer, mx - 2, my - 6, 4, 12, 0x00FFFF);
-            draw_box(layer, mx - 1, my - 2, 2, 8, 0xFFFFFF);
+            draw_box(layer, mx + mw/2 - 2, my, 4, 12, 0x00FFFF);
+            draw_box(layer, mx + mw/2 - 1, my + 4, 2, 8, 0xFFFFFF);
         }
     }
 
     // 4. 掉落道具 (红心、氮气瓶、飞弹包)
     for (int i = 0; i < TR_MAX_ITEMS; i++) {
         if (s_game.items[i].active) {
-            thunderracer_item_t *it = &s_game.items[i];
-            int ix, iy;
-            float is;
-            thunderracer_calc_coord(it->lane_x, it->z, &ix, &iy, &is);
+            tr_item_t *it = &s_game.items[i];
+            int ix, iy, iw, ih;
+            thunderracer_calc_coord(it->x, it->z, &ix, &iy, &iw, &ih);
             ix += ox;
             iy += oy;
             uint32_t color = (it->type == TR_ITEM_HEART) ? 0xFF3344 :
                              (it->type == TR_ITEM_NITRO) ? 0x00FF88 : 0xFFD700;
-            draw_box(layer, ix - 6, iy - 6, 12, 12, color);
+            draw_box(layer, ix + iw/2 - 6, iy + ih/2 - 6, 12, 12, color);
         }
     }
 
     // 5. 玩家超跑战车 (底部真实立体渲染)
     if (!s_game.game_over) {
-        int px, py;
-        float ps;
-        thunderracer_calc_coord(s_game.player_lane_x, 0.05f, &px, &py, &ps);
+        int px, py, pw, ph;
+        thunderracer_calc_coord(s_game.lane_x, 0.05f, &px, &py, &pw, &ph);
         px += ox;
         py += oy;
+        int pcx = px + pw / 2;
+        int pcy = py + ph / 2;
 
-        bool is_nitro = (s_game.nitro_boost);
+        bool is_nitro = s_game.nitro_active;
 
         // 氮气与排气动态双火焰
         int flame_h = is_nitro ? 18 + (s_frame_tick % 4) * 4 : 8 + (s_frame_tick % 3) * 2;
         uint32_t flame_color = is_nitro ? 0x00FFFF : 0xFF5500;
-        draw_box(layer, px - 7, py + 18, 4, flame_h, flame_color);
-        draw_box(layer, px + 3, py + 18, 4, flame_h, flame_color);
-        draw_box(layer, px - 6, py + 18, 2, flame_h - 3, 0xFFFFFF);
-        draw_box(layer, px + 4, py + 18, 2, flame_h - 3, 0xFFFFFF);
+        draw_box(layer, pcx - 7, pcy + 18, 4, flame_h, flame_color);
+        draw_box(layer, pcx + 3, pcy + 18, 4, flame_h, flame_color);
+        draw_box(layer, pcx - 6, pcy + 18, 2, flame_h - 3, 0xFFFFFF);
+        draw_box(layer, pcx + 4, pcy + 18, 2, flame_h - 3, 0xFFFFFF);
 
         // 4 只宽轮毂
-        draw_box(layer, px - 16, py - 14, 4, 10, 0x111111);
-        draw_box(layer, px + 12, py - 14, 4, 10, 0x111111);
-        draw_box(layer, px - 17, py + 8, 5, 12, 0x111111);
-        draw_box(layer, px + 12, py + 8, 5, 12, 0x111111);
+        draw_box(layer, pcx - 16, pcy - 14, 4, 10, 0x111111);
+        draw_box(layer, pcx + 12, pcy - 14, 4, 10, 0x111111);
+        draw_box(layer, pcx - 17, pcy + 8, 5, 12, 0x111111);
+        draw_box(layer, pcx + 12, pcy + 8, 5, 12, 0x111111);
 
         // 流线碳纤维车身
         uint32_t body_color = is_nitro ? 0xFF0055 : 0x00E5FF;
-        draw_box(layer, px - 12, py - 16, 24, 32, body_color);
-        draw_box(layer, px - 6, py - 20, 12, 6, body_color); // 尖车头
+        draw_box(layer, pcx - 12, pcy - 16, 24, 32, body_color);
+        draw_box(layer, pcx - 6, pcy - 20, 12, 6, body_color); // 尖车头
 
         // 黑色挡风玻璃与天窗
-        draw_box(layer, px - 6, py - 6, 12, 12, 0x0B1626);
-        draw_box(layer, px - 4, py - 4, 8, 3, 0x38BDF8);
+        draw_box(layer, pcx - 6, pcy - 6, 12, 12, 0x0B1626);
+        draw_box(layer, pcx - 4, pcy - 4, 8, 3, 0x38BDF8);
 
         // 尾部 GT 扰流尾翼
-        draw_box(layer, px - 14, py + 14, 28, 4, 0xFFD700);
+        draw_box(layer, pcx - 14, pcy + 14, 28, 4, 0xFFD700);
 
         // 碰撞受创无敌闪烁力场
         if (s_game.invincible_timer > 0 && ((s_game.invincible_timer / 3) % 2 == 0)) {
-            draw_box(layer, px - 18, py - 22, 36, 2, 0xFFFFFF);
-            draw_box(layer, px - 18, py + 22, 36, 2, 0xFFFFFF);
+            draw_box(layer, pcx - 18, pcy - 22, 36, 2, 0xFFFFFF);
+            draw_box(layer, pcx - 18, pcy + 22, 36, 2, 0xFFFFFF);
         }
     }
 }
@@ -317,29 +315,26 @@ static void game_timer_cb(lv_timer_t *timer)
     (void)timer;
     s_frame_tick++;
 
-    thunderracer_action_t act = TR_ACT_NONE;
-    if (s_game.nitro_boost) act = TR_ACT_NITRO;
+    thunderracer_step(&s_game);
 
-    thunderracer_event_t evt = thunderracer_logic_update(&s_game, 30.0f, act);
-
-    if (evt.missile_fired) send_racer_sound(TR_SND_MISSILE);
-    if (evt.enemy_destroyed) send_racer_sound(TR_SND_EXPLODE);
-    if (evt.near_miss) send_racer_sound(TR_SND_NEARMISS);
-    if (evt.nitro_started) send_racer_sound(TR_SND_NITRO);
-    if (evt.player_damaged) send_racer_sound(TR_SND_EXPLODE);
-    if (evt.game_over) send_racer_sound(TR_SND_GAMEOVER);
+    if (s_game.snd_missile)   send_racer_sound(TR_SND_MISSILE);
+    if (s_game.snd_explode)   send_racer_sound(TR_SND_EXPLODE);
+    if (s_game.snd_near_miss) send_racer_sound(TR_SND_NEARMISS);
+    if (s_game.snd_nitro)     send_racer_sound(TR_SND_NITRO);
+    if (s_game.snd_crash)     send_racer_sound(TR_SND_EXPLODE);
+    if (s_game.snd_gameover)  send_racer_sound(TR_SND_GAMEOVER);
 
     // 更新 HUD
     if (s_hud_score) {
         char buf[32];
-        snprintf(buf, sizeof(buf), "SCORE:%lu", (unsigned long)s_game.score);
+        snprintf(buf, sizeof(buf), "SCORE:%ld", (long)s_game.score);
         lv_label_set_text(s_hud_score, buf);
     }
     if (s_hud_speed) {
         char buf[32];
         snprintf(buf, sizeof(buf), "%d KM/H", (int)s_game.current_speed);
         lv_label_set_text(s_hud_speed, buf);
-        lv_obj_set_style_text_color(s_hud_speed, s_game.nitro_boost ? lv_color_hex(0x00FFFF) : lv_color_hex(0x22C55E), 0);
+        lv_obj_set_style_text_color(s_hud_speed, s_game.nitro_active ? lv_color_hex(0x00FFFF) : lv_color_hex(0x22C55E), 0);
     }
     if (s_hud_shield) {
         char buf[32];
@@ -380,7 +375,7 @@ static void game_timer_cb(lv_timer_t *timer)
 void demo_thunderracer_enter(void)
 {
     ESP_LOGI(TAG, "启动《雷霆飞车：极速武装》");
-    thunderracer_logic_init(&s_game);
+    thunderracer_init(&s_game);
 
     if (!s_snd_queue) {
         s_snd_queue = xQueueCreate(16, sizeof(racer_snd_t));
@@ -415,7 +410,7 @@ void demo_thunderracer_enter(void)
     lv_obj_set_pos(s_hud_score, 6, 4);
 
     s_hud_speed = lv_label_create(hud_bar);
-    lv_label_set_text(s_hud_speed, "240 KM/H");
+    lv_label_set_text(s_hud_speed, "180 KM/H");
     lv_obj_set_style_text_font(s_hud_speed, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_hud_speed, lv_color_hex(0x22C55E), 0);
     lv_obj_set_pos(s_hud_speed, 95, 4);
@@ -465,23 +460,21 @@ void demo_thunderracer_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
     if (ev == BSP_BTN_CLICK) {
         if (btn == BSP_BTN_UP) {
-            thunderracer_logic_handle_key(&s_game, TR_KEY_UP);
+            thunderracer_handle_input(&s_game, TR_KEY_UP, TR_KEY_EV_CLICK);
             send_racer_sound(TR_SND_LANE);
         } else if (btn == BSP_BTN_DOWN) {
-            thunderracer_logic_handle_key(&s_game, TR_KEY_DOWN);
+            thunderracer_handle_input(&s_game, TR_KEY_DOWN, TR_KEY_EV_CLICK);
             send_racer_sound(TR_SND_LANE);
         } else if (btn == BSP_BTN_OK) {
             if (s_game.game_over) {
-                thunderracer_logic_init(&s_game);
+                thunderracer_init(&s_game);
             } else {
-                thunderracer_logic_handle_key(&s_game, TR_KEY_OK);
+                thunderracer_handle_input(&s_game, TR_KEY_OK, TR_KEY_EV_CLICK);
             }
         }
     } else if (ev == BSP_BTN_LONG && btn == BSP_BTN_OK) {
-        // 长按激活氮气冲刺
-        if (!s_game.game_over && s_game.nitro > 15) {
-            s_game.nitro_boost = true;
-            send_racer_sound(TR_SND_NITRO);
+        if (!s_game.game_over) {
+            thunderracer_handle_input(&s_game, TR_KEY_OK, TR_KEY_EV_LONG_PRESS);
         }
     }
 }
