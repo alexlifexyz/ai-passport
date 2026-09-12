@@ -44,6 +44,34 @@ run_static_checks() {
         tests/test_flydriver_logic.c main/flydriver_logic.c \
         -o "${test_dir}/test_flydriver_logic"
     "${test_dir}/test_flydriver_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_adventure_logic.c main/adventure_logic.c \
+        -o "${test_dir}/test_adventure_logic"
+    "${test_dir}/test_adventure_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_pong_logic.c main/pong_logic.c \
+        -o "${test_dir}/test_pong_logic"
+    "${test_dir}/test_pong_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_contra_logic.c main/contra_logic.c \
+        -o "${test_dir}/test_contra_logic"
+    "${test_dir}/test_contra_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_flappy_logic.c main/flappy_logic.c \
+        -o "${test_dir}/test_flappy_logic"
+    "${test_dir}/test_flappy_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_worldtime_logic.c main/worldtime_logic.c \
+        -o "${test_dir}/test_worldtime_logic"
+    "${test_dir}/test_worldtime_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_sparkler_logic.c main/sparkler_logic.c \
+        -o "${test_dir}/test_sparkler_logic"
+    "${test_dir}/test_sparkler_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_thunderracer_logic.c main/thunderracer_logic.c \
+        -o "${test_dir}/test_thunderracer_logic"
+    "${test_dir}/test_thunderracer_logic"
     python3 tests/test_verify_firmware.py
     rm -rf "${test_dir}"
     echo "Host tests: PASS"
