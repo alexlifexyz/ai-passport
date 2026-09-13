@@ -19,8 +19,9 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
-    { "Flappy",    demo_flappy_enter,       demo_flappy_exit,       demo_flappy_key       },
+    { "Pacman",    demo_pacman_enter,       demo_pacman_exit,       demo_pacman_key       },
     { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
+    { "Flappy",    demo_flappy_enter,       demo_flappy_exit,       demo_flappy_key       },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
 

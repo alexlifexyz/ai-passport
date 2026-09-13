@@ -18,6 +18,8 @@ idf_component_register(
          "battlecity_logic.c"
          "demo_flappy.c"
          "flappy_logic.c"
+         "demo_pacman.c"
+         "pacman_logic.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )
