@@ -575,7 +575,7 @@ void demo_flappy_enter(void)
     lv_obj_set_size(s_gameover_card, 206, 140);
     lv_obj_align(s_gameover_card, LV_ALIGN_CENTER, 0, -10);
     lv_obj_set_style_bg_color(s_gameover_card, lv_color_hex(0x180808), 0);
-    lv_obj_set_style_bg_opa(s_gameover_card, LV_OPA_95, 0);
+    lv_obj_set_style_bg_opa(s_gameover_card, LV_OPA_90, 0);
     lv_obj_set_style_border_color(s_gameover_card, lv_color_hex(0xEF4444), 0);
     lv_obj_set_style_border_width(s_gameover_card, 2, 0);
     lv_obj_set_style_radius(s_gameover_card, 14, 0);

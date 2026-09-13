@@ -37,9 +37,7 @@ static lv_obj_t     *s_scr = NULL;
 static lv_obj_t     *s_playfield = NULL;
 static lv_timer_t   *s_game_timer = NULL;
 
-// 暂停与结算弹窗
-static lv_obj_t     *s_pause_box = NULL;
-static lv_obj_t     *s_pause_vol_label = NULL;
+// 结算弹窗
 static lv_obj_t     *s_gameover_box = NULL;
 static lv_obj_t     *s_victory_box = NULL;
 static bool          s_paused = false;
