@@ -46,6 +46,8 @@ static bool          s_paused = false;
 
 // 帧统计与动画
 static uint32_t      s_frame_tick = 0;
+static uint32_t      s_last_up_press_tick = 0;
+static uint32_t      s_last_ok_press_tick = 0;
 
 // ESP-NOW 无线双机互联状态
 static bool          s_espnow_ready = false;
@@ -460,6 +462,31 @@ static void draw_item(lv_layer_t *layer, const bc_item_t *item) {
     }
 }
 
+// 绘制底部车头方向指示罗盘
+static void draw_dir_indicator(lv_layer_t *layer, int x, int y, bc_dir_t dir) {
+    draw_box(layer, x, y, 16, 16, 0x1E293B);
+    draw_box(layer, x + 1, y + 1, 14, 14, 0x0F172A);
+
+    uint32_t col = 0xFACC15; // 明黄色箭头
+    if (dir == BC_DIR_UP) {
+        draw_box(layer, x + 7, y + 3, 2, 10, col);
+        draw_box(layer, x + 5, y + 5, 6, 2, col);
+        draw_box(layer, x + 6, y + 4, 4, 2, col);
+    } else if (dir == BC_DIR_RIGHT) {
+        draw_box(layer, x + 3, y + 7, 10, 2, col);
+        draw_box(layer, x + 9, y + 5, 2, 6, col);
+        draw_box(layer, x + 10, y + 6, 2, 4, col);
+    } else if (dir == BC_DIR_DOWN) {
+        draw_box(layer, x + 7, y + 3, 2, 10, col);
+        draw_box(layer, x + 5, y + 9, 6, 2, col);
+        draw_box(layer, x + 6, y + 10, 4, 2, col);
+    } else if (dir == BC_DIR_LEFT) {
+        draw_box(layer, x + 3, y + 7, 10, 2, col);
+        draw_box(layer, x + 5, y + 5, 2, 6, col);
+        draw_box(layer, x + 4, y + 6, 2, 4, col);
+    }
+}
+
 // 绘制主战场画布 (LVGL 9.x 回调)
 static void battlecity_draw_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
@@ -614,6 +641,9 @@ static void battlecity_draw_cb(lv_event_t *e) {
     if (s_game.auto_fire_p1) {
         draw_box(layer, bar_x, 304, 38, 12, 0xD97706);
     }
+
+    // 右下角常驻高亮绘制车头朝向罗盘 (↑ → ↓ ← 极其显眼)
+    draw_dir_indicator(layer, 218, 302, s_game.p1.dir);
 }
 
 // ============================================================================
@@ -709,9 +739,17 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
         return;
     }
 
+    // 关键去重：只响应 BSP_BTN_PRESS (按下瞬间)，坚决丢弃 BSP_BTN_CLICK (抬起)！
+    // 彻底杜绝按一次按键由于 PRESS 与 CLICK 连发导致的跳两次/乱窜
+    if (ev != BSP_BTN_PRESS && ev != BSP_BTN_DOUBLE) return;
+
     if (btn == BSP_BTN_UP) {
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
-            // UP 键专司方向：按一次顺时针转 90° (上 -> 右 -> 下 -> 左 -> 上)
+        // 关键防抖：200ms (8 帧 @40FPS) 硬件防抖窗口，杜绝机械抖动和重复触发
+        if (s_frame_tick - s_last_up_press_tick < 8) return;
+        s_last_up_press_tick = s_frame_tick;
+
+        if (ev == BSP_BTN_PRESS) {
+            // 单次按下：顺时针精准旋转 90 度 (上 -> 右 -> 下 -> 左 -> 上)
             bc_player_turn_clockwise(&s_game, 1);
         } else if (ev == BSP_BTN_DOUBLE) {
             // 双击快速调头 180°
@@ -719,13 +757,14 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
             bc_player_turn(&s_game, 1, new_dir);
         }
     } else if (btn == BSP_BTN_DOWN) {
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
-            // DOWN 键单击：向前推进
+        if (ev == BSP_BTN_PRESS) {
+            // DOWN 键按下向前推进 (按住推进由定时器 40Hz 实时硬件采样全权托管)
             bc_player_move(&s_game, 1, true);
         }
     } else if (btn == BSP_BTN_OK) {
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
-            // OK 键开火：多发连发已放开，无需等待上一发完全消失
+        if (ev == BSP_BTN_PRESS) {
+            if (s_frame_tick - s_last_ok_press_tick < 5) return;
+            s_last_ok_press_tick = s_frame_tick;
             bc_player_fire(&s_game, 1);
         } else if (ev == BSP_BTN_DOUBLE) {
             // 双击切换自动开火
@@ -745,6 +784,8 @@ void demo_battlecity_enter(void) {
     bc_init_game(&s_game, 1);
     s_paused = false;
     s_frame_tick = 0;
+    s_last_up_press_tick = 0;
+    s_last_ok_press_tick = 0;
     s_gameover_box = NULL;
     s_victory_box = NULL;
 
