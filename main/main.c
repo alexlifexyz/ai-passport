@@ -21,8 +21,6 @@ static const char *TAG = "main";
 static const demo_entry_t DEMOS[] = {
     { "Flappy",    demo_flappy_enter,       demo_flappy_exit,       demo_flappy_key       },
     { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
-    { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
-    { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
 
@@ -51,18 +49,17 @@ static void menu_build(void) {
     s_menu_scr = ui_pixel_screen_create("ARCADE");
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
-        int col = (int)(i % 2);
-        int row = (int)(i / 2);
+        int col = (int)i;
         int x = 12 + col * 112;
-        int y = 58 + row * 62;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 104, 48, UI_PAPER);
+        int y = 75;
+        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 104, 52, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(s_rows[i]);
     }
 
-    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 215);
+    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 195);
 
     menu_refresh();
     lv_screen_load(s_menu_scr);
