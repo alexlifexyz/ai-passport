@@ -238,21 +238,20 @@ void bc_player_move(bc_game_t *game, uint8_t player_id, bool moving) {
     tank->moving = moving;
 }
 
-// 开火射击
+// 开火射击 (按一次必出一发，无需等上一发打碎或消失，支持畅快连续倾泻火力)
 void bc_player_fire(bc_game_t *game, uint8_t player_id) {
     if (!game || game->game_over || game->paused) return;
     bc_tank_t *tank = (player_id == 1) ? &game->p1 : &game->p2;
-    if (!tank->active || tank->shoot_cooldown > 0) return;
+    if (!tank->active) return;
 
-    // 检查玩家当前在屏子弹数：初始即允许 2 发连射，高级更可达 3 发，再也不用等上一颗完全消失
+    // 统计当前玩家已发射在场子弹，放宽到 8 发同屏狂轰！
     int count = 0;
-    int max_allowed = (tank->tier >= 3) ? 3 : 2;
     for (int i = 0; i < BC_MAX_BULLETS; i++) {
         if (game->bullets[i].active && game->bullets[i].from_player && game->bullets[i].owner_id == player_id) {
             count++;
         }
     }
-    if (count >= max_allowed) return;
+    if (count >= 8) return; // 容纳 8 发同屏连射
 
     // 寻空闲子弹槽位
     for (int i = 0; i < BC_MAX_BULLETS; i++) {
@@ -261,7 +260,8 @@ void bc_player_fire(bc_game_t *game, uint8_t player_id) {
             game->bullets[i].from_player = true;
             game->bullets[i].owner_id = player_id;
             game->bullets[i].dir = tank->dir;
-            game->bullets[i].speed = (tank->tier >= 2) ? 8 : 6; // 子弹疾速飞行 (6~8px/帧)
+            // 超高速重炮：普通 9px/帧，升级 12px/帧 (飞过全屏只需 0.5 秒)
+            game->bullets[i].speed = (tank->tier >= 2) ? 12 : 9;
             game->bullets[i].pierce_steel = (tank->tier >= 4);
 
             // 根据坦克朝向算出枪口发射点
@@ -279,7 +279,7 @@ void bc_player_fire(bc_game_t *game, uint8_t player_id) {
                 game->bullets[i].y = tank->y + (BC_TANK_SIZE / 2);
             }
 
-            tank->shoot_cooldown = 5; // 极短冷却 (仅 5 帧约 0.15s)，顺畅连射
+            tank->shoot_cooldown = 0; // 零装填冷却，按一次必出一次
             game->last_sound = BC_EVT_FIRE;
             break;
         }

@@ -57,7 +57,7 @@ typedef enum {
 // 坦克与实体定义
 // ============================================================================
 #define BC_TANK_SIZE        14      // 坦克碰撞箱 14x14 像素 (便于在 16px 缝隙中穿行)
-#define BC_MAX_BULLETS      16      // 全场最大同屏子弹数
+#define BC_MAX_BULLETS      24      // 全场最大同屏子弹数 (扩大到 24 发，支持畅快连射)
 #define BC_MAX_ENEMIES      6       // 场上最大敌方坦克存活数
 #define BC_MAX_ITEMS        3       // 场上最大掉落道具数
 #define BC_TOTAL_ENEMIES    16      // 每关敌军坦克总配额

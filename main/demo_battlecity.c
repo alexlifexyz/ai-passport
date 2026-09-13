@@ -763,8 +763,7 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
         }
     } else if (btn == BSP_BTN_OK) {
         if (ev == BSP_BTN_PRESS) {
-            if (s_frame_tick - s_last_ok_press_tick < 5) return;
-            s_last_ok_press_tick = s_frame_tick;
+            // 按一次必发射一次，零等待，支持高速连点！
             bc_player_fire(&s_game, 1);
         } else if (ev == BSP_BTN_DOUBLE) {
             // 双击切换自动开火
