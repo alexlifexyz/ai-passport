@@ -101,30 +101,25 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
             DEMOS[s_active].key(btn, ev);
         }
     } else {
-        // 主菜单状态：按键按下 (PRESS) 或单击 (CLICK) 均即刻响应！
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
-            static uint32_t s_last_menu_tick = 0;
-            uint32_t now = esp_log_timestamp();
-            if (now - s_last_menu_tick >= 150) {
-                s_last_menu_tick = now;
-                if (btn == BSP_BTN_UP) {
-                    s_sel = (s_sel + DEMO_COUNT - 1) % DEMO_COUNT;
-                    menu_refresh();
-                    ui_pixel_mascot_jump(s_mascot);
-                } else if (btn == BSP_BTN_DOWN) {
-                    s_sel = (s_sel + 1) % DEMO_COUNT;
-                    menu_refresh();
-                    ui_pixel_mascot_jump(s_mascot);
-                } else if (btn == BSP_BTN_OK && s_ok[s_sel]) {
-                    s_active = s_sel;
-                    ui_pixel_mascot_jump(s_mascot);
-                    lv_obj_t *old_menu = s_menu_scr;
-                    s_menu_scr = NULL;
-                    s_mascot = NULL;
-                    DEMOS[s_active].enter();
-                    if (old_menu) {
-                        lv_obj_delete(old_menu);
-                    }
+        // 主菜单状态：每次点击精确步进一项，绝不跳格连跳！
+        if (ev == BSP_BTN_CLICK) {
+            if (btn == BSP_BTN_UP) {
+                s_sel = (s_sel + DEMO_COUNT - 1) % DEMO_COUNT;
+                menu_refresh();
+                ui_pixel_mascot_jump(s_mascot);
+            } else if (btn == BSP_BTN_DOWN) {
+                s_sel = (s_sel + 1) % DEMO_COUNT;
+                menu_refresh();
+                ui_pixel_mascot_jump(s_mascot);
+            } else if (btn == BSP_BTN_OK && s_ok[s_sel]) {
+                s_active = s_sel;
+                ui_pixel_mascot_jump(s_mascot);
+                lv_obj_t *old_menu = s_menu_scr;
+                s_menu_scr = NULL;
+                s_mascot = NULL;
+                DEMOS[s_active].enter();
+                if (old_menu) {
+                    lv_obj_delete(old_menu);
                 }
             }
         }

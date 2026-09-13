@@ -674,8 +674,8 @@ void demo_flappy_exit(void)
 
 void demo_flappy_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    // 按下即刻响应，60ms 防抖消除同一击连发
-    if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+    // 按下即刻响应跳跃，抬手不重复触发
+    if (ev == BSP_BTN_PRESS) {
         static uint32_t s_last_btn_tick = 0;
         uint32_t now = esp_log_timestamp();
         if (now - s_last_btn_tick < 60) return;
