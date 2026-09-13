@@ -46,8 +46,6 @@ static bool          s_paused = false;
 
 // 帧统计与动画
 static uint32_t      s_frame_tick = 0;
-static bool          s_btn_up_held = false;
-static bool          s_btn_down_held = false;
 
 // ESP-NOW 无线双机互联状态
 static bool          s_espnow_ready = false;
@@ -619,7 +617,7 @@ static void battlecity_draw_cb(lv_event_t *e) {
 }
 
 // ============================================================================
-// 游戏主刷新定时器 (30 FPS 丝滑更新)
+// 游戏主刷新定时器 (40 FPS 丝滑更新)
 // ============================================================================
 static void battlecity_timer_cb(lv_timer_t *timer) {
     (void)timer;
@@ -627,9 +625,14 @@ static void battlecity_timer_cb(lv_timer_t *timer) {
 
     s_frame_tick++;
 
-    // 按键长按连推判定
-    if (s_btn_up_held || s_btn_down_held) {
+    // 实时读取 ADC 电压，检测 DOWN 键按住状态 (即按即走，松手即停，零延迟)
+    int mv = bsp_button_read_mv();
+    if (mv >= 150 && mv < 447) {
+        // DOWN 键处于持续按住状态：沿当前车头方向全速向前推进！
         bc_player_move(&s_game, 1, true);
+    } else {
+        // 松开按键：立即制动停车
+        bc_player_move(&s_game, 1, false);
     }
 
     // 推进核心物理世界
@@ -640,7 +643,7 @@ static void battlecity_timer_cb(lv_timer_t *timer) {
         send_sound(s_game.last_sound);
     }
 
-    // ESP-NOW 周期广播同步 (每 3 帧发一次，约 10Hz)
+    // ESP-NOW 周期广播同步 (每 3 帧发一次，约 13Hz)
     if (s_espnow_ready && (s_frame_tick % 3 == 0)) {
         send_espnow_broadcast();
     }
@@ -690,9 +693,9 @@ static void battlecity_timer_cb(lv_timer_t *timer) {
 
 // ============================================================================
 // 按键交互逻辑
-// UP 单击: 逆时针转 90°; 长按: 全速推进
-// DOWN 单击: 顺时针转 90°; 长按: 全速推进
-// OK 单击: 开火; 双击: 自动射击开关 / 暂停; 长按: 统一返回
+// UP 键: 单击 = 顺时针转向 90°; 双击 = 调头 180° (专注方向换向)
+// DOWN 键: 按住/单击 = 沿当前车头方向全速向前推进 (油门前进键)
+// OK 键: 单击 = 畅快开火(支持同屏连发); 双击 = 切换自动连射; 长按 = 统一返回
 // ============================================================================
 void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
     if (s_game.game_over || s_game.victory) {
@@ -708,42 +711,26 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
 
     if (btn == BSP_BTN_UP) {
         if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
-            // 逆时针转 90° (UP -> LEFT -> DOWN -> RIGHT)
-            bc_dir_t new_dir = (bc_dir_t)((s_game.p1.dir + 3) % 4);
-            bc_player_turn(&s_game, 1, new_dir);
-            s_btn_up_held = true;
+            // UP 键专司方向：按一次顺时针转 90° (上 -> 右 -> 下 -> 左 -> 上)
+            bc_player_turn_clockwise(&s_game, 1);
         } else if (ev == BSP_BTN_DOUBLE) {
-            // 双击直接调头 180°
+            // 双击快速调头 180°
             bc_dir_t new_dir = (bc_dir_t)((s_game.p1.dir + 2) % 4);
             bc_player_turn(&s_game, 1, new_dir);
         }
     } else if (btn == BSP_BTN_DOWN) {
         if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
-            // 顺时针转 90° (UP -> RIGHT -> DOWN -> LEFT)
-            bc_dir_t new_dir = (bc_dir_t)((s_game.p1.dir + 1) % 4);
-            bc_player_turn(&s_game, 1, new_dir);
-            s_btn_down_held = true;
-        } else if (ev == BSP_BTN_DOUBLE) {
-            // 双击调头 180°
-            bc_dir_t new_dir = (bc_dir_t)((s_game.p1.dir + 2) % 4);
-            bc_player_turn(&s_game, 1, new_dir);
+            // DOWN 键单击：向前推进
+            bc_player_move(&s_game, 1, true);
         }
     } else if (btn == BSP_BTN_OK) {
         if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+            // OK 键开火：多发连发已放开，无需等待上一发完全消失
             bc_player_fire(&s_game, 1);
         } else if (ev == BSP_BTN_DOUBLE) {
             // 双击切换自动开火
             bc_player_toggle_autofire(&s_game, 1);
         }
-    }
-
-    // 检查按键松开状态 (通过读取当前 ADC 电压)
-    int mv = bsp_button_read_mv();
-    if (mv > 2000) {
-        // 无按键按下，停止推进
-        s_btn_up_held = false;
-        s_btn_down_held = false;
-        bc_player_move(&s_game, 1, false);
     }
 }
 
@@ -758,8 +745,6 @@ void demo_battlecity_enter(void) {
     bc_init_game(&s_game, 1);
     s_paused = false;
     s_frame_tick = 0;
-    s_btn_up_held = false;
-    s_btn_down_held = false;
     s_gameover_box = NULL;
     s_victory_box = NULL;
 
@@ -782,8 +767,8 @@ void demo_battlecity_enter(void) {
     // 4. 尝试启动 ESP-NOW 无线双机互联
     init_espnow_network();
 
-    // 5. 启动 30 FPS 游戏定时器 (33ms)
-    s_game_timer = lv_timer_create(battlecity_timer_cb, 33, NULL);
+    // 5. 启动 40 FPS 游戏定时器 (25ms，操作跟手零延迟)
+    s_game_timer = lv_timer_create(battlecity_timer_cb, 25, NULL);
 
     // 6. 载入屏幕
     lv_screen_load(s_scr);

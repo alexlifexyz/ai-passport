@@ -118,17 +118,36 @@ static void test_movement_and_grid_snap(void) {
     assert(g.p1.dir == BC_DIR_UP);
     assert(g.p1.x == 0); // 网格对齐生效
 
+    // 测试单键顺时针转向：UP -> RIGHT -> DOWN -> LEFT -> UP
+    bc_player_turn_clockwise(&g, 1);
+    assert(g.p1.dir == BC_DIR_RIGHT);
+    bc_player_turn_clockwise(&g, 1);
+    assert(g.p1.dir == BC_DIR_DOWN);
+    bc_player_turn_clockwise(&g, 1);
+    assert(g.p1.dir == BC_DIR_LEFT);
+    bc_player_turn_clockwise(&g, 1);
+    assert(g.p1.dir == BC_DIR_UP);
+
     // 测试移动
     bc_player_move(&g, 1, true);
     assert(g.p1.moving == true);
     int old_y = g.p1.y;
     bc_tick(&g);
-    assert(g.p1.y < old_y); // 向上推进
+    assert(g.p1.y < old_y); // 向上推进 (3px/帧)
+    assert(old_y - g.p1.y == 3);
 
     bc_player_move(&g, 1, false);
     assert(g.p1.moving == false);
 
-    printf("  ✓ Tank steering, movement and grid-snap alignment OK\n");
+    // 测试快速连发：初始 Tier 1 即可同时射出 2 发子弹
+    g.p1.shoot_cooldown = 0;
+    bc_player_fire(&g, 1);
+    assert(g.bullets[0].active == true);
+    g.p1.shoot_cooldown = 0; // 短冷却后立即补发第 2 发
+    bc_player_fire(&g, 1);
+    assert(g.bullets[1].active == true); // 成功连发！无需等上一发打碎或飞出屏幕
+
+    printf("  ✓ Tank clockwise steering, throttle movement and multi-bullet rapid fire OK\n");
 }
 
 static void test_bullet_clash(void) {

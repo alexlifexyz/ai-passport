@@ -190,7 +190,7 @@ void bc_init_game(bc_game_t *game, uint8_t stage) {
     game->p1.y = 15 * BC_TILE_SIZE + 1;
     game->p1.dir = BC_DIR_UP;
     game->p1.tier = 1;
-    game->p1.speed = 2;
+    game->p1.speed = 3; // 初始移速由 2 提升为 3px/帧，手感更敏捷
     game->p1.invincible_time = 90; // 3 秒无敌罩
 
     // 2P 玩家初始就绪备用
@@ -200,7 +200,16 @@ void bc_init_game(bc_game_t *game, uint8_t stage) {
     game->p2.y = 15 * BC_TILE_SIZE + 1;
     game->p2.dir = BC_DIR_UP;
     game->p2.tier = 1;
-    game->p2.speed = 2;
+    game->p2.speed = 3;
+}
+
+// 顺时针单键旋转 90 度 (上 -> 右 -> 下 -> 左)
+void bc_player_turn_clockwise(bc_game_t *game, uint8_t player_id) {
+    if (!game || game->game_over || game->paused) return;
+    bc_tank_t *tank = (player_id == 1) ? &game->p1 : &game->p2;
+    if (!tank->active) return;
+    bc_dir_t new_dir = (bc_dir_t)((tank->dir + 1) % 4);
+    bc_player_turn(game, player_id, new_dir);
 }
 
 // 坦克朝向控制与网格对齐辅助 (Grid-Snap)
@@ -235,9 +244,9 @@ void bc_player_fire(bc_game_t *game, uint8_t player_id) {
     bc_tank_t *tank = (player_id == 1) ? &game->p1 : &game->p2;
     if (!tank->active || tank->shoot_cooldown > 0) return;
 
-    // 检查玩家当前在屏子弹数 (Tier 1~2 最多 1 发，Tier 3~4 可同时 2 发)
+    // 检查玩家当前在屏子弹数：初始即允许 2 发连射，高级更可达 3 发，再也不用等上一颗完全消失
     int count = 0;
-    int max_allowed = (tank->tier >= 3) ? 2 : 1;
+    int max_allowed = (tank->tier >= 3) ? 3 : 2;
     for (int i = 0; i < BC_MAX_BULLETS; i++) {
         if (game->bullets[i].active && game->bullets[i].from_player && game->bullets[i].owner_id == player_id) {
             count++;
@@ -252,7 +261,7 @@ void bc_player_fire(bc_game_t *game, uint8_t player_id) {
             game->bullets[i].from_player = true;
             game->bullets[i].owner_id = player_id;
             game->bullets[i].dir = tank->dir;
-            game->bullets[i].speed = (tank->tier >= 2) ? 6 : 4;
+            game->bullets[i].speed = (tank->tier >= 2) ? 8 : 6; // 子弹疾速飞行 (6~8px/帧)
             game->bullets[i].pierce_steel = (tank->tier >= 4);
 
             // 根据坦克朝向算出枪口发射点
@@ -270,7 +279,7 @@ void bc_player_fire(bc_game_t *game, uint8_t player_id) {
                 game->bullets[i].y = tank->y + (BC_TANK_SIZE / 2);
             }
 
-            tank->shoot_cooldown = 12; // 约 0.4 秒装填
+            tank->shoot_cooldown = 5; // 极短冷却 (仅 5 帧约 0.15s)，顺畅连射
             game->last_sound = BC_EVT_FIRE;
             break;
         }
@@ -297,7 +306,7 @@ void bc_apply_item(bc_game_t *game, bc_item_type_t type, uint8_t player_id) {
     switch (type) {
         case BC_ITEM_STAR:
             if (tank->tier < 4) tank->tier++;
-            if (tank->tier >= 2) tank->speed = 3;
+            if (tank->tier >= 2) tank->speed = 4; // 升级加速至 4px/帧
             break;
         case BC_ITEM_BOMB:
             // 轰爆当前所有在场敌军
@@ -328,7 +337,7 @@ void bc_apply_item(bc_game_t *game, bc_item_type_t type, uint8_t player_id) {
             break;
         case BC_ITEM_GUN:
             tank->tier = 4;
-            tank->speed = 3;
+            tank->speed = 4; // 满级神装 4px/帧疾驰
             break;
         case BC_ITEM_LIFE:
             if (player_id == 1) game->p1_lives++;
@@ -387,23 +396,23 @@ static void spawn_enemy(bc_game_t *game) {
             game->enemies[i].invincible_time = 0;
             game->enemies[i].anim_frame = 0;
 
-            // 随机分配敌军类型
+            // 随机分配敌军类型 (移速大幅优化，告别慢吞吞)
             int r = rand() % 10;
             if (r < 4) {
                 game->enemies[i].type = BC_TANK_BASIC;
-                game->enemies[i].speed = 1;
+                game->enemies[i].speed = 2; // 兵坦移速提升至 2
                 game->enemies[i].tier = 1;
             } else if (r < 7) {
                 game->enemies[i].type = BC_TANK_FAST;
-                game->enemies[i].speed = 3;
+                game->enemies[i].speed = 4; // 疾风突击车提速至 4 (极速突袭)
                 game->enemies[i].tier = 1;
             } else if (r < 9) {
                 game->enemies[i].type = BC_TANK_POWER;
-                game->enemies[i].speed = 2;
+                game->enemies[i].speed = 3; // 高爆坦提速至 3
                 game->enemies[i].tier = 1;
             } else {
                 game->enemies[i].type = BC_TANK_ARMOR;
-                game->enemies[i].speed = 1;
+                game->enemies[i].speed = 2; // 重装泰坦提速至 2
                 game->enemies[i].tier = 3; // 重装坦耐打
             }
 
@@ -449,8 +458,8 @@ void bc_tick(bc_game_t *game) {
         if (game->p1.invincible_time > 0) game->p1.invincible_time--;
         if (game->p1.shoot_cooldown > 0) game->p1.shoot_cooldown--;
 
-        // 自动射击特性
-        if (game->auto_fire_p1 && (game->ticks % 10 == 0)) {
+        // 自动射击特性 (连发节奏更爽快)
+        if (game->auto_fire_p1 && (game->ticks % 6 == 0)) {
             bc_player_fire(game, 1);
         }
 
@@ -474,12 +483,12 @@ void bc_tick(bc_game_t *game) {
         }
     }
 
-    // 4. 敌军生成与 AI 更新
+    // 4. 敌军生成与 AI 更新 (加快刷新频率，战场更紧凑刺激)
     if (game->enemies_left_in_stage > 0) {
         if (game->spawn_timer > 0) game->spawn_timer--;
         else {
             spawn_enemy(game);
-            game->spawn_timer = 90; // 每 3 秒刷一只怪
+            game->spawn_timer = 40; // 约 1.2 秒刷一只怪，节奏大提速
         }
     }
 
@@ -492,7 +501,7 @@ void bc_tick(bc_game_t *game) {
             if (e->shoot_cooldown > 0) e->shoot_cooldown--;
 
             // 随机换向或遇到阻挡换向
-            if (rand() % 40 == 0) {
+            if (rand() % 30 == 0) {
                 // 疾风坦克更倾向于向下
                 if (e->type == BC_TANK_FAST && (rand() % 3 == 0)) {
                     e->dir = BC_DIR_DOWN;
@@ -518,18 +527,18 @@ void bc_tick(bc_game_t *game) {
             }
 
             // 敌方随机开火
-            if (e->shoot_cooldown == 0 && (rand() % 30 == 0)) {
+            if (e->shoot_cooldown == 0 && (rand() % 25 == 0)) {
                 for (int b = 0; b < BC_MAX_BULLETS; b++) {
                     if (!game->bullets[b].active) {
                         game->bullets[b].active = true;
                         game->bullets[b].from_player = false;
                         game->bullets[b].owner_id = 3 + i;
                         game->bullets[b].dir = e->dir;
-                        game->bullets[b].speed = (e->type == BC_TANK_POWER) ? 6 : 4;
+                        game->bullets[b].speed = (e->type == BC_TANK_POWER) ? 7 : 5;
                         game->bullets[b].pierce_steel = false;
                         game->bullets[b].x = e->x + BC_TANK_SIZE / 2;
                         game->bullets[b].y = e->y + BC_TANK_SIZE / 2;
-                        e->shoot_cooldown = 40;
+                        e->shoot_cooldown = 20; // 冷却缩减至 20 帧
                         break;
                     }
                 }

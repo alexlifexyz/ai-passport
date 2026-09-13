@@ -232,6 +232,7 @@ void bc_tick(bc_game_t *game);
 
 // 玩家按键控制指令注入
 void bc_player_turn(bc_game_t *game, uint8_t player_id, bc_dir_t dir);
+void bc_player_turn_clockwise(bc_game_t *game, uint8_t player_id);
 void bc_player_move(bc_game_t *game, uint8_t player_id, bool moving);
 void bc_player_fire(bc_game_t *game, uint8_t player_id);
 void bc_player_toggle_autofire(bc_game_t *game, uint8_t player_id);
