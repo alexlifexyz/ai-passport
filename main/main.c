@@ -19,17 +19,10 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
-    { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
     { "Flappy",    demo_flappy_enter,       demo_flappy_exit,       demo_flappy_key       },
+    { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
     { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
     { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
-    { "Display",   demo_display_enter,      demo_display_exit,      demo_display_key      },
-    { "Button",    demo_button_enter,       demo_button_exit,       demo_button_key       },
-    { "Audio",     demo_audio_enter,        demo_audio_exit,        demo_audio_key        },
-    { "Battery",   demo_battery_enter,      demo_battery_exit,      demo_battery_key      },
-    { "Wi-Fi",     demo_wifi_enter,         demo_wifi_exit,         demo_wifi_key         },
-    { "BLE",       demo_ble_enter,          demo_ble_exit,          demo_ble_key          },
-    { "Low Power", demo_low_power_enter,    demo_low_power_exit,    demo_low_power_key    },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
 
@@ -55,19 +48,21 @@ static void menu_refresh(void) {
 }
 
 static void menu_build(void) {
-    s_menu_scr = ui_pixel_screen_create("FoloToy");
+    s_menu_scr = ui_pixel_screen_create("ARCADE");
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
-        int x = 11 + (int)(i % 2) * 112;
-        int y = 42 + (int)(i / 2) * 38;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 34, UI_PAPER);
+        int col = (int)(i % 2);
+        int row = (int)(i / 2);
+        int x = 12 + col * 112;
+        int y = 58 + row * 62;
+        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 104, 48, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(s_rows[i]);
     }
 
-    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 246);
+    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 215);
 
     menu_refresh();
     lv_screen_load(s_menu_scr);
@@ -90,25 +85,38 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
         } else {
             DEMOS[s_active].key(btn, ev);
         }
-    } else if (ev == BSP_BTN_CLICK) {
-        if (btn == BSP_BTN_UP)   { s_sel = (s_sel + DEMO_COUNT - 1) % DEMO_COUNT; menu_refresh(); }
-        if (btn == BSP_BTN_DOWN) { s_sel = (s_sel + 1) % DEMO_COUNT;              menu_refresh(); }
-        if (btn == BSP_BTN_OK && s_ok[s_sel]) {
-            s_active = s_sel;
-            ui_pixel_mascot_jump(s_mascot);
-            lv_obj_delete(s_menu_scr);
-            s_menu_scr = NULL;
-            s_mascot = NULL;
-            DEMOS[s_active].enter();
-        } else if (btn == BSP_BTN_UP || btn == BSP_BTN_DOWN) {
-            ui_pixel_mascot_jump(s_mascot);
+    } else {
+        // 主菜单状态：按键按下 (PRESS) 或单击 (CLICK) 均即刻响应！
+        // 加上 180ms 硬件防抖，彻底消除"轻重点一下点不动"的假死问题
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+            static uint32_t s_last_menu_tick = 0;
+            uint32_t now = esp_log_timestamp();
+            if (now - s_last_menu_tick >= 180) {
+                s_last_menu_tick = now;
+                if (btn == BSP_BTN_UP) {
+                    s_sel = (s_sel + DEMO_COUNT - 1) % DEMO_COUNT;
+                    menu_refresh();
+                    ui_pixel_mascot_jump(s_mascot);
+                } else if (btn == BSP_BTN_DOWN) {
+                    s_sel = (s_sel + 1) % DEMO_COUNT;
+                    menu_refresh();
+                    ui_pixel_mascot_jump(s_mascot);
+                } else if (btn == BSP_BTN_OK && s_ok[s_sel]) {
+                    s_active = s_sel;
+                    ui_pixel_mascot_jump(s_mascot);
+                    lv_obj_delete(s_menu_scr);
+                    s_menu_scr = NULL;
+                    s_mascot = NULL;
+                    DEMOS[s_active].enter();
+                }
+            }
         }
     }
     bsp_lvgl_unlock();
 }
 
 void app_main(void) {
-    ESP_LOGI(TAG, "FoloToy AI Passport BSP demo 启动");
+    ESP_LOGI(TAG, "FoloToy AI Passport 街机掌机启动");
     esp_sleep_wakeup_cause_t wakeup = esp_sleep_get_wakeup_cause();
     if (wakeup != ESP_SLEEP_WAKEUP_UNDEFINED) {
         ESP_LOGI(TAG, "休眠唤醒原因: %d", wakeup);
@@ -117,10 +125,9 @@ void app_main(void) {
     bsp_i2c_init();
     bsp_i2c_scan();
 
-    // 屏幕是本 demo 的 UI 载体,失败就没有菜单可言 —— 打清楚日志后退出,
-    // 不做"串口菜单"降级(那会让本文件复杂一倍,违背参考示例的初衷)。
+    // 屏幕是本 demo 的 UI 载体,失败就没有菜单可言
     if (bsp_display_init() != ESP_OK || !bsp_lvgl_init()) {
-        ESP_LOGE(TAG, "显示/LVGL 初始化失败,demo 无法继续。"
+        ESP_LOGE(TAG, "显示/LVGL 初始化失败,无法继续。"
                       "检查 SPI 接线(MOSI=%d SCLK=%d CS=%d DC=%d BL=%d)",
                  BSP_LCD_MOSI, BSP_LCD_SCLK, BSP_LCD_CS, BSP_LCD_DC, BSP_LCD_BL);
         return;
@@ -128,20 +135,12 @@ void app_main(void) {
     bsp_display_backlight(100);
 
     bool btn_ok = (bsp_button_init(on_key, NULL) == ESP_OK);
-    bool audio_ok = (bsp_audio_init() == ESP_OK);
-    bool bat_ok = (bsp_battery_init() == ESP_OK);
+    bsp_audio_init();
+    bsp_battery_init();
 
-    s_ok[0] = btn_ok;                                 // Tank 1990 (经典坦克大战 Neo)
-    s_ok[1] = btn_ok;                                 // Flappy (像素飞鸟 HD)
-    s_ok[2] = btn_ok;                                 // Island (像素冒险岛 HD)
-    s_ok[3] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
-    s_ok[4] = true;                                   // Display 已确认可用
-    s_ok[5] = btn_ok;                                 // Button
-    s_ok[6] = audio_ok;                               // Audio
-    s_ok[7] = bat_ok;                                 // Battery
-    s_ok[8] = true;                                   // Wi-Fi 页面内按需初始化
-    s_ok[9] = true;                                   // BLE
-    s_ok[10] = true;                                  // Low Power
+    for (size_t i = 0; i < DEMO_COUNT; i++) {
+        s_ok[i] = btn_ok;
+    }
 
     if (bsp_lvgl_lock(1000)) {
         s_active = 0;
@@ -149,6 +148,5 @@ void app_main(void) {
         bsp_lvgl_unlock();
     }
 
-    ESP_LOGI(TAG, "就绪:Display=%d Button=%d Audio=%d Battery=%d",
-             s_ok[2], s_ok[3], s_ok[4], s_ok[5]);
+    ESP_LOGI(TAG, "街机就绪，启动首项: %s", DEMOS[0].name);
 }
