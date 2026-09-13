@@ -190,7 +190,7 @@ void bc_init_game(bc_game_t *game, uint8_t stage) {
     game->p1.y = 15 * BC_TILE_SIZE + 1;
     game->p1.dir = BC_DIR_UP;
     game->p1.tier = 1;
-    game->p1.speed = 3; // 初始移速由 2 提升为 3px/帧，手感更敏捷
+    game->p1.speed = 4; // 基础移速提升至 4px/帧 (每秒 160 像素，极速冲锋)
     game->p1.invincible_time = 90; // 3 秒无敌罩
 
     // 2P 玩家初始就绪备用
@@ -200,7 +200,7 @@ void bc_init_game(bc_game_t *game, uint8_t stage) {
     game->p2.y = 15 * BC_TILE_SIZE + 1;
     game->p2.dir = BC_DIR_UP;
     game->p2.tier = 1;
-    game->p2.speed = 3;
+    game->p2.speed = 4;
 }
 
 // 顺时针单键旋转 90 度 (上 -> 右 -> 下 -> 左)
@@ -306,7 +306,7 @@ void bc_apply_item(bc_game_t *game, bc_item_type_t type, uint8_t player_id) {
     switch (type) {
         case BC_ITEM_STAR:
             if (tank->tier < 4) tank->tier++;
-            if (tank->tier >= 2) tank->speed = 4; // 升级加速至 4px/帧
+            if (tank->tier >= 2) tank->speed = 5; // 升级加速至 5px/帧
             break;
         case BC_ITEM_BOMB:
             // 轰爆当前所有在场敌军
@@ -337,7 +337,7 @@ void bc_apply_item(bc_game_t *game, bc_item_type_t type, uint8_t player_id) {
             break;
         case BC_ITEM_GUN:
             tank->tier = 4;
-            tank->speed = 4; // 满级神装 4px/帧疾驰
+            tank->speed = 6; // 满级神装 6px/帧疾驰 (极速狂飙)
             break;
         case BC_ITEM_LIFE:
             if (player_id == 1) game->p1_lives++;
@@ -463,22 +463,24 @@ void bc_tick(bc_game_t *game) {
             bc_player_fire(game, 1);
         }
 
-        // 移动判定
+        // 移动判定 (逐像素精准推进，彻底消除大步长卡墙角，手感极其丝滑顺畅)
         if (game->p1.moving) {
             game->p1.anim_frame ^= 1;
-            int nx = game->p1.x;
-            int ny = game->p1.y;
             int spd = game->p1.speed;
+            for (int s = 0; s < spd; s++) {
+                int nx = game->p1.x;
+                int ny = game->p1.y;
+                if (game->p1.dir == BC_DIR_UP) ny -= 1;
+                else if (game->p1.dir == BC_DIR_DOWN) ny += 1;
+                else if (game->p1.dir == BC_DIR_LEFT) nx -= 1;
+                else nx += 1;
 
-            if (game->p1.dir == BC_DIR_UP) ny -= spd;
-            else if (game->p1.dir == BC_DIR_DOWN) ny += spd;
-            else if (game->p1.dir == BC_DIR_LEFT) nx -= spd;
-            else nx += spd;
-
-            // 地形与边界碰撞检测
-            if (!is_blocked_by_terrain(game, nx, ny, BC_TANK_SIZE, BC_TANK_SIZE, false)) {
-                game->p1.x = nx;
-                game->p1.y = ny;
+                if (!is_blocked_by_terrain(game, nx, ny, BC_TANK_SIZE, BC_TANK_SIZE, false)) {
+                    game->p1.x = nx;
+                    game->p1.y = ny;
+                } else {
+                    break; // 贴紧障碍物边缘停止，绝不卡死
+                }
             }
         }
     }
@@ -510,16 +512,26 @@ void bc_tick(bc_game_t *game) {
                 }
             }
 
-            int nx = e->x;
-            int ny = e->y;
-            if (e->dir == BC_DIR_UP) ny -= e->speed;
-            else if (e->dir == BC_DIR_DOWN) ny += e->speed;
-            else if (e->dir == BC_DIR_LEFT) nx -= e->speed;
-            else nx += e->speed;
+            int spd = e->speed;
+            bool moved = false;
+            for (int s = 0; s < spd; s++) {
+                int nx = e->x;
+                int ny = e->y;
+                if (e->dir == BC_DIR_UP) ny -= 1;
+                else if (e->dir == BC_DIR_DOWN) ny += 1;
+                else if (e->dir == BC_DIR_LEFT) nx -= 1;
+                else nx += 1;
 
-            if (!is_blocked_by_terrain(game, nx, ny, BC_TANK_SIZE, BC_TANK_SIZE, false)) {
-                e->x = nx;
-                e->y = ny;
+                if (!is_blocked_by_terrain(game, nx, ny, BC_TANK_SIZE, BC_TANK_SIZE, false)) {
+                    e->x = nx;
+                    e->y = ny;
+                    moved = true;
+                } else {
+                    break;
+                }
+            }
+
+            if (moved) {
                 e->anim_frame ^= 1;
             } else {
                 // 撞墙立即换向

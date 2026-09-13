@@ -48,6 +48,7 @@ static bool          s_paused = false;
 static uint32_t      s_frame_tick = 0;
 static uint32_t      s_last_up_press_tick = 0;
 static uint32_t      s_last_ok_press_tick = 0;
+static uint8_t       s_step_ticks = 0; // 单击前进步进缓冲计数 (走满一格 16px)
 
 // ESP-NOW 无线双机互联状态
 static bool          s_espnow_ready = false;
@@ -655,13 +656,18 @@ static void battlecity_timer_cb(lv_timer_t *timer) {
 
     s_frame_tick++;
 
-    // 实时读取 ADC 电压，检测 DOWN 键按住状态 (即按即走，松手即停，零延迟)
+    // 实时读取 ADC 电压，检测 DOWN 键 (按住持续狂飙 + 单击步进 16px 一整格)
     int mv = bsp_button_read_mv();
     if (mv >= 150 && mv < 447) {
-        // DOWN 键处于持续按住状态：沿当前车头方向全速向前推进！
+        // DOWN 键处于持续按住状态：充能保持，一路全速狂飙！
+        s_step_ticks = 4;
+        bc_player_move(&s_game, 1, true);
+    } else if (s_step_ticks > 0) {
+        // 单击触发的剩余步进 (4 帧 @4px = 16 像素，稳稳前进一步)
+        s_step_ticks--;
         bc_player_move(&s_game, 1, true);
     } else {
-        // 松开按键：立即制动停车
+        // 步进完成且未按住：原地制动刹车
         bc_player_move(&s_game, 1, false);
     }
 
@@ -758,7 +764,8 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
         }
     } else if (btn == BSP_BTN_DOWN) {
         if (ev == BSP_BTN_PRESS) {
-            // DOWN 键按下向前推进 (按住推进由定时器 40Hz 实时硬件采样全权托管)
+            // DOWN 键按下：赋予 4 帧步进充能 (走满整整一格 16px，点一下必向前迈出一大步！)
+            s_step_ticks = 4;
             bc_player_move(&s_game, 1, true);
         }
     } else if (btn == BSP_BTN_OK) {
@@ -785,6 +792,7 @@ void demo_battlecity_enter(void) {
     s_frame_tick = 0;
     s_last_up_press_tick = 0;
     s_last_ok_press_tick = 0;
+    s_step_ticks = 0;
     s_gameover_box = NULL;
     s_victory_box = NULL;
 

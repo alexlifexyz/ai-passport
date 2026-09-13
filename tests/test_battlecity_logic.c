@@ -133,8 +133,8 @@ static void test_movement_and_grid_snap(void) {
     assert(g.p1.moving == true);
     int old_y = g.p1.y;
     bc_tick(&g);
-    assert(g.p1.y < old_y); // 向上推进 (3px/帧)
-    assert(old_y - g.p1.y == 3);
+    assert(g.p1.y < old_y); // 向上推进 (4px/帧)
+    assert(old_y - g.p1.y == 4);
 
     bc_player_move(&g, 1, false);
     assert(g.p1.moving == false);
