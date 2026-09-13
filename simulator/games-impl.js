@@ -2164,6 +2164,149 @@
         }
         ctx.textAlign = 'left'; ctx.lineWidth = 1;
       }
+    },
+
+    fish: {
+      init() {
+        this.x = 110; this.y = 150; this.tx = 140; this.ty = 160;
+        this.attention = 0.72; this.mood = 'curious'; this.vis = 'full';
+        this.idle = 0; this.moodT = 0; this.night = false;
+        this.arrived = false; this.face = false; this.left = false;
+        this.startle = 0; this.cool = 0; this.voiceHold = 0;
+        this.bubbles = []; this.t = 0;
+        this.hideX = 208; this.hideY = 214; this.viewX = 120; this.viewY = 168;
+      },
+      notice(delta) {
+        this.attention = clamp(this.attention + delta, 0, 1);
+        this.idle = 0; this.voiceHold = 0;
+        if (this.mood === 'startled') return;
+        if (this.mood === 'hiding' || this.mood === 'sleep') { this.setMood('peek'); return; }
+        if (this.mood === 'peek') { this.setMood(this.attention >= 0.55 ? 'attend' : 'curious'); return; }
+        if (this.attention >= 0.55) this.setMood('attend');
+      },
+      setMood(m) {
+        if (this.mood === m) return;
+        this.mood = m; this.moodT = 0; this.arrived = false; this.face = false;
+        if (m === 'hiding') { this.tx = this.hideX; this.ty = this.hideY; if (this.attention > 0.22) this.attention = 0.22; }
+        else if (m === 'peek') { this.tx = this.hideX - 18; this.ty = this.hideY - 6; }
+        else if (m === 'attend') { this.tx = this.viewX; this.ty = this.viewY; }
+        else if (m === 'startled') {
+          this.startle = 1400; this.cool = 700; this.vis = 'full';
+          this.tx = 40 + Math.random() * 150; this.ty = 70 + Math.random() * 160;
+        } else if (m === 'sleep') { this.tx = this.hideX; this.ty = this.hideY; }
+        else { this.tx = 40 + Math.random() * 150; this.ty = 70 + Math.random() * 160; }
+      },
+      onOk(snd) { this.notice(0.45); if (snd) snd.playCoin(); },
+      box(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); },
+      weeds(ctx, right, night, t) {
+        const base = right ? 198 : 4, n = right ? 8 : 5;
+        for (let i = 0; i < n; i++) {
+          const x = base + i * 5;
+          const h = 70 + ((i * 17) % 40) + (right ? 18 : 0);
+          const sway = Math.sin(t / 220 + i) * 3;
+          this.box(ctx, x + sway, 292 - h, 3, h, night ? '#14532d' : (i & 1 ? '#166534' : '#4ade80'));
+        }
+      },
+      drawFish(ctx, t) {
+        const cx = this.x | 0, cy = this.y | 0;
+        if (this.vis === 'tail') {
+          const wag = Math.sin(t / 80) * 3;
+          this.box(ctx, cx - 14, cy - 3 + wag, 10, 4, '#f59e0b');
+          this.box(ctx, cx - 6, cy - 1, 5, 5, '#ea580c');
+          return;
+        }
+        if (this.vis === 'peek') {
+          this.box(ctx, cx - 6, cy - 4, 8, 10, '#f97316');
+          this.box(ctx, cx - 5, cy - 3, 5, 5, '#fff');
+          this.box(ctx, cx - 3, cy - 2, 3, 3, '#0f172a');
+          return;
+        }
+        if (this.face) {
+          this.box(ctx, cx - 8, cy - 8, 16, 16, '#f97316');
+          this.box(ctx, cx - 7, cy - 5, 6, 6, '#fff');
+          this.box(ctx, cx + 1, cy - 5, 6, 6, '#fff');
+          this.box(ctx, cx - 5, cy - 3, 3, 3, '#0f172a');
+          this.box(ctx, cx + 3, cy - 3, 3, 3, '#0f172a');
+          return;
+        }
+        const dir = this.left ? -1 : 1;
+        this.box(ctx, cx - dir * 12 - (this.left ? 8 : 0), cy - 4, 8, 8, '#f59e0b');
+        this.box(ctx, cx - 8, cy - 7, 18, 14, '#f97316');
+        this.box(ctx, cx - 5, cy + 1, 11, 6, '#ffedd5');
+        this.box(ctx, cx + dir * 6 - 2, cy - 4, 5, 5, '#fff');
+        this.box(ctx, cx + dir * 6, cy - 3, 3, 3, '#0f172a');
+      },
+      update(dt, keys, snd) {
+        this.t += dt; this.idle += dt; this.moodT += dt;
+        this.attention = clamp(this.attention - 0.008 * dt / 1000, 0, 1);
+        if (this.cool > 0) this.cool -= dt;
+        if (keys.upEdge) this.notice(0.18);
+        if (keys.downEdge) this.night = !this.night;
+        if (keys.voice) {
+          this.voiceHold += dt;
+          if (this.voiceHold >= 280) this.notice(0.35);
+        } else this.voiceHold = Math.max(0, this.voiceHold - dt);
+        if (keys.blow && this.cool <= 0) {
+          this.attention *= 0.7; this.idle = 0; this.setMood('startled');
+          if (snd) snd.playHit();
+        }
+        if (this.mood === 'startled') {
+          this.startle -= dt;
+          if (this.startle <= 0) this.setMood(this.attention < 0.18 ? 'hiding' : 'curious');
+          else if ((this.moodT | 0) % 180 < dt) {
+            this.tx = 40 + Math.random() * 150; this.ty = 70 + Math.random() * 160; this.arrived = false;
+          }
+        } else if (this.mood !== 'hiding' && this.mood !== 'peek' && this.mood !== 'sleep') {
+          if (this.idle >= 30000) this.setMood('hiding');
+          else if (this.night && this.idle >= 20000) this.setMood('sleep');
+          else if (this.mood === 'attend' && this.attention < 0.55) this.setMood('curious');
+        }
+        const speeds = { curious: 22, attend: 36, hiding: 48, startled: 96, peek: 10, sleep: 48 };
+        const sp = speeds[this.mood] || 22;
+        const dx = this.tx - this.x, dy = this.ty - this.y, d2 = dx * dx + dy * dy;
+        if (d2 < 9) this.arrived = true;
+        else {
+          const d = Math.sqrt(d2);
+          this.x += (dx / d) * sp * dt / 1000;
+          this.y += (dy / d) * sp * dt / 1000;
+          this.left = dx < 0; this.arrived = false;
+        }
+        if (this.mood === 'attend') {
+          this.vis = 'full';
+          if (this.arrived) { this.face = true; this.y = this.ty + Math.sin(this.t / 280) * 3; }
+        } else if (this.mood === 'hiding' || this.mood === 'sleep') {
+          if (this.arrived) { this.vis = 'tail'; this.left = true; this.y = this.ty + Math.sin(this.t / 400) * 2; }
+          else this.vis = 'full';
+        } else if (this.mood === 'peek') { this.vis = 'peek'; this.left = true; this.face = this.arrived; }
+        else this.vis = 'full';
+        this.x = clamp(this.x, 28, (this.mood === 'hiding' || this.mood === 'sleep') ? 212 : 196);
+        this.y = clamp(this.y, 56, 248);
+        if (Math.random() < dt / ((this.mood === 'attend') ? 900 : 2200)) {
+          this.bubbles.push({ x: this.x, y: this.y, vy: -20, life: 1 });
+        }
+        this.bubbles = this.bubbles.filter(b => {
+          b.y += b.vy * dt / 1000; b.life -= dt / 2800; return b.life > 0 && b.y > 28;
+        });
+      },
+      render(ctx) {
+        const night = this.night;
+        const g = ctx.createLinearGradient(0, 0, 0, 320);
+        g.addColorStop(0, night ? '#020617' : '#082f49');
+        g.addColorStop(1, night ? '#155e75' : '#0ea5e9');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 240, 320);
+        this.box(ctx, 0, 18, 240, 3, night ? '#1e293b' : '#7dd3fc');
+        this.box(ctx, 0, 288, 240, 32, night ? '#44403c' : '#a16207');
+        this.weeds(ctx, false, night, this.t);
+        this.drawFish(ctx, this.t);
+        this.weeds(ctx, true, night, this.t);
+        this.bubbles.forEach(b => { this.box(ctx, b.x, b.y, 3, 3, '#e0f2fe'); });
+        this.box(ctx, 0, 0, 240, 6, '#0f172a');
+        ctx.fillStyle = '#fde68a'; ctx.font = 'bold 11px monospace';
+        const label = { curious: 'SWIM', attend: 'HELLO', hiding: 'HIDING', peek: 'PEEK', startled: '!!!', sleep: 'ZZZ' }[this.mood];
+        ctx.fillText(label, 10, 18);
+        ctx.fillStyle = '#bae6fd'; ctx.font = '9px monospace';
+        ctx.fillText(night ? 'OK CALL  UP TAP  DN DAY' : 'OK CALL  UP TAP  DN NIGHT', 10, 312);
+      }
     }
   };
 

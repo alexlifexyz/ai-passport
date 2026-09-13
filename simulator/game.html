@@ -384,7 +384,7 @@ const ctx = canvas.getContext('2d');
 
 let lastTime = performance.now();
 let frameCount = 0;
-const keys = { up: false, down: false, ok: false, blow: false, upEdge: false, downEdge: false, okEdge: false, okHold: false };
+const keys = { up: false, down: false, ok: false, blow: false, voice: false, upEdge: false, downEdge: false, okEdge: false, okHold: false };
 const prevKeys = { up: false, down: false, ok: false };
 let okHoldTicks = 0;
 
@@ -402,6 +402,7 @@ window.addEventListener('keydown', e => {
     keys.ok = true; document.getElementById('circle-ok').classList.add('active');
   }
   if (e.code === 'KeyB') keys.blow = true;
+  if (e.code === 'KeyV') keys.voice = true;
 });
 window.addEventListener('keyup', e => {
   if (['ArrowUp', 'ArrowLeft', 'KeyW'].includes(e.code)) {
@@ -414,6 +415,7 @@ window.addEventListener('keyup', e => {
     keys.ok = false; document.getElementById('circle-ok').classList.remove('active');
   }
   if (e.code === 'KeyB') keys.blow = false;
+  if (e.code === 'KeyV') keys.voice = false;
 });
 
 function bindBtn(id, circleId, keyName) {

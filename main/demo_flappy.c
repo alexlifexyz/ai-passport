@@ -166,10 +166,25 @@ static void flappy_audio_task(void *arg)
     vTaskDelete(NULL);
 }
 
-// 零 DRAM 开销原生 LVGL 9.x 矢量即时绘制矩形辅助
+// 零 DRAM 开销原生 LVGL 9.x 矢量即时绘制矩形辅助 (带屏幕视口安全裁切，防止下溢与溢出)
 static inline void draw_box(lv_layer_t *layer, int x, int y, int w, int h, uint32_t hex_color)
 {
     if (w <= 0 || h <= 0) return;
+    if (x < 0) {
+        w += x;
+        x = 0;
+        if (w <= 0) return;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+        if (h <= 0) return;
+    }
+    if (x >= SCREEN_W || y >= SCREEN_H) return;
+    if (x + w > SCREEN_W) w = SCREEN_W - x;
+    if (y + h > SCREEN_H) h = SCREEN_H - y;
+    if (w <= 0 || h <= 0) return;
+
     lv_draw_rect_dsc_t dsc;
     lv_draw_rect_dsc_init(&dsc);
     dsc.bg_color = lv_color_hex(hex_color);
@@ -627,14 +642,14 @@ void demo_flappy_exit(void)
     }
 
     s_audio_running = false;
+    if (s_snd_task) {
+        vTaskDelete(s_snd_task);
+        s_snd_task = NULL;
+    }
     if (s_snd_queue) {
-        flappy_snd_t none = FLAPPY_SND_NONE;
-        xQueueSend(s_snd_queue, &none, 0);
-        vTaskDelay(pdMS_TO_TICKS(60));
         vQueueDelete(s_snd_queue);
         s_snd_queue = NULL;
     }
-    s_snd_task = NULL;
 
     if (s_scr) {
         lv_obj_delete(s_scr);

@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- Added Hiding Fish, a pocket aquarium companion: talk or press OK and it swims up to look at you, tap the glass to peek it out of the weeds, blow into the microphone to startle it, and ignore it for a while (or leave it for hours) and it hides with only its tail showing. No hunger, no death. Firmware, host tests, and an Alex Arcade cabinet.
+
 - Added Battle City Neo (1990 classic tank combat) with 8x8 sub-tile destructible brick physics, steel penetration at tier 4, eagle base protection, 7 bonus powerups, 16kHz retro chiptune audio synthesis, zero-config ESP-NOW wireless dual-device co-op, and browser simulator integration in `simulator/hub.html` and `arcade/`.
 - Added the Alex Arcade public lobby under `arcade/`: a cabinet-wall homepage for the ten playable titles plus the world-clock lounge, with GitHub Pages redirects from the repository root and `simulator/index.html`.
 - Thunder Racer firmware HUD now shows near-miss combo streaks and switches the track palette at night.

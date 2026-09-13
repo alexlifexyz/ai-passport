@@ -81,8 +81,10 @@ static void enter_menu(void) {
 
 void bsp_demo_return_to_menu(void) {
     if (s_active >= 0) {
-        DEMOS[s_active].exit();
+        int old_active = s_active;
+        s_active = -1;
         enter_menu();
+        DEMOS[old_active].exit();
     }
 }
 
@@ -116,10 +118,13 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
                 } else if (btn == BSP_BTN_OK && s_ok[s_sel]) {
                     s_active = s_sel;
                     ui_pixel_mascot_jump(s_mascot);
-                    lv_obj_delete(s_menu_scr);
+                    lv_obj_t *old_menu = s_menu_scr;
                     s_menu_scr = NULL;
                     s_mascot = NULL;
                     DEMOS[s_active].enter();
+                    if (old_menu) {
+                        lv_obj_delete(old_menu);
+                    }
                 }
             }
         }

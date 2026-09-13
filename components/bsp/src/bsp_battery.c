@@ -112,14 +112,15 @@ static int cw_update_profile(void) {
     return cw_enter_active();
 }
 
-// 首次计算期间 SOC 可能暂时大于 100；最多等待 5 秒再判定初始化失败。
+// 首次计算期间 SOC 可能暂时大于 100；最多等待 500ms，避免阻塞开机看门狗。
 static int cw_wait_soc_ready(void) {
-    for (int retry = 0; retry < 50; retry++) {
+    for (int retry = 0; retry < 5; retry++) {
         uint8_t soc = 0;
         vTaskDelay(pdMS_TO_TICKS(100));
         if (cw_read(CW_REG_SOC_H, &soc, 1) == 0 && soc <= 100) return 0;
     }
-    return -1;
+    ESP_LOGW(TAG, "SOC 尚未就绪，将在后台继续计算");
+    return 0;
 }
 
 esp_err_t bsp_battery_init(void) {

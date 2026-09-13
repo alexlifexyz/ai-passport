@@ -447,6 +447,21 @@
       help: '• <strong>DOWN 键</strong>：举枪对准恶魔开火！实弹造成重创，空弹交换回合。<br>• <strong>OK 键</strong>：对准自己开火！若是空弹，本回合不切换，继续由你行动！<br>• <strong>UP 键</strong>：使用放大镜测探当前弹药、手锯使伤害翻倍、香烟回复生命。'
     },
     {
+      id: 'fish',
+      title: '会躲起来的鱼',
+      subtitle: 'HIDING FISH: POCKET BOWL',
+      icon: '🐠',
+      category: 'creative',
+      badge: 'COMPANION',
+      difficulty: 1,
+      tags: ['对它说话会游过来', '吹气吓跑', '不理就躲进水草', '没有死亡'],
+      desc: '鱼缸里只有一条像素鱼。对它说话或按 OK，它会游到玻璃前看着你；轻敲缸壁，藏着的它会探出一只眼；猛吹一口气，它吓得乱窜。长时间不理，它钻进水草，只留下一条晃动的尾巴。没有饥饿，不会死，只有它还在不在看你。',
+      upHint: '轻敲缸壁',
+      downHint: '白天 / 夜里',
+      okHint: '叫它一声 (V说话 / B吹气)',
+      help: '• <strong>OK 键</strong>：叫它一声。藏在草里时要叫两回：先探头，再游出来。<br>• <strong>UP 键</strong>：轻敲玻璃。夜里睡着了也可以把它敲醒。<br>• <strong>DOWN 键</strong>：切换白天 / 夜里。夜里安静一会儿它会去草里打盹。<br>• <strong>说话 / V 键</strong>：持续出声，它会游到你面前。<br>• <strong>吹气 / B 键</strong>：猛吹一口，它吓得乱窜，然后可能躲回草里。<br>• 静静看 30 秒，它会害羞地藏起来，只露尾巴。'
+    },
+    {
       id: 'sparkler',
       title: '星火仙女棒与赛博烛火',
       subtitle: 'SPARKLER & CYBER CANDLE',
