@@ -190,7 +190,7 @@ void bc_init_game(bc_game_t *game, uint8_t stage) {
     game->p1.y = 15 * BC_TILE_SIZE + 1;
     game->p1.dir = BC_DIR_UP;
     game->p1.tier = 1;
-    game->p1.speed = 4; // 基础移速提升至 4px/帧 (每秒 160 像素，极速冲锋)
+    game->p1.speed = 6; // 基础移速提升至 6px/帧 (极速冲锋)
     game->p1.invincible_time = 90; // 3 秒无敌罩
 
     // 2P 玩家初始就绪备用
@@ -200,7 +200,7 @@ void bc_init_game(bc_game_t *game, uint8_t stage) {
     game->p2.y = 15 * BC_TILE_SIZE + 1;
     game->p2.dir = BC_DIR_UP;
     game->p2.tier = 1;
-    game->p2.speed = 4;
+    game->p2.speed = 6;
 }
 
 // 顺时针单键旋转 90 度 (上 -> 右 -> 下 -> 左)

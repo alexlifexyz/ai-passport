@@ -285,132 +285,70 @@ static inline void draw_box(lv_layer_t *layer, int x, int y, int w, int h, uint3
     lv_draw_rect(layer, &dsc, &a);
 }
 
-// 绘制 8x8 单个红砖子块
-static void draw_sub_brick(lv_layer_t *layer, int x, int y) {
-    draw_box(layer, x, y, 8, 8, 0xB91C1C);       // 暗红基底
-    draw_box(layer, x + 1, y + 1, 6, 2, 0xDC2626); // 砖面高光
-    draw_box(layer, x + 1, y + 4, 6, 2, 0x7F1D1D); // 砖缝阴影
-    draw_box(layer, x, y + 3, 8, 1, 0x1E293B);     // 黑泥缝
+// 绘制 8x8 单个红砖子块 (极简单矩形，零 CPU 光栅化开销)
+static inline void draw_sub_brick(lv_layer_t *layer, int x, int y) {
+    draw_box(layer, x, y, 7, 7, 0xDC2626);
 }
 
-// 绘制 16x16 钢板
+// 绘制 16x16 钢板 (双矩形极速渲染)
 static void draw_steel_tile(lv_layer_t *layer, int x, int y) {
-    draw_box(layer, x, y, 16, 16, 0x94A3B8);       // 银白金属底色
-    draw_box(layer, x + 1, y + 1, 14, 14, 0xCBD5E1);
-    draw_box(layer, x + 2, y + 2, 5, 5, 0xE2E8F0);
-    draw_box(layer, x + 9, y + 2, 5, 5, 0xE2E8F0);
-    draw_box(layer, x + 2, y + 9, 5, 5, 0xE2E8F0);
-    draw_box(layer, x + 9, y + 9, 5, 5, 0xE2E8F0);
-    draw_box(layer, x + 7, y, 2, 16, 0x475569);    // 金属分割线
-    draw_box(layer, x, y + 7, 16, 2, 0x475569);
-}
-
-// 绘制 16x16 动态流水
-static void draw_water_tile(lv_layer_t *layer, int x, int y) {
-    draw_box(layer, x, y, 16, 16, 0x0284C7);       // 湛蓝水面
-    int wave = (s_frame_tick / 6) % 2;
-    if (wave == 0) {
-        draw_box(layer, x + 2, y + 3, 6, 2, 0x38BDF8);
-        draw_box(layer, x + 9, y + 9, 5, 2, 0x38BDF8);
-    } else {
-        draw_box(layer, x + 4, y + 5, 6, 2, 0x38BDF8);
-        draw_box(layer, x + 1, y + 11, 6, 2, 0x38BDF8);
-    }
-}
-
-// 绘制 16x16 冰面
-static void draw_ice_tile(lv_layer_t *layer, int x, int y) {
-    draw_box(layer, x, y, 16, 16, 0xBAE6FD);       // 冰晶浅蓝
-    draw_box(layer, x + 2, y + 2, 4, 1, 0xF0F9FF);
-    draw_box(layer, x + 8, y + 7, 6, 1, 0xF0F9FF);
-    draw_box(layer, x + 4, y + 12, 5, 1, 0xF0F9FF);
-}
-
-// 绘制 16x16 树冠草丛
-static void draw_forest_tile(lv_layer_t *layer, int x, int y) {
-    draw_box(layer, x, y, 16, 16, 0x15803D);       // 深浓绿
-    draw_box(layer, x + 1, y + 1, 6, 5, 0x22C55E); // 浅绿树叶
-    draw_box(layer, x + 9, y + 2, 5, 5, 0x16A34A);
-    draw_box(layer, x + 3, y + 9, 8, 5, 0x22C55E);
+    draw_box(layer, x, y, 15, 15, 0x64748B);       // 钢板深灰基座
+    draw_box(layer, x + 2, y + 2, 11, 11, 0xCBD5E1); // 浅银灰装甲板
 }
 
 // 绘制基地雄鹰
 static void draw_base_eagle(lv_layer_t *layer, int x, int y, bool alive) {
     if (alive) {
-        // 展翅金鹰雕像
-        draw_box(layer, x + 4, y + 2, 8, 4, 0xF59E0B);  // 鹰首金黄
-        draw_box(layer, x + 6, y + 4, 4, 2, 0xFDE047);
-        draw_box(layer, x + 2, y + 6, 12, 6, 0xD97706); // 黄金羽翼
-        draw_box(layer, x, y + 8, 16, 4, 0xB45309);
-        draw_box(layer, x + 4, y + 12, 8, 4, 0x78350F); // 坚固底座
+        // 展翅金鹰雕像 (简明轮廓)
+        draw_box(layer, x + 2, y + 4, 12, 8, 0xD97706); // 黄金羽翼
+        draw_box(layer, x + 5, y + 2, 6, 6, 0xFDE047);  // 鹰首金黄
+        draw_box(layer, x + 4, y + 12, 8, 3, 0x78350F); // 坚固基座
     } else {
-        // 破损废墟冒黑烟
+        // 破损废墟
         draw_box(layer, x + 2, y + 6, 12, 8, 0x334155);
-        draw_box(layer, x + 4, y + 4, 8, 4, 0x475569);
-        draw_box(layer, x + 6, y + 8, 4, 4, 0x0F172A); // 破洞
-        // 一缕飘散黑烟
-        int smoke = (s_frame_tick / 4) % 3;
-        draw_box(layer, x + 7 - smoke, y - smoke * 2, 3, 3, 0x64748B);
+        draw_box(layer, x + 5, y + 8, 6, 4, 0x0F172A);
     }
 }
 
-// 绘制一辆坦克 (根据朝向、颜色、履带滚动与无敌光圈)
+// 绘制一辆坦克 (轻量化 4-box 高速光栅化，彻底释放 CPU)
 static void draw_tank(lv_layer_t *layer, const bc_tank_t *t, uint32_t main_col, uint32_t track_col) {
     if (!t->active) return;
     int tx = t->x;
     int ty = BC_OFFSET_Y + t->y;
 
-    // 1. 无敌金钟罩护盾力场 (闪烁环绕光圈)
+    // 1. 无敌金钟罩护盾力场 (闪烁细框)
     if (t->invincible_time > 0) {
         uint32_t shield_col = ((s_frame_tick / 3) % 2 == 0) ? 0x00E5FF : 0xFACC15;
-        draw_box(layer, tx - 2, ty - 2, 18, 2, shield_col);
-        draw_box(layer, tx - 2, ty + 14, 18, 2, shield_col);
-        draw_box(layer, tx - 2, ty, 2, 14, shield_col);
-        draw_box(layer, tx + 14, ty, 2, 14, shield_col);
+        draw_box(layer, tx - 1, ty - 1, 16, 1, shield_col);
+        draw_box(layer, tx - 1, ty + 14, 16, 1, shield_col);
+        draw_box(layer, tx - 1, ty, 1, 14, shield_col);
+        draw_box(layer, tx + 14, ty, 1, 14, shield_col);
     }
 
-    // 2. 履带与车体 (14x14)
+    // 2. 履带、车体与炮管
     if (t->dir == BC_DIR_UP || t->dir == BC_DIR_DOWN) {
-        // 左右两条垂直履带
+        // 左右两条履带
         draw_box(layer, tx, ty, 3, 14, track_col);
         draw_box(layer, tx + 11, ty, 3, 14, track_col);
-        // 履带轮齿交替
-        int track_offset = t->anim_frame ? 2 : 0;
-        draw_box(layer, tx, ty + track_offset, 3, 2, 0x000000);
-        draw_box(layer, tx, ty + 6 + track_offset, 3, 2, 0x000000);
-        draw_box(layer, tx + 11, ty + track_offset, 3, 2, 0x000000);
-        draw_box(layer, tx + 11, ty + 6 + track_offset, 3, 2, 0x000000);
-
         // 主车厢中枢
         draw_box(layer, tx + 3, ty + 2, 8, 10, main_col);
-        draw_box(layer, tx + 4, ty + 3, 6, 8, main_col);
-        draw_box(layer, tx + 5, ty + 5, 4, 4, 0x1E293B); // 炮塔天窗
-
         // 炮管
         if (t->dir == BC_DIR_UP) {
-            draw_box(layer, tx + 6, ty - 3, 2, 6, 0xE2E8F0);
+            draw_box(layer, tx + 6, ty - 3, 2, 6, 0xF8FAFC);
         } else {
-            draw_box(layer, tx + 6, ty + 11, 2, 6, 0xE2E8F0);
+            draw_box(layer, tx + 6, ty + 11, 2, 6, 0xF8FAFC);
         }
     } else {
-        // 上下两条水平履带
+        // 上下两条履带
         draw_box(layer, tx, ty, 14, 3, track_col);
         draw_box(layer, tx, ty + 11, 14, 3, track_col);
-        int track_offset = t->anim_frame ? 2 : 0;
-        draw_box(layer, tx + track_offset, ty, 2, 3, 0x000000);
-        draw_box(layer, tx + 6 + track_offset, ty, 2, 3, 0x000000);
-        draw_box(layer, tx + track_offset, ty + 11, 2, 3, 0x000000);
-        draw_box(layer, tx + 6 + track_offset, ty + 11, 2, 3, 0x000000);
-
-        // 主车厢
+        // 主车厢中枢
         draw_box(layer, tx + 2, ty + 3, 10, 8, main_col);
-        draw_box(layer, tx + 5, ty + 5, 4, 4, 0x1E293B);
-
         // 炮管
         if (t->dir == BC_DIR_LEFT) {
-            draw_box(layer, tx - 3, ty + 6, 6, 2, 0xE2E8F0);
+            draw_box(layer, tx - 3, ty + 6, 6, 2, 0xF8FAFC);
         } else {
-            draw_box(layer, tx + 11, ty + 6, 6, 2, 0xE2E8F0);
+            draw_box(layer, tx + 11, ty + 6, 6, 2, 0xF8FAFC);
         }
     }
 }
@@ -537,25 +475,27 @@ static void battlecity_draw_cb(lv_event_t *e) {
     // 2. 主战场底色 (深黑)
     draw_box(layer, 0, BC_OFFSET_Y, SCREEN_W, BC_PLAYFIELD_H, 0x000000);
 
-    // 3. 地图地貌第一层渲染 (除灌木外的所有瓦片)
+    // 3. 地图地貌渲染 (仅渲染存在的砖块与钢板、基地)
     for (int r = 0; r < BC_MAP_ROWS; r++) {
         for (int c = 0; c < BC_MAP_COLS; c++) {
+            uint8_t t = s_game.map_tiles[r][c];
+            if (t == BC_TILE_EMPTY) continue;
+
             int px = c * BC_TILE_SIZE;
             int py = BC_OFFSET_Y + r * BC_TILE_SIZE;
-            bc_tile_type_t t = (bc_tile_type_t)s_game.map_tiles[r][c];
 
             if (t == BC_TILE_BRICK) {
                 uint8_t sub = s_game.sub_bricks[r][c];
-                if (sub & BC_SUB_TL) draw_sub_brick(layer, px, py);
-                if (sub & BC_SUB_TR) draw_sub_brick(layer, px + 8, py);
-                if (sub & BC_SUB_BL) draw_sub_brick(layer, px, py + 8);
-                if (sub & BC_SUB_BR) draw_sub_brick(layer, px + 8, py + 8);
+                if (sub == BC_SUB_FULL) {
+                    draw_box(layer, px, py, 15, 15, 0xDC2626);
+                } else {
+                    if (sub & BC_SUB_TL) draw_sub_brick(layer, px, py);
+                    if (sub & BC_SUB_TR) draw_sub_brick(layer, px + 8, py);
+                    if (sub & BC_SUB_BL) draw_sub_brick(layer, px, py + 8);
+                    if (sub & BC_SUB_BR) draw_sub_brick(layer, px + 8, py + 8);
+                }
             } else if (t == BC_TILE_STEEL) {
                 draw_steel_tile(layer, px, py);
-            } else if (t == BC_TILE_WATER) {
-                draw_water_tile(layer, px, py);
-            } else if (t == BC_TILE_ICE) {
-                draw_ice_tile(layer, px, py);
             } else if (t == BC_TILE_BASE) {
                 draw_base_eagle(layer, px, py, s_game.base_alive);
             }
@@ -598,18 +538,7 @@ static void battlecity_draw_cb(lv_event_t *e) {
         draw_tank(layer, &s_game.p2, 0x10B981, 0x064E3B);
     }
 
-    // 8. 树冠灌木层 (覆盖在坦克之上，营造原汁原味的丛林隐蔽感)
-    for (int r = 0; r < BC_MAP_ROWS; r++) {
-        for (int c = 0; c < BC_MAP_COLS; c++) {
-            if (s_game.map_tiles[r][c] == BC_TILE_FOREST) {
-                int px = c * BC_TILE_SIZE;
-                int py = BC_OFFSET_Y + r * BC_TILE_SIZE;
-                draw_forest_tile(layer, px, py);
-            }
-        }
-    }
-
-    // 9. 炮弹飞行渲染
+    // 8. 炮弹飞行渲染 (极速飞弹)
     for (int i = 0; i < BC_MAX_BULLETS; i++) {
         const bc_bullet_t *b = &s_game.bullets[i];
         if (!b->active) continue;
@@ -656,14 +585,14 @@ static void battlecity_timer_cb(lv_timer_t *timer) {
 
     s_frame_tick++;
 
-    // 实时读取 ADC 电压，检测 DOWN 键 (按住持续狂飙 + 单击步进 16px 一整格)
+    // 实时读取 ADC 电压，检测 DOWN 键 (按住持续全速狂飙冲刺)
     int mv = bsp_button_read_mv();
-    if (mv >= 150 && mv < 447) {
+    if (mv >= 120 && mv <= 500) {
         // DOWN 键处于持续按住状态：充能保持，一路全速狂飙！
-        s_step_ticks = 4;
+        s_step_ticks = 6;
         bc_player_move(&s_game, 1, true);
     } else if (s_step_ticks > 0) {
-        // 单击触发的剩余步进 (4 帧 @4px = 16 像素，稳稳前进一步)
+        // 单击触发的剩余步进 (6 帧 @6px = 36 像素，大步迈进！)
         s_step_ticks--;
         bc_player_move(&s_game, 1, true);
     } else {
@@ -729,9 +658,9 @@ static void battlecity_timer_cb(lv_timer_t *timer) {
 
 // ============================================================================
 // 按键交互逻辑
-// UP 键: 单击 = 顺时针转向 90°; 双击 = 调头 180° (专注方向换向)
-// DOWN 键: 按住/单击 = 沿当前车头方向全速向前推进 (油门前进键)
-// OK 键: 单击 = 畅快开火(支持同屏连发); 双击 = 切换自动连射; 长按 = 统一返回
+// UP 键: 单击 = 顺时针旋转 90° (专一方向切换，严格单动防窜)
+// DOWN 键: 按住/单击 = 沿当前车头方向全速向前推进 (单击大步，按住冲刺)
+// OK 键: 单击 = 极速开火(支持零冷却多连发); 双击 = 切换自动连射
 // ============================================================================
 void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
     if (s_game.game_over || s_game.victory) {
@@ -745,35 +674,28 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
         return;
     }
 
-    // 关键去重：只响应 BSP_BTN_PRESS (按下瞬间)，坚决丢弃 BSP_BTN_CLICK (抬起)！
-    // 彻底杜绝按一次按键由于 PRESS 与 CLICK 连发导致的跳两次/乱窜
-    if (ev != BSP_BTN_PRESS && ev != BSP_BTN_DOUBLE) return;
-
     if (btn == BSP_BTN_UP) {
-        // 关键防抖：200ms (8 帧 @40FPS) 硬件防抖窗口，杜绝机械抖动和重复触发
-        if (s_frame_tick - s_last_up_press_tick < 8) return;
-        s_last_up_press_tick = s_frame_tick;
-
+        // UP 键：只响应按下瞬间 PRESS，严格每次旋转 90 度！绝不响应双击，彻底消除乱窜
         if (ev == BSP_BTN_PRESS) {
-            // 单次按下：顺时针精准旋转 90 度 (上 -> 右 -> 下 -> 左 -> 上)
+            if (s_frame_tick - s_last_up_press_tick < 8) return; // 200ms 防抖
+            s_last_up_press_tick = s_frame_tick;
             bc_player_turn_clockwise(&s_game, 1);
-        } else if (ev == BSP_BTN_DOUBLE) {
-            // 双击快速调头 180°
-            bc_dir_t new_dir = (bc_dir_t)((s_game.p1.dir + 2) % 4);
-            bc_player_turn(&s_game, 1, new_dir);
         }
     } else if (btn == BSP_BTN_DOWN) {
-        if (ev == BSP_BTN_PRESS) {
-            // DOWN 键按下：赋予 4 帧步进充能 (走满整整一格 16px，点一下必向前迈出一大步！)
-            s_step_ticks = 4;
+        // DOWN 键：按下或单击即刻赋予 6 帧步进充能 (36 像素大步流星！按住持续全速狂飙)
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+            s_step_ticks = 6;
             bc_player_move(&s_game, 1, true);
         }
     } else if (btn == BSP_BTN_OK) {
-        if (ev == BSP_BTN_PRESS) {
-            // 按一次必发射一次，零等待，支持高速连点！
-            bc_player_fire(&s_game, 1);
+        // OK 键：支持高速连按发射，按一次必出一发，零装填冷却倾泻火力
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+            if (s_frame_tick - s_last_ok_press_tick >= 2) {
+                s_last_ok_press_tick = s_frame_tick;
+                bc_player_fire(&s_game, 1);
+            }
         } else if (ev == BSP_BTN_DOUBLE) {
-            // 双击切换自动开火
+            // 双击切换全自动持续狂轰
             bc_player_toggle_autofire(&s_game, 1);
         }
     }

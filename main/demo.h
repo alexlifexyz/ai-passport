@@ -48,4 +48,7 @@ void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 void demo_battlecity_enter(void); void demo_battlecity_exit(void);
 void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
+void demo_flappy_enter(void); void demo_flappy_exit(void);
+void demo_flappy_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+
 
