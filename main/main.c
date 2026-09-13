@@ -19,18 +19,11 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
-    { "Flappy",    demo_flappy_enter,       demo_flappy_exit,       demo_flappy_key       },
     { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
-    { "Pacman",    demo_pacman_enter,       demo_pacman_exit,       demo_pacman_key       },
-    { "Striker",   demo_thunder_enter,      demo_thunder_exit,      demo_thunder_key      },
+    { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
+    { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
     { "Racer",     demo_thunderracer_enter, demo_thunderracer_exit, demo_thunderracer_key },
-    { "Display",   demo_display_enter,      demo_display_exit,      demo_display_key      },
-    { "Button",    demo_button_enter,       demo_button_exit,       demo_button_key       },
-    { "Audio",     demo_audio_enter,        demo_audio_exit,        demo_audio_key        },
-    { "Battery",   demo_battery_enter,      demo_battery_exit,      demo_battery_key      },
-    { "Wi-Fi",     demo_wifi_enter,         demo_wifi_exit,         demo_wifi_key         },
-    { "BLE",       demo_ble_enter,          demo_ble_exit,          demo_ble_key          },
-    { "Low Power", demo_low_power_enter,    demo_low_power_exit,    demo_low_power_key    },
+    { "Striker",   demo_thunder_enter,      demo_thunder_exit,      demo_thunder_key      },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
 
@@ -41,7 +34,7 @@ static lv_obj_t *s_menu_scr;
 static lv_obj_t *s_cards[DEMO_COUNT];
 static lv_obj_t *s_rows[DEMO_COUNT];
 static lv_obj_t *s_mascot;
-static int  s_sel = 0;             // 当前选中项 (默认停在 Flappy)
+static int  s_sel = 0;             // 当前选中项 (默认停在 Tank 1990)
 static int  s_active = -1;         // 当前所在演示页;-1 = 在菜单
 
 static void menu_refresh(void) {
@@ -59,9 +52,9 @@ static void menu_build(void) {
     s_menu_scr = ui_pixel_screen_create("ARCADE");
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
-        int x = 11 + (int)(i % 2) * 112;
-        int y = 42 + (int)(i / 2) * 36;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 32, UI_PAPER);
+        int x = 16;
+        int y = 46 + (int)i * 42;
+        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 208, 34, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
@@ -150,21 +143,12 @@ void app_main(void) {
     bool audio_ok = (bsp_audio_init() == ESP_OK);
     bool bat_ok = (bsp_battery_init() == ESP_OK);
 
-    s_ok[0] = btn_ok;                                 // Flappy (像素飞鸟 HD)
-    s_ok[1] = btn_ok;                                 // Tank 1990 (经典坦克大战 Neo)
-    s_ok[2] = btn_ok;                                 // Pacman (吃豆人)
-    s_ok[3] = btn_ok;                                 // Striker (雷霆战机)
-    s_ok[4] = btn_ok;                                 // Racer (雷霆飞车)
-    s_ok[5] = true;                                   // Display
-    s_ok[6] = btn_ok;                                 // Button
-    s_ok[7] = audio_ok;                               // Audio
-    s_ok[8] = bat_ok;                                 // Battery
-    s_ok[9] = true;                                   // Wi-Fi
-    s_ok[10] = true;                                  // BLE
-    s_ok[11] = true;                                  // Low Power
+    for (size_t i = 0; i < DEMO_COUNT; i++) {
+        s_ok[i] = btn_ok;
+    }
 
     if (bsp_lvgl_lock(1000)) {
-        s_sel = 0; // 默认选中 Flappy
+        s_sel = 0; // 默认选中 Tank 1990
         enter_menu();
         bsp_lvgl_unlock();
     }

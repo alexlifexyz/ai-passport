@@ -16,12 +16,10 @@ idf_component_register(
          "thunderracer_logic.c"
          "demo_battlecity.c"
          "battlecity_logic.c"
-         "demo_flappy.c"
-         "flappy_logic.c"
-         "demo_fish.c"
-         "fish_logic.c"
-         "demo_pacman.c"
-         "pacman_logic.c"
+         "demo_adventure.c"
+         "adventure_logic.c"
+         "demo_contra.c"
+         "contra_logic.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )
