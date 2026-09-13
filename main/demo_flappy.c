@@ -567,7 +567,7 @@ void demo_flappy_enter(void)
     lv_obj_align(ready_sub, LV_ALIGN_BOTTOM_MID, 0, -8);
     lv_obj_set_style_text_font(ready_sub, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(ready_sub, lv_color_hex(0x94A3B8), 0);
-    lv_label_set_text(ready_sub, "HOLD OK: MENU");
+    lv_label_set_text(ready_sub, "UP/DN: MENU");
 
     // 6. 阵亡结算卡片
     s_gameover_card = lv_obj_create(s_scr);
@@ -603,7 +603,8 @@ void demo_flappy_enter(void)
     lv_obj_align(s_go_hint_lbl, LV_ALIGN_BOTTOM_MID, 0, -8);
     lv_obj_set_style_text_font(s_go_hint_lbl, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s_go_hint_lbl, lv_color_hex(0x22C55E), 0);
-    lv_label_set_text(s_go_hint_lbl, "PRESS OK TO REPLAY");
+    lv_label_set_text(s_go_hint_lbl, "OK: REPLAY | UP/DN: MENU");
+
 
     // 7. 启动音频队列与独立合成任务
     s_audio_running = true;
@@ -658,7 +659,6 @@ void demo_flappy_exit(void)
 
 void demo_flappy_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    (void)btn;
     // 按下即刻响应，60ms 防抖消除同一击连发
     if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
         static uint32_t s_last_btn_tick = 0;
@@ -667,14 +667,23 @@ void demo_flappy_key(bsp_btn_t btn, bsp_btn_ev_t ev)
         s_last_btn_tick = now;
 
         if (s_game.state == FLAPPY_STATE_GAMEOVER) {
-            flappy_logic_restart_ctx(&s_game);
-            s_game.state = FLAPPY_STATE_READY;
+            if (btn == BSP_BTN_OK) {
+                flappy_logic_restart_ctx(&s_game);
+                s_game.state = FLAPPY_STATE_READY;
+            } else {
+                bsp_demo_return_to_menu();
+            }
         } else if (s_game.state == FLAPPY_STATE_READY) {
-            s_game.state = FLAPPY_STATE_PLAYING;
-            flappy_logic_flap_ctx(&s_game);
+            if (btn == BSP_BTN_OK) {
+                s_game.state = FLAPPY_STATE_PLAYING;
+                flappy_logic_flap_ctx(&s_game);
+            } else {
+                bsp_demo_return_to_menu();
+            }
         } else if (s_game.state == FLAPPY_STATE_PLAYING) {
             flappy_logic_flap_ctx(&s_game);
         }
     }
 }
+
 
