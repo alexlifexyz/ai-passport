@@ -36,6 +36,23 @@ static lv_obj_t     *s_scr = NULL;
 static lv_obj_t     *s_playfield = NULL;
 static lv_timer_t   *s_game_timer = NULL;
 
+static lv_obj_t     *s_hud_score_cont = NULL;
+static lv_obj_t     *s_hud_score_lbl  = NULL;
+static lv_obj_t     *s_hud_best_cont   = NULL;
+static lv_obj_t     *s_hud_best_lbl   = NULL;
+
+static lv_obj_t     *s_ready_card      = NULL;
+static lv_obj_t     *s_ready_hint_lbl  = NULL;
+
+static lv_obj_t     *s_gameover_card   = NULL;
+static lv_obj_t     *s_go_score_lbl    = NULL;
+static lv_obj_t     *s_go_best_lbl     = NULL;
+static lv_obj_t     *s_go_hint_lbl     = NULL;
+
+static int           s_last_rendered_score = -1;
+static int           s_last_rendered_best  = -1;
+static flappy_state_t s_last_rendered_state = (flappy_state_t)-1;
+
 static QueueHandle_t s_snd_queue = NULL;
 static TaskHandle_t  s_snd_task = NULL;
 static volatile bool s_audio_running = false;
@@ -370,53 +387,6 @@ static void playfield_draw_cb(lv_event_t *e)
 
     // 5. 绘制核心主角小鸟
     draw_bird(layer, (int)s_game.x, (int)s_game.y, s_game.rotation, s_frame_tick, (s_game.vy > 120.0f));
-
-    // 6. HUD / 记分牌
-    if (s_game.state == FLAPPY_STATE_READY) {
-        // 就绪状态：居中提示卡片
-        int box_w = 200;
-        int box_h = 100;
-        int bx = (SCREEN_W - box_w) / 2;
-        int by = 90;
-        draw_box(layer, bx, by, box_w, box_h, 0x0F172A);
-        draw_box(layer, bx + 2, by + 2, box_w - 4, box_h - 4, 0x1E293B);
-
-        // 标题金字
-        draw_box(layer, bx + 16, by + 12, box_w - 32, 22, 0xCA8A04);
-        draw_box(layer, bx + 18, by + 14, box_w - 36, 18, 0xFACC15);
-
-        // 呼吸闪烁提示："TAP UP/OK TO FLAP"
-        if ((s_frame_tick / 15) % 2 == 0) {
-            draw_box(layer, bx + 24, by + 58, box_w - 48, 18, 0x22C55E);
-        }
-    } else if (s_game.state == FLAPPY_STATE_PLAYING) {
-        // 游戏进行中：顶部醒目数字计分卡
-        int hud_w = 70;
-        int hud_x = (SCREEN_W - hud_w) / 2;
-        draw_box(layer, hud_x, 12, hud_w, 28, 0x0F172A);
-        draw_box(layer, hud_x + 2, 14, hud_w - 4, 24, 0xFFFFFF);
-
-        // 最高分微标
-        draw_box(layer, SCREEN_W - 65, 12, 55, 18, 0x0F172A);
-        draw_box(layer, SCREEN_W - 63, 14, 51, 14, 0xF59E0B);
-    } else if (s_game.state == FLAPPY_STATE_GAMEOVER) {
-        // 阵亡结算弹窗
-        int box_w = 204;
-        int box_h = 140;
-        int bx = (SCREEN_W - box_w) / 2;
-        int by = 80;
-        draw_box(layer, bx, by, box_w, box_h, 0x000000);
-        draw_box(layer, bx + 3, by + 3, box_w - 6, box_h - 6, 0x450A0A);
-        draw_box(layer, bx + 6, by + 6, box_w - 12, 30, 0xDC2626); // GAME OVER 鲜红横幅
-
-        // 得分底板
-        draw_box(layer, bx + 14, by + 46, box_w - 28, 48, 0x1C1917);
-
-        // 按键重开提示
-        if ((s_frame_tick / 12) % 2 == 0) {
-            draw_box(layer, bx + 20, by + 104, box_w - 40, 22, 0x16A34A);
-        }
-    }
 }
 
 // 游戏核心 30ms 循环定时器回调 (约 33 FPS)
@@ -454,6 +424,52 @@ static void game_timer_cb(lv_timer_t *timer)
         s_game.snd_die = false;
     }
 
+    // 状态切换与 UI 浮层联动
+    if (s_game.state != s_last_rendered_state) {
+        s_last_rendered_state = s_game.state;
+        if (s_game.state == FLAPPY_STATE_READY) {
+            if (s_ready_card) lv_obj_remove_flag(s_ready_card, LV_OBJ_FLAG_HIDDEN);
+            if (s_gameover_card) lv_obj_add_flag(s_gameover_card, LV_OBJ_FLAG_HIDDEN);
+            if (s_hud_score_cont) lv_obj_add_flag(s_hud_score_cont, LV_OBJ_FLAG_HIDDEN);
+            if (s_hud_best_cont) lv_obj_remove_flag(s_hud_best_cont, LV_OBJ_FLAG_HIDDEN);
+        } else if (s_game.state == FLAPPY_STATE_PLAYING) {
+            if (s_ready_card) lv_obj_add_flag(s_ready_card, LV_OBJ_FLAG_HIDDEN);
+            if (s_gameover_card) lv_obj_add_flag(s_gameover_card, LV_OBJ_FLAG_HIDDEN);
+            if (s_hud_score_cont) lv_obj_remove_flag(s_hud_score_cont, LV_OBJ_FLAG_HIDDEN);
+            if (s_hud_best_cont) lv_obj_remove_flag(s_hud_best_cont, LV_OBJ_FLAG_HIDDEN);
+        } else if (s_game.state == FLAPPY_STATE_GAMEOVER) {
+            if (s_ready_card) lv_obj_add_flag(s_ready_card, LV_OBJ_FLAG_HIDDEN);
+            if (s_gameover_card) lv_obj_remove_flag(s_gameover_card, LV_OBJ_FLAG_HIDDEN);
+            if (s_hud_score_cont) lv_obj_add_flag(s_hud_score_cont, LV_OBJ_FLAG_HIDDEN);
+            if (s_hud_best_cont) lv_obj_remove_flag(s_hud_best_cont, LV_OBJ_FLAG_HIDDEN);
+            if (s_go_score_lbl) lv_label_set_text_fmt(s_go_score_lbl, "SCORE: %d", s_game.score);
+            if (s_go_best_lbl) lv_label_set_text_fmt(s_go_best_lbl, "BEST: %d", s_game.high_score);
+        }
+    }
+
+    // 分数更新
+    if (s_game.score != s_last_rendered_score) {
+        s_last_rendered_score = s_game.score;
+        if (s_hud_score_lbl) {
+            lv_label_set_text_fmt(s_hud_score_lbl, "%d", s_game.score);
+        }
+    }
+    if (s_game.high_score != s_last_rendered_best) {
+        s_last_rendered_best = s_game.high_score;
+        if (s_hud_best_lbl) {
+            lv_label_set_text_fmt(s_hud_best_lbl, "HI: %d", s_game.high_score);
+        }
+    }
+
+    // 呼吸提示动效
+    if (s_game.state == FLAPPY_STATE_READY && s_ready_hint_lbl) {
+        bool blink = (s_frame_tick / 15) % 2 == 0;
+        lv_obj_set_style_text_color(s_ready_hint_lbl, blink ? lv_color_hex(0x4ADE80) : lv_color_hex(0x15803D), 0);
+    } else if (s_game.state == FLAPPY_STATE_GAMEOVER && s_go_hint_lbl) {
+        bool blink = (s_frame_tick / 12) % 2 == 0;
+        lv_obj_set_style_text_color(s_go_hint_lbl, blink ? lv_color_hex(0x22C55E) : lv_color_hex(0x166534), 0);
+    }
+
     // 标记画布重绘
     if (s_playfield) {
         lv_obj_invalidate(s_playfield);
@@ -470,15 +486,18 @@ void demo_flappy_enter(void)
     flappy_logic_init_ctx(&s_game);
     s_game.state = FLAPPY_STATE_READY;
     s_frame_tick = 0;
+    s_last_rendered_score = -1;
+    s_last_rendered_best = -1;
+    s_last_rendered_state = (flappy_state_t)-1;
 
-    // 创建底层全屏屏幕
+    // 1. 创建底层全屏屏幕
     s_scr = lv_obj_create(NULL);
     lv_obj_set_size(s_scr, SCREEN_W, SCREEN_H);
     lv_obj_set_style_bg_color(s_scr, lv_color_hex(0x000000), 0);
     lv_obj_set_style_pad_all(s_scr, 0, 0);
     lv_obj_set_style_border_width(s_scr, 0, 0);
 
-    // 矢量渲染画布
+    // 2. 矢量渲染画布
     s_playfield = lv_obj_create(s_scr);
     lv_obj_set_size(s_playfield, SCREEN_W, SCREEN_H);
     lv_obj_set_style_pad_all(s_playfield, 0, 0);
@@ -486,12 +505,112 @@ void demo_flappy_enter(void)
     lv_obj_set_style_bg_opa(s_playfield, LV_OPA_TRANSP, 0);
     lv_obj_add_event_cb(s_playfield, playfield_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
 
-    // 启动音频队列与独立合成任务
+    // 3. 顶栏实时得分 (居中浮动药丸徽章)
+    s_hud_score_cont = lv_obj_create(s_scr);
+    lv_obj_remove_style_all(s_hud_score_cont);
+    lv_obj_set_size(s_hud_score_cont, 84, 34);
+    lv_obj_align(s_hud_score_cont, LV_ALIGN_TOP_MID, 0, 8);
+    lv_obj_set_style_bg_color(s_hud_score_cont, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_bg_opa(s_hud_score_cont, LV_OPA_80, 0);
+    lv_obj_set_style_border_color(s_hud_score_cont, lv_color_hex(0xFACC15), 0);
+    lv_obj_set_style_border_width(s_hud_score_cont, 2, 0);
+    lv_obj_set_style_radius(s_hud_score_cont, 17, 0);
+    lv_obj_add_flag(s_hud_score_cont, LV_OBJ_FLAG_HIDDEN); // 开局就绪时隐藏
+
+    s_hud_score_lbl = lv_label_create(s_hud_score_cont);
+    lv_obj_center(s_hud_score_lbl);
+    lv_obj_set_style_text_font(s_hud_score_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(s_hud_score_lbl, lv_color_hex(0xFFFFFF), 0);
+    lv_label_set_text(s_hud_score_lbl, "0");
+
+    // 4. 顶栏最高分 (右上角小徽章)
+    s_hud_best_cont = lv_obj_create(s_scr);
+    lv_obj_remove_style_all(s_hud_best_cont);
+    lv_obj_set_size(s_hud_best_cont, 70, 24);
+    lv_obj_align(s_hud_best_cont, LV_ALIGN_TOP_RIGHT, -6, 8);
+    lv_obj_set_style_bg_color(s_hud_best_cont, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_bg_opa(s_hud_best_cont, LV_OPA_70, 0);
+    lv_obj_set_style_border_color(s_hud_best_cont, lv_color_hex(0x64748B), 0);
+    lv_obj_set_style_border_width(s_hud_best_cont, 1, 0);
+    lv_obj_set_style_radius(s_hud_best_cont, 12, 0);
+
+    s_hud_best_lbl = lv_label_create(s_hud_best_cont);
+    lv_obj_center(s_hud_best_lbl);
+    lv_obj_set_style_text_font(s_hud_best_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_hud_best_lbl, lv_color_hex(0xFBBF24), 0);
+    lv_label_set_text(s_hud_best_lbl, "HI: 0");
+
+    // 5. 开局就绪提示卡片
+    s_ready_card = lv_obj_create(s_scr);
+    lv_obj_remove_style_all(s_ready_card);
+    lv_obj_set_size(s_ready_card, 206, 120);
+    lv_obj_align(s_ready_card, LV_ALIGN_CENTER, 0, -16);
+    lv_obj_set_style_bg_color(s_ready_card, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_bg_opa(s_ready_card, LV_OPA_90, 0);
+    lv_obj_set_style_border_color(s_ready_card, lv_color_hex(0xFACC15), 0);
+    lv_obj_set_style_border_width(s_ready_card, 2, 0);
+    lv_obj_set_style_radius(s_ready_card, 14, 0);
+
+    lv_obj_t *ready_title = lv_label_create(s_ready_card);
+    lv_obj_align(ready_title, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_text_font(ready_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(ready_title, lv_color_hex(0xFACC15), 0);
+    lv_label_set_text(ready_title, "FLAPPY BIRD");
+
+    s_ready_hint_lbl = lv_label_create(s_ready_card);
+    lv_obj_align(s_ready_hint_lbl, LV_ALIGN_CENTER, 0, 6);
+    lv_obj_set_style_text_font(s_ready_hint_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_ready_hint_lbl, lv_color_hex(0x4ADE80), 0);
+    lv_label_set_text(s_ready_hint_lbl, "PRESS OK TO FLAP");
+
+    lv_obj_t *ready_sub = lv_label_create(s_ready_card);
+    lv_obj_align(ready_sub, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_set_style_text_font(ready_sub, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(ready_sub, lv_color_hex(0x94A3B8), 0);
+    lv_label_set_text(ready_sub, "HOLD OK: MENU");
+
+    // 6. 阵亡结算卡片
+    s_gameover_card = lv_obj_create(s_scr);
+    lv_obj_remove_style_all(s_gameover_card);
+    lv_obj_set_size(s_gameover_card, 206, 140);
+    lv_obj_align(s_gameover_card, LV_ALIGN_CENTER, 0, -10);
+    lv_obj_set_style_bg_color(s_gameover_card, lv_color_hex(0x180808), 0);
+    lv_obj_set_style_bg_opa(s_gameover_card, LV_OPA_95, 0);
+    lv_obj_set_style_border_color(s_gameover_card, lv_color_hex(0xEF4444), 0);
+    lv_obj_set_style_border_width(s_gameover_card, 2, 0);
+    lv_obj_set_style_radius(s_gameover_card, 14, 0);
+    lv_obj_add_flag(s_gameover_card, LV_OBJ_FLAG_HIDDEN); // 初始隐藏
+
+    lv_obj_t *go_title = lv_label_create(s_gameover_card);
+    lv_obj_align(go_title, LV_ALIGN_TOP_MID, 0, 8);
+    lv_obj_set_style_text_font(go_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(go_title, lv_color_hex(0xEF4444), 0);
+    lv_label_set_text(go_title, "GAME OVER");
+
+    s_go_score_lbl = lv_label_create(s_gameover_card);
+    lv_obj_align(s_go_score_lbl, LV_ALIGN_TOP_MID, 0, 38);
+    lv_obj_set_style_text_font(s_go_score_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(s_go_score_lbl, lv_color_hex(0xFFFFFF), 0);
+    lv_label_set_text(s_go_score_lbl, "SCORE: 0");
+
+    s_go_best_lbl = lv_label_create(s_gameover_card);
+    lv_obj_align(s_go_best_lbl, LV_ALIGN_TOP_MID, 0, 68);
+    lv_obj_set_style_text_font(s_go_best_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_go_best_lbl, lv_color_hex(0xFBBF24), 0);
+    lv_label_set_text(s_go_best_lbl, "BEST: 0");
+
+    s_go_hint_lbl = lv_label_create(s_gameover_card);
+    lv_obj_align(s_go_hint_lbl, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_set_style_text_font(s_go_hint_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_go_hint_lbl, lv_color_hex(0x22C55E), 0);
+    lv_label_set_text(s_go_hint_lbl, "PRESS OK TO REPLAY");
+
+    // 7. 启动音频队列与独立合成任务
     s_audio_running = true;
     s_snd_queue = xQueueCreate(16, sizeof(flappy_snd_t));
     xTaskCreate(flappy_audio_task, "flappy_audio", 4096, NULL, 5, &s_snd_task);
 
-    // 启动核心物理定时器 (30ms 步进)
+    // 8. 启动核心物理定时器 (30ms 步进)
     s_game_timer = lv_timer_create(game_timer_cb, 30, NULL);
 
     lv_screen_load(s_scr);
@@ -521,17 +640,35 @@ void demo_flappy_exit(void)
         s_scr = NULL;
         s_playfield = NULL;
     }
+
+    s_hud_score_cont = NULL;
+    s_hud_score_lbl  = NULL;
+    s_hud_best_cont  = NULL;
+    s_hud_best_lbl   = NULL;
+    s_ready_card     = NULL;
+    s_ready_hint_lbl = NULL;
+    s_gameover_card  = NULL;
+    s_go_score_lbl   = NULL;
+    s_go_best_lbl    = NULL;
+    s_go_hint_lbl    = NULL;
+    s_last_rendered_score = -1;
+    s_last_rendered_best  = -1;
+    s_last_rendered_state = (flappy_state_t)-1;
 }
 
 void demo_flappy_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    // 任意键拍翅 / 重开
-    if (ev == BSP_BTN_CLICK) {
+    (void)btn;
+    // 按下即刻响应，60ms 防抖消除同一击连发
+    if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+        static uint32_t s_last_btn_tick = 0;
+        uint32_t now = esp_log_timestamp();
+        if (now - s_last_btn_tick < 60) return;
+        s_last_btn_tick = now;
+
         if (s_game.state == FLAPPY_STATE_GAMEOVER) {
-            if (btn == BSP_BTN_OK || btn == BSP_BTN_UP || btn == BSP_BTN_DOWN) {
-                flappy_logic_restart_ctx(&s_game);
-                s_game.state = FLAPPY_STATE_READY;
-            }
+            flappy_logic_restart_ctx(&s_game);
+            s_game.state = FLAPPY_STATE_READY;
         } else if (s_game.state == FLAPPY_STATE_READY) {
             s_game.state = FLAPPY_STATE_PLAYING;
             flappy_logic_flap_ctx(&s_game);
@@ -540,3 +677,4 @@ void demo_flappy_key(bsp_btn_t btn, bsp_btn_ev_t ev)
         }
     }
 }
+
