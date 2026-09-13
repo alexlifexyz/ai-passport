@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- Added Battle City Neo (1990 classic tank combat) with 8x8 sub-tile destructible brick physics, steel penetration at tier 4, eagle base protection, 7 bonus powerups, 16kHz retro chiptune audio synthesis, zero-config ESP-NOW wireless dual-device co-op, and browser simulator integration in `simulator/hub.html` and `arcade/`.
 - Added the Alex Arcade public lobby under `arcade/`: a cabinet-wall homepage for the ten playable titles plus the world-clock lounge, with GitHub Pages redirects from the repository root and `simulator/index.html`.
 - Thunder Racer firmware HUD now shows near-miss combo streaks and switches the track palette at night.
 

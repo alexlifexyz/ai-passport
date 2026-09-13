@@ -19,6 +19,7 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
     { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
     { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
     { "Display",   demo_display_enter,      demo_display_exit,      demo_display_key      },
@@ -129,15 +130,16 @@ void app_main(void) {
     bool audio_ok = (bsp_audio_init() == ESP_OK);
     bool bat_ok = (bsp_battery_init() == ESP_OK);
 
-    s_ok[0] = btn_ok;                                 // Island (像素冒险岛 HD)
-    s_ok[1] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
-    s_ok[2] = true;                                   // Display 已确认可用
-    s_ok[3] = btn_ok;                                 // Button
-    s_ok[4] = audio_ok;                               // Audio
-    s_ok[5] = bat_ok;                                 // Battery
-    s_ok[6] = true;                                   // Wi-Fi 页面内按需初始化
-    s_ok[7] = true;                                   // BLE
-    s_ok[8] = true;                                   // Low Power
+    s_ok[0] = btn_ok;                                 // Tank 1990 (经典坦克大战 Neo)
+    s_ok[1] = btn_ok;                                 // Island (像素冒险岛 HD)
+    s_ok[2] = btn_ok;                                 // Contra (口袋魂斗罗 HD)
+    s_ok[3] = true;                                   // Display 已确认可用
+    s_ok[4] = btn_ok;                                 // Button
+    s_ok[5] = audio_ok;                               // Audio
+    s_ok[6] = bat_ok;                                 // Battery
+    s_ok[7] = true;                                   // Wi-Fi 页面内按需初始化
+    s_ok[8] = true;                                   // BLE
+    s_ok[9] = true;                                   // Low Power
 
     if (bsp_lvgl_lock(1000)) {
         s_active = 0;

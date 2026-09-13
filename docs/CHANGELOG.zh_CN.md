@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- 新增《经典坦克大战 1990 (Battle City Neo)》：包含 8x8 子砖局部瓦解物理、4 星超级穿甲重坦摧毁钢板、基地雄鹰保卫战、7 大经典宝箱道具、16kHz 复古 chiptune 拟音、基于 ESP-NOW 的无感双机无线联机对战/合作，以及 `simulator/hub.html` 与 `arcade/` 的 Web 街机模拟器集成。
 - 新增 `arcade/` 对外大厅：十台柜机墙加世界钟休息室，仓库根目录与 `simulator/index.html` 会跳到这里，方便以后挂 GitHub Pages。
 - 雷霆飞车固件 HUD 会显示擦车连击，并在夜间切换赛道配色。
 

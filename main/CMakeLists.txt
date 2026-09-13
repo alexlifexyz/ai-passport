@@ -18,6 +18,8 @@ idf_component_register(
          "adventure_logic.c"
          "demo_contra.c"
          "contra_logic.c"
+         "demo_battlecity.c"
+         "battlecity_logic.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )

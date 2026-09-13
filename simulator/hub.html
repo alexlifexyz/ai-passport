@@ -210,7 +210,8 @@
 <!-- 游戏切换栏 -->
 <div class="game-tabs" id="gameTabs">
   <a class="tab-btn" href="../arcade/" style="text-decoration:none;background:rgba(240,193,75,0.18);color:#f0c14b;">◀ 大厅</a>
-  <button class="tab-btn active" data-game="adventure">🏝️ 像素冒险岛 HD</button>
+  <button class="tab-btn active" data-game="battlecity">🪖 坦克大战 1990</button>
+  <button class="tab-btn" data-game="adventure">🏝️ 像素冒险岛 HD</button>
   <button class="tab-btn" data-game="contra">🔫 口袋魂斗罗 HD</button>
   <button class="tab-btn" data-game="thunderracer">🏎️ 雷霆飞车 HD</button>
   <button class="tab-btn" data-game="flappy">🐦 像素飞鸟 HD</button>
@@ -672,6 +673,516 @@ function switchGame(name) {
 }
 
 const games = {
+  battlecity: {
+    icon: '🪖', title: '经典坦克大战 1990 (BATTLE CITY NEO)',
+    desc: '★ 经典红白机 · 8x8 半砖削减 · 钢板防线 · 基地金鹰 · 7大经典宝箱 ★',
+    badge: 'TANK 1990', btnUp: 'UP (左转90°/长按冲)', btnDown: 'DOWN (右转90°/长按冲)', btnOk: 'OK (开火/双击连发)',
+    help: `<strong>🪖 经典坦克大战 1990 (Battle City Neo)：</strong><br>• 保卫老家雄鹰！UP 逆时针转 90°，DOWN 顺时针转 90°，长按前进推进，OK 开火。<br>• 真实 8x8 砖石局部削减，普通炮弹打不碎钢板，4 星超级重坦穿甲弹可摧毁钢板！<br>• 击毁红闪怪掉落 <b>⭐️升阶 / 💣全灭 / ⏰冻结 / 🛡️无敌 / 铲固家 / 🔫满级 / 💓奖命</b>。<br>• 连续双击 OK 切换自动连续射击。`,
+    init() {
+      this.cols = 15; this.rows = 17; this.tSize = 16;
+      this.map = [
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,1,0,1,0,1,0,2,0,1,0,1,0,1,0],
+        [0,1,0,1,0,1,0,2,0,1,0,1,0,1,0],
+        [0,1,0,1,0,1,0,0,0,1,0,1,0,1,0],
+        [0,1,0,1,0,1,0,0,0,1,0,1,0,1,0],
+        [0,2,0,2,0,3,3,3,3,3,0,2,0,2,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,0,4,4,0,1,1,1,0,4,4,0,1,1],
+        [1,1,0,4,4,0,1,0,1,0,4,4,0,1,1],
+        [0,0,0,0,0,0,1,0,1,0,0,0,0,0,0],
+        [0,1,0,1,1,0,0,0,0,0,1,1,0,1,0],
+        [0,1,0,1,1,0,5,5,5,0,1,1,0,1,0],
+        [0,1,0,0,0,0,5,5,5,0,0,0,0,1,0],
+        [0,2,0,1,1,0,0,0,0,0,1,1,0,2,0],
+        [0,0,0,1,1,0,1,1,1,0,1,1,0,0,0],
+        [0,0,0,0,0,0,1,6,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0]
+      ];
+      this.sub = Array.from({length: 17}, (v, r) =>
+        Array.from({length: 15}, (vv, c) => this.map[r][c] === 1 ? 0x0F : 0)
+      );
+      this.p = {
+        x: 4 * 16 + 1, y: 15 * 16 + 1, dir: 0, tier: 1, speed: 2,
+        lives: 3, score: 0, inv: 90, cooldown: 0, moving: false, anim: 0, autoFire: false
+      };
+      this.enemies = []; this.bullets = []; this.items = [];
+      this.enemiesLeft = 16; this.spawnTimer = 25; this.freezeTimer = 0;
+      this.shovelTimer = 0; this.baseAlive = true; this.dead = false; this.win = false;
+      this.ticks = 0; this.lastOkTime = 0;
+    },
+    onOk() {
+      if (this.dead || this.win) { this.init(); return; }
+      const now = Date.now();
+      if (now - this.lastOkTime < 280) {
+        this.p.autoFire = !this.p.autoFire;
+        FX.float(this.p.x, this.p.y + 10, this.p.autoFire ? 'AUTO ON' : 'AUTO OFF', '#ffd928');
+      }
+      this.lastOkTime = now;
+      this.fire(this.p, true, 1);
+    },
+    fire(tank, isPlayer, id) {
+      if (tank.cooldown > 0) return;
+      const count = this.bullets.filter(b => b.fromPlayer === isPlayer && b.owner === id).length;
+      const maxAllowed = isPlayer ? (tank.tier >= 3 ? 2 : 1) : 1;
+      if (count >= maxAllowed) return;
+
+      const spd = isPlayer ? (tank.tier >= 2 ? 6 : 4) : (tank.type === 'power' ? 5.5 : 3.5);
+      const pierce = isPlayer && tank.tier >= 4;
+      let bx = tank.x + 7, by = tank.y + 7;
+      if (tank.dir === 0) by = tank.y - 2;
+      else if (tank.dir === 1) bx = tank.x + 16;
+      else if (tank.dir === 2) by = tank.y + 16;
+      else bx = tank.x - 2;
+
+      this.bullets.push({ x: bx, y: by, dir: tank.dir, speed: spd, fromPlayer: isPlayer, owner: id, pierce });
+      tank.cooldown = 12;
+      if (isPlayer) snd.playShoot(pierce ? 'laser' : 'normal');
+    },
+    checkBlocked(x, y, w, h, isBullet) {
+      if (x < 0 || x + w > 240 || y < 0 || y + h > 272) return true;
+      const c1 = Math.floor(x / 16), c2 = Math.floor((x + w - 1) / 16);
+      const r1 = Math.floor(y / 16), r2 = Math.floor((y + h - 1) / 16);
+      for (let r = r1; r <= r2; r++) {
+        for (let c = c1; c <= c2; c++) {
+          if (r < 0 || r >= 17 || c < 0 || c >= 15) return true;
+          const t = this.map[r][c];
+          if (t === 0 || t === 4 || t === 5) continue;
+          if (t === 3) { if (isBullet) continue; else return true; }
+          if (t === 1) {
+            const sub = this.sub[r][c];
+            if (sub === 0) continue;
+            const tx = c * 16, ty = r * 16;
+            if ((sub & 1) && x < tx + 8 && x + w > tx && y < ty + 8 && y + h > ty) return true;
+            if ((sub & 2) && x < tx + 16 && x + w > tx + 8 && y < ty + 8 && y + h > ty) return true;
+            if ((sub & 4) && x < tx + 8 && x + w > tx && y < ty + 16 && y + h > ty + 8) return true;
+            if ((sub & 8) && x < tx + 16 && x + w > tx + 8 && y < ty + 16 && y + h > ty + 8) return true;
+            continue;
+          }
+          if (t === 2 || t === 6) return true;
+        }
+      }
+      return false;
+    },
+    destroySubBrick(c, r, bx, by, dir) {
+      let sub = this.sub[r][c];
+      if (!sub) { this.map[r][c] = 0; return false; }
+      if (dir === 0) {
+        if (sub & 0x0C) sub &= ~0x0C;
+        else sub &= ~0x03;
+      } else if (dir === 2) {
+        if (sub & 0x03) sub &= ~0x03;
+        else sub &= ~0x0C;
+      } else if (dir === 3) {
+        if (sub & 0x0A) sub &= ~0x0A;
+        else sub &= ~0x05;
+      } else {
+        if (sub & 0x05) sub &= ~0x05;
+        else sub &= ~0x0A;
+      }
+      this.sub[r][c] = sub;
+      if (sub === 0) this.map[r][c] = 0;
+      return true;
+    },
+    applyItem(type) {
+      snd.playPower();
+      this.p.score += 500;
+      if (type === 'star') {
+        if (this.p.tier < 4) this.p.tier++;
+        if (this.p.tier >= 2) this.p.speed = 2.5;
+        FX.float(this.p.x, this.p.y, 'UPGRADE! ★' + this.p.tier, '#ffd928');
+      } else if (type === 'bomb') {
+        this.enemies.forEach(e => {
+          e.active = false;
+          this.p.score += 200;
+          FX.burst(e.x + 7, e.y + 31, 14, ['#ff4444', '#ffd928', '#ffffff']);
+        });
+        this.enemies = [];
+        snd.playExplode();
+        FX.shake = 10;
+        FX.float(120, 140, 'BOMB DESTROY!', '#ff4444');
+      } else if (type === 'clock') {
+        this.freezeTimer = 300;
+        FX.float(this.p.x, this.p.y, 'TIME FROZEN 10s', '#38bdf8');
+      } else if (type === 'helmet') {
+        this.p.inv = 300;
+        FX.float(this.p.x, this.p.y, 'SHIELD AURA', '#00e5ff');
+      } else if (type === 'shovel') {
+        this.shovelTimer = 450;
+        [[14,6],[14,7],[14,8],[15,6],[15,8],[16,6],[16,8]].forEach(([r,c]) => this.map[r][c] = 2);
+        FX.float(120, 240, 'STEEL FORTIFY!', '#94a3b8');
+      } else if (type === 'gun') {
+        this.p.tier = 4; this.p.speed = 2.8;
+        FX.float(this.p.x, this.p.y, 'STAR DESTROYER!', '#a855f7');
+      } else if (type === 'life') {
+        this.p.lives++;
+        snd.playEat();
+        FX.float(this.p.x, this.p.y, '1-UP LIFE!', '#ec4899');
+      }
+    },
+    spawnEnemy() {
+      if (this.enemiesLeft <= 0 || this.enemies.length >= 4) return;
+      const pts = [0, 7, 13];
+      const col = pts[(Math.random() * 3) | 0];
+      const sx = col * 16, sy = 0;
+      if (this.enemies.some(e => Math.abs(e.x - sx) < 16 && Math.abs(e.y - sy) < 16)) return;
+      const r = Math.random();
+      let type = 'basic', spd = 1.2, hp = 1;
+      if (r < 0.35) { type = 'basic'; spd = 1.2; }
+      else if (r < 0.65) { type = 'fast'; spd = 2.6; }
+      else if (r < 0.85) { type = 'power'; spd = 1.8; }
+      else { type = 'armor'; spd = 1.2; hp = 3; }
+      const flashing = Math.random() < 0.28;
+      this.enemies.push({
+        x: sx, y: sy, dir: 2, type, speed: spd, hp, flashing,
+        cooldown: 30, anim: 0, active: true
+      });
+      this.enemiesLeft--;
+      FX.burst(sx + 7, sy + 31, 8, ['#ffffff', '#00e5ff']);
+    },
+    update(dt) {
+      if (this.dead || this.win) return;
+      this.ticks++;
+
+      // 铲子倒计时恢复
+      if (this.shovelTimer > 0) {
+        this.shovelTimer--;
+        if (this.shovelTimer === 0) {
+          [[14,6],[14,7],[14,8],[15,6],[15,8],[16,6],[16,8]].forEach(([r,c]) => {
+            this.map[r][c] = 1; this.sub[r][c] = 0x0F;
+          });
+        }
+      }
+      if (this.freezeTimer > 0) this.freezeTimer--;
+
+      // 玩家操作
+      if (keys.up && !prev.up) {
+        this.p.dir = (this.p.dir + 3) % 4;
+        if (this.p.dir === 0 || this.p.dir === 2) {
+          const rem = this.p.x % 16;
+          if (rem <= 4) this.p.x -= rem; else if (rem >= 12) this.p.x += (16 - rem);
+        } else {
+          const rem = this.p.y % 16;
+          if (rem <= 4) this.p.y -= rem; else if (rem >= 12) this.p.y += (16 - rem);
+        }
+      }
+      if (keys.down && !prev.down) {
+        this.p.dir = (this.p.dir + 1) % 4;
+        if (this.p.dir === 0 || this.p.dir === 2) {
+          const rem = this.p.x % 16;
+          if (rem <= 4) this.p.x -= rem; else if (rem >= 12) this.p.x += (16 - rem);
+        } else {
+          const rem = this.p.y % 16;
+          if (rem <= 4) this.p.y -= rem; else if (rem >= 12) this.p.y += (16 - rem);
+        }
+      }
+
+      const isDriving = keys.up || keys.down;
+      this.p.moving = isDriving;
+      if (isDriving) {
+        this.p.anim ^= 1;
+        let nx = this.p.x, ny = this.p.y;
+        const s = this.p.speed;
+        if (this.p.dir === 0) ny -= s;
+        else if (this.p.dir === 1) nx += s;
+        else if (this.p.dir === 2) ny += s;
+        else nx -= s;
+        if (!this.checkBlocked(nx, ny, 14, 14, false)) {
+          this.p.x = nx; this.p.y = ny;
+        }
+      }
+
+      if (this.p.cooldown > 0) this.p.cooldown--;
+      if (this.p.inv > 0) this.p.inv--;
+      if (this.p.autoFire && (this.ticks % 10 === 0)) {
+        this.fire(this.p, true, 1);
+      }
+
+      // 敌军刷新
+      if (this.enemiesLeft > 0) {
+        if (--this.spawnTimer <= 0) {
+          this.spawnEnemy();
+          this.spawnTimer = 80;
+        }
+      }
+
+      // 敌军行动
+      if (this.freezeTimer === 0) {
+        this.enemies.forEach(e => {
+          if (!e.active) return;
+          if (--e.cooldown <= 0 && Math.random() < 0.04) {
+            this.fire(e, false, 2);
+            e.cooldown = 45;
+          }
+          if (Math.random() < 0.03) {
+            e.dir = (e.type === 'fast' && Math.random() < 0.5) ? 2 : ((Math.random() * 4) | 0);
+          }
+          let nx = e.x, ny = e.y;
+          if (e.dir === 0) ny -= e.speed;
+          else if (e.dir === 1) nx += e.speed;
+          else if (e.dir === 2) ny += e.speed;
+          else nx -= e.speed;
+          if (!this.checkBlocked(nx, ny, 14, 14, false)) {
+            e.x = nx; e.y = ny; e.anim ^= 1;
+          } else {
+            e.dir = (Math.random() * 4) | 0;
+          }
+        });
+      }
+
+      // 子弹推进
+      for (let i = this.bullets.length - 1; i >= 0; i--) {
+        const b = this.bullets[i];
+        if (b.dir === 0) b.y -= b.speed;
+        else if (b.dir === 1) b.x += b.speed;
+        else if (b.dir === 2) b.y += b.speed;
+        else b.x -= b.speed;
+
+        if (b.x < 0 || b.x >= 240 || b.y < 0 || b.y >= 272) {
+          this.bullets.splice(i, 1); continue;
+        }
+
+        // 子弹对撞
+        let clashed = false;
+        for (let j = this.bullets.length - 1; j >= 0; j--) {
+          if (i !== j && this.bullets[j] && b.fromPlayer !== this.bullets[j].fromPlayer) {
+            const ob = this.bullets[j];
+            if (Math.abs(b.x - ob.x) < 6 && Math.abs(b.y - ob.y) < 6) {
+              this.bullets.splice(Math.max(i, j), 1);
+              this.bullets.splice(Math.min(i, j), 1);
+              FX.burst(b.x, b.y + 24, 4, ['#ffffff', '#facc15']);
+              snd.playSpark();
+              clashed = true; break;
+            }
+          }
+        }
+        if (clashed) continue;
+
+        // 地貌瓦片碰撞
+        const col = Math.floor(b.x / 16), row = Math.floor(b.y / 16);
+        if (row >= 0 && row < 17 && col >= 0 && col < 15) {
+          const t = this.map[row][col];
+          if (t === 1) {
+            this.destroySubBrick(col, row, b.x, b.y, b.dir);
+            this.bullets.splice(i, 1);
+            snd.playSpark();
+            FX.burst(b.x, b.y + 24, 5, ['#dc2626', '#b91c1c', '#ffffff']);
+            continue;
+          } else if (t === 2) {
+            if (b.pierce) {
+              this.map[row][col] = 0;
+              snd.playExplode();
+              FX.burst(b.x, b.y + 24, 8, ['#cbd5e1', '#ffffff']);
+            } else {
+              snd.playSpark();
+            }
+            this.bullets.splice(i, 1);
+            continue;
+          } else if (t === 6) {
+            this.baseAlive = false;
+            this.dead = true;
+            this.bullets.splice(i, 1);
+            snd.playGameOver();
+            FX.shake = 16;
+            FX.burst(b.x, b.y + 24, 25, ['#dc2626', '#ff4444', '#000000']);
+            continue;
+          }
+        }
+
+        // 打中敌军
+        if (b.fromPlayer) {
+          let hitEnemy = false;
+          for (let eIdx = this.enemies.length - 1; eIdx >= 0; eIdx--) {
+            const e = this.enemies[eIdx];
+            if (b.x >= e.x && b.x <= e.x + 14 && b.y >= e.y && b.y <= e.y + 14) {
+              this.bullets.splice(i, 1);
+              if (--e.hp <= 0) {
+                e.active = false;
+                this.enemies.splice(eIdx, 1);
+                this.p.score += 100;
+                snd.playExplode();
+                FX.shake = 6;
+                FX.burst(e.x + 7, e.y + 31, 14, ['#ff4444', '#ffd928', '#ffffff']);
+                if (e.flashing) {
+                  const types = ['star', 'bomb', 'clock', 'helmet', 'shovel', 'gun', 'life'];
+                  this.items.push({
+                    x: 20 + Math.random() * 200, y: 20 + Math.random() * 220,
+                    type: types[(Math.random() * types.length) | 0], life: 500
+                  });
+                }
+              } else {
+                snd.playSpark();
+              }
+              hitEnemy = true; break;
+            }
+          }
+          if (hitEnemy) continue;
+        } else {
+          // 敌军打中玩家
+          if (b.x >= this.p.x && b.x <= this.p.x + 14 && b.y >= this.p.y && b.y <= this.p.y + 14) {
+            this.bullets.splice(i, 1);
+            if (this.p.inv <= 0) {
+              snd.playHurt();
+              FX.shake = 8;
+              FX.burst(this.p.x + 7, this.p.y + 31, 12, ['#ef4444', '#ffd928']);
+              if (--this.p.lives <= 0) {
+                this.dead = true;
+                snd.playGameOver();
+              } else {
+                this.p.x = 4 * 16 + 1; this.p.y = 15 * 16 + 1;
+                this.p.dir = 0; this.p.inv = 90;
+              }
+            }
+          }
+        }
+      }
+
+      // 道具寿命与拾取
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        const it = this.items[i];
+        if (--it.life <= 0) { this.items.splice(i, 1); continue; }
+        if (Math.abs(this.p.x - it.x) < 14 && Math.abs(this.p.y - it.y) < 14) {
+          this.applyItem(it.type);
+          this.items.splice(i, 1);
+        }
+      }
+
+      // 胜利检测
+      if (this.enemiesLeft === 0 && this.enemies.length === 0) {
+        this.win = true;
+        snd.playPower();
+      }
+    },
+    draw() {
+      ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, 240, 320);
+
+      // 地图瓦片绘制
+      for (let r = 0; r < 17; r++) {
+        for (let c = 0; c < 15; c++) {
+          const t = this.map[r][c];
+          const px = c * 16, py = 24 + r * 16;
+          if (t === 1) {
+            const sub = this.sub[r][c];
+            ctx.fillStyle = '#b91c1c';
+            if (sub & 1) { ctx.fillRect(px, py, 7, 7); ctx.fillStyle = '#dc2626'; ctx.fillRect(px+1, py+1, 5, 2); ctx.fillStyle = '#b91c1c'; }
+            if (sub & 2) { ctx.fillRect(px + 8, py, 7, 7); ctx.fillStyle = '#dc2626'; ctx.fillRect(px+9, py+1, 5, 2); ctx.fillStyle = '#b91c1c'; }
+            if (sub & 4) { ctx.fillRect(px, py + 8, 7, 7); ctx.fillStyle = '#dc2626'; ctx.fillRect(px+1, py+9, 5, 2); ctx.fillStyle = '#b91c1c'; }
+            if (sub & 8) { ctx.fillRect(px + 8, py + 8, 7, 7); ctx.fillStyle = '#dc2626'; ctx.fillRect(px+9, py+9, 5, 2); ctx.fillStyle = '#b91c1c'; }
+          } else if (t === 2) {
+            ctx.fillStyle = '#94a3b8'; ctx.fillRect(px, py, 16, 16);
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(px + 1, py + 1, 14, 14);
+            ctx.fillStyle = '#475569'; ctx.fillRect(px + 7, py, 2, 16); ctx.fillRect(px, py + 7, 16, 2);
+          } else if (t === 3) {
+            ctx.fillStyle = '#0284c7'; ctx.fillRect(px, py, 16, 16);
+            ctx.fillStyle = '#38bdf8';
+            if (((this.ticks / 8) | 0) % 2) ctx.fillRect(px + 2, py + 4, 8, 2);
+            else ctx.fillRect(px + 6, py + 10, 8, 2);
+          } else if (t === 5) {
+            ctx.fillStyle = '#bae6fd'; ctx.fillRect(px, py, 16, 16);
+            ctx.fillStyle = '#f0f9ff'; ctx.fillRect(px + 2, py + 2, 4, 1);
+          } else if (t === 6) {
+            if (this.baseAlive) {
+              ctx.fillStyle = '#f59e0b'; ctx.fillRect(px + 4, py + 2, 8, 4);
+              ctx.fillStyle = '#d97706'; ctx.fillRect(px + 2, py + 6, 12, 6);
+              ctx.fillStyle = '#78350f'; ctx.fillRect(px + 4, py + 12, 8, 4);
+            } else {
+              ctx.fillStyle = '#334155'; ctx.fillRect(px + 2, py + 4, 12, 8);
+              ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 6, py + 6, 4, 4);
+            }
+          }
+        }
+      }
+
+      // 道具
+      this.items.forEach(it => {
+        if (it.life < 100 && ((it.life / 6) | 0) % 2) return;
+        const iy = 24 + it.y;
+        ctx.fillStyle = '#facc15'; ctx.fillRect(it.x, iy, 14, 14);
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(it.x + 1, iy + 1, 12, 12);
+        ctx.fillStyle = '#facc15'; ctx.font = 'bold 9px monospace';
+        const map = { star: '★', bomb: '💣', clock: '⏰', helmet: '🛡', shovel: '铲', gun: '🔫', life: '♥' };
+        ctx.fillText(map[it.type] || '?', it.x + 2, iy + 10);
+      });
+
+      // 敌军绘制
+      this.enemies.forEach(e => {
+        if (!e.active) return;
+        const ey = 24 + e.y;
+        const col = e.flashing ? ((((this.ticks / 3) | 0) % 2) ? '#dc2626' : '#fde047') :
+          (e.type === 'fast' ? '#ef4444' : (e.type === 'power' ? '#0284c7' : (e.hp >= 3 ? '#15803d' : '#94a3b8')));
+        ctx.fillStyle = '#1e293b';
+        if (e.dir === 0 || e.dir === 2) {
+          ctx.fillRect(e.x, ey, 3, 14); ctx.fillRect(e.x + 11, ey, 3, 14);
+          ctx.fillStyle = col; ctx.fillRect(e.x + 3, ey + 2, 8, 10);
+          ctx.fillStyle = '#e2e8f0';
+          if (e.dir === 0) ctx.fillRect(e.x + 6, ey - 3, 2, 5); else ctx.fillRect(e.x + 6, ey + 12, 2, 5);
+        } else {
+          ctx.fillRect(e.x, ey, 14, 3); ctx.fillRect(e.x, ey + 11, 14, 3);
+          ctx.fillStyle = col; ctx.fillRect(e.x + 2, ey + 3, 10, 8);
+          ctx.fillStyle = '#e2e8f0';
+          if (e.dir === 3) ctx.fillRect(e.x - 3, ey + 6, 5, 2); else ctx.fillRect(e.x + 12, ey + 6, 5, 2);
+        }
+      });
+
+      // 玩家战车
+      {
+        const p = this.p, py = 24 + p.y;
+        if (p.inv > 0) {
+          ctx.strokeStyle = (((this.ticks / 3) | 0) % 2) ? '#00e5ff' : '#facc15';
+          ctx.lineWidth = 1.5; ctx.strokeRect(p.x - 2, py - 2, 18, 18);
+        }
+        ctx.fillStyle = '#78350f';
+        if (p.dir === 0 || p.dir === 2) {
+          ctx.fillRect(p.x, py, 3, 14); ctx.fillRect(p.x + 11, py, 3, 14);
+          ctx.fillStyle = '#f59e0b'; ctx.fillRect(p.x + 3, py + 2, 8, 10);
+          ctx.fillStyle = '#e2e8f0';
+          if (p.dir === 0) ctx.fillRect(p.x + 6, py - 3, 2, 5); else ctx.fillRect(p.x + 6, py + 12, 2, 5);
+        } else {
+          ctx.fillRect(p.x, py, 14, 3); ctx.fillRect(p.x, py + 11, 14, 3);
+          ctx.fillStyle = '#f59e0b'; ctx.fillRect(p.x + 2, py + 3, 10, 8);
+          ctx.fillStyle = '#e2e8f0';
+          if (p.dir === 3) ctx.fillRect(p.x - 3, py + 6, 5, 2); else ctx.fillRect(p.x + 12, py + 6, 5, 2);
+        }
+      }
+
+      // 灌木树冠在顶层覆盖
+      for (let r = 0; r < 17; r++) {
+        for (let c = 0; c < 15; c++) {
+          if (this.map[r][c] === 4) {
+            const px = c * 16, py = 24 + r * 16;
+            ctx.fillStyle = '#15803d'; ctx.fillRect(px, py, 16, 16);
+            ctx.fillStyle = '#22c55e'; ctx.fillRect(px + 2, py + 2, 6, 5); ctx.fillRect(px + 8, py + 8, 6, 5);
+          }
+        }
+      }
+
+      // 子弹
+      this.bullets.forEach(b => {
+        ctx.fillStyle = b.fromPlayer ? (b.pierce ? '#00e5ff' : '#facc15') : '#ef4444';
+        ctx.fillRect(b.x - 1, 24 + b.y - 1, 3, 3);
+      });
+
+      // HUD
+      drawHud(this.p.score, () => {
+        ctx.fillStyle = '#ef4444'; ctx.fillText('P1 ' + '♥'.repeat(Math.max(0, this.p.lives)), 78, 15);
+        ctx.fillStyle = '#facc15'; ctx.fillText('★' + this.p.tier, 126, 15);
+        ctx.fillStyle = '#38bdf8'; ctx.fillText('ENEMIES ' + (this.enemiesLeft + this.enemies.length), 154, 15);
+      });
+
+      // 底部状态条
+      ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 298, 240, 22);
+      ctx.fillStyle = '#334155'; ctx.fillRect(0, 298, 240, 1);
+      ctx.font = 'bold 9px monospace';
+      if (this.p.autoFire) { ctx.fillStyle = '#f59e0b'; ctx.fillText('[AUTO ON]', 6, 312); }
+      if (this.freezeTimer > 0) { ctx.fillStyle = '#38bdf8'; ctx.fillText('[FROZEN]', 68, 312); }
+      if (this.shovelTimer > 0) { ctx.fillStyle = '#94a3b8'; ctx.fillText('[STEEL BASE]', 122, 312); }
+      if (this.p.inv > 0) { ctx.fillStyle = '#00e5ff'; ctx.fillText('[SHIELD]', 192, 312); }
+
+      if (this.dead) drawOver('BASE DESTROYED', this.p.score, 'tank', 'OK TO RETRY');
+      else if (this.win) drawOver('STAGE CLEARED', this.p.score, 'tank', 'OK FOR NEXT STAGE');
+    }
+  },
+
   adventure: {
     icon: '🏝️', title: '像素冒险岛 HD (ADVENTURE ISLAND)',
     desc: '★ 自动前进 · 踩踏连击 · A/K/P 武器字母 · 视差海岛 ★',

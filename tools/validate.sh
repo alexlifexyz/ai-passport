@@ -72,6 +72,10 @@ run_static_checks() {
         tests/test_thunderracer_logic.c main/thunderracer_logic.c \
         -o "${test_dir}/test_thunderracer_logic"
     "${test_dir}/test_thunderracer_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_battlecity_logic.c main/battlecity_logic.c \
+        -o "${test_dir}/test_battlecity_logic"
+    "${test_dir}/test_battlecity_logic"
     python3 tests/test_verify_firmware.py
     rm -rf "${test_dir}"
     echo "Host tests: PASS"
