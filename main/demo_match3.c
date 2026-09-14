@@ -45,7 +45,7 @@ static void match3_audio_task(void *arg)
 {
     (void)arg;
     match3_sound_t snd;
-    int16_t buf[256];
+    static int16_t buf[256];
 
     bsp_audio_set_format(16000, 16, 1);
     bsp_audio_set_volume(s_volume);
@@ -391,7 +391,7 @@ void demo_match3_enter(void)
     // 启动音频合成任务
     s_audio_running = true;
     s_snd_queue = xQueueCreate(8, sizeof(match3_sound_t));
-    xTaskCreate(match3_audio_task, "m3_audio", 2048, NULL, 4, &s_snd_task);
+    xTaskCreate(match3_audio_task, "m3_audio", 4096, NULL, 5, &s_snd_task);
 
     // 启动 40 FPS 超高灵敏定时器
     s_game_timer = lv_timer_create(match3_timer_cb, 25, NULL);
