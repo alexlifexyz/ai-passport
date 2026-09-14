@@ -237,6 +237,16 @@
         osc.start(t + idx * 0.045); osc.stop(t + idx * 0.045 + 0.07);
       });
     }
+
+    playShoot(kind) {
+      if (kind === 'laser') this.playLaser();
+      else this.playFire();
+    }
+    playSpark() { this.playClick(); }
+    playPower() { this.playPowerup(); }
+    playHurt() { this.playHit(); }
+    playEat() { this.playCoin(); }
+    playBlip() { this.playClick(); }
   }
 
   // --- 2. 炫彩粒子与屏幕震动系统 ---
@@ -268,6 +278,9 @@
     }
     floatText(x, y, text, color = '#ffd700') {
       this.floats.push({ x, y, text, color, life: 30, maxLife: 30, vy: -0.9 });
+    }
+    float(x, y, text, color = '#ffd700') {
+      this.floatText(x, y, text, color);
     }
     text(x, y, text, color = '#ffd700') {
       this.floatText(x, y, text, color);
@@ -309,7 +322,7 @@
     }
   }
 
-  // --- 3. 游戏注册表元数据定义 (11 大游戏档案) ---
+  // --- 3. 游戏注册表元数据定义 ---
   const GAME_REGISTRY = [
     {
       id: 'thunderracer',
@@ -340,6 +353,21 @@
       downHint: '右平移走位',
       okHint: '全屏毁灭核弹',
       help: '• <strong>UP / DOWN</strong>：左右机动避弹（PC键盘支持 ↑↓←→ 全方位走位）。<br>• <strong>三大法宝流派</strong>：[P] 突击神火激光 | [W] 幻影 S 型蛇形回旋波刃 | [F] 炼狱爆轰烈焰火球。<br>• <strong>力场与僚机</strong>：[S] 激活离子护盾防御罩 | 强化时激活双子浮游卫星僚机协同射击。<br>• <strong>OK 键</strong>：释放全屏毁灭核弹，清除全屏敌弹并造成毁灭打击！<br>• <strong>[B] 补充全屏核弹 | [H] 维修机身回复生命</strong>。'
+    },
+    {
+      id: 'battlecity',
+      title: '坦克大战 1990',
+      subtitle: 'BATTLE CITY NEO',
+      icon: '🪖',
+      category: 'shooter',
+      badge: 'CLASSIC',
+      difficulty: 3,
+      tags: ['8×8 半砖削减', '钢板穿甲', '基地金鹰', '七种宝箱'],
+      desc: '保卫老家雄鹰！UP / DOWN 转向，按住前进，OK 开火。红砖按象限削掉，四星重坦才能打穿钢板。击毁闪光坦克掉升阶、全灭、冻结、无敌、铲固、满级和奖命。',
+      upHint: '左转 / 按住前进',
+      downHint: '右转 / 按住前进',
+      okHint: '开火 / 双击连发',
+      help: '• <strong>UP / DOWN</strong>：逆时针 / 顺时针转 90°，按住则沿炮口前进。<br>• <strong>OK</strong>：开火。280ms 内再按一次切换自动连发。<br>• 红砖按 8×8 象限削掉；普通弹打不穿钢板，四星穿甲可以。<br>• 闪光坦克掉宝箱：升阶 / 全灭 / 冻结 / 无敌 / 铲固老家 / 满级 / 奖命。'
     },
     {
       id: 'adventure',
@@ -490,6 +518,21 @@
       downHint: '下一个国际城市',
       okHint: '推算会议黄金重叠时段',
       help: '• <strong>UP / DOWN</strong>：在全球 12 大国际核心时区都市间自由切换。<br>• 顶部直观展示当前城市的太阳晨昏昼夜轨迹与当地标准时间。<br>• <strong>OK 键</strong>：一键调出跨时区全天候会议对齐矩阵，寻找商务交集重叠黄金时间。'
+    },
+    {
+      id: 'match3',
+      title: '赛博晶核消消乐：极速连击',
+      subtitle: 'CYBER MATCH-3: NEON POP',
+      icon: '💎',
+      category: 'chill',
+      badge: 'POPULAR',
+      difficulty: 2,
+      tags: ['三键双步快选', '4/5连激光核与彩虹核', '重力级联掉落', '狂暴连击升调'],
+      desc: '专为微掌机三键人机工学定制的赛博霓虹三消！UP/DOWN 线性扫格，OK 锁定方块进入轮盘选向并一键交换。4连合成贯穿激光，5连合成超导彩虹星核，连锁掉落触发持续升调与全屏爆破！',
+      upHint: '上移 / 逆时针选向',
+      downHint: '下移 / 顺时针选向',
+      okHint: '锁定 / 确认交换',
+      help: '• <strong>未选中时</strong>：UP/DOWN 快速沿棋盘前后移动光标。<br>• <strong>按 OK 键</strong>：锁定当前宝石，周围出现定向箭头。<br>• <strong>此时按 UP/DOWN</strong>：顺/逆时针切换要交换的相邻方块。<br>• <strong>再次按 OK 键</strong>：确认交换！若未形成消除则自动弹回。<br>• 4 连生成行列激光，5 连生成彩虹全消核！'
     }
   ];
 

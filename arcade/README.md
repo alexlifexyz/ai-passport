@@ -4,25 +4,27 @@
 
 # Alex Arcade
 
-Public playground for the AI Passport game collection. Ten cabinets in the hall, plus a world-clock lounge toy. Every title uses the same three buttons as the handheld: UP, DOWN, and OK.
+Public playground for the AI Passport game collection. Thirteen cabinets on the floor, plus a world-clock lounge toy. Every title uses the same three buttons as the handheld: UP, DOWN, and OK.
 
 ## Layout
 
 ```text
 arcade/                 public homepage (this folder)
   index.html            lobby / cabinet wall
-  assets/               hall, coin-door, and passport photographs
+  assets/               hall photos, coin token, and attract-mode stills
 simulator/              playable pages
-  game.html             one-cabinet player (?id=)
+  hub.html              HD pixel tables (Adventure, Contra, Racer, Flappy, Pong, Sparkler, Tank, World Clock)
+  thunder.html          Thunder Striker
+  flysaber.html         FlySaber
+  flydriver.html        FlyDriver
+  game.html             standalone cabinets (Fish, Roulette, Cyber Match-3)
   games-engine.js       shared audio, FX, and catalog
-  games-impl.js         game implementations
-  thunder.html          standalone Thunder Striker table
-  flydriver.html
-  flysaber.html
-  hub.html              older multi-tab table
+  games-impl.js         Fish / Roulette / Match-3 implementations
 ```
 
-Open `arcade/index.html` next to `simulator/` (a local static server or GitHub Pages at the repository root). Cabinet links resolve to `../simulator/game.html?id=...`.
+Open `arcade/index.html` next to `simulator/` (a local static server or GitHub Pages at the repository root). Cabinets open the matching HD table, not the simplified `game.html` player.
+
+The lobby is data-driven: floor cabinets, the nightly pick, ticker copy, and the cabinet count all come from the same list. Keyboard `←` `→` selects a machine; Space inserts a coin. High scores and the last machine played stay in this browser.
 
 ## GitHub Pages and a custom domain
 

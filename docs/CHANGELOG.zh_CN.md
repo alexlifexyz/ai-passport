@@ -6,10 +6,14 @@
 
 ## Unreleased
 
+- 新增《赛博晶核消消乐：极速连击 (Cyber Match-3: Neon Pop)》：专为 AI Passport 三键（UP/DOWN/OK）打造的高性能消除游戏。采用零堆分配状态机、双步式定向邻居轮换交换算法、4/5连激光射线与彩虹星核合成、重力掉落下落级联与死局自动洗牌。配备 40 FPS 零显存开销即时矢量渲染、16kHz 8-bit 复古合成音效、完整的 Host 自动化单测与 Alex Arcade Web 街机仿真柜机。
+
+- 重做 Alex Arcade 大厅：十三台柜机加世界钟休息室、像素吸引画面、今晚主打/继续游戏、键盘投币、本机高分。柜机打开 HD 桌面（`hub.html`、`thunder.html`、`flysaber.html`、`flydriver.html`）；鱼、轮盘与消消乐走 `game.html`。
+
 - 新增《会躲起来的鱼》：口袋鱼缸陪伴小品。对它说话或按 OK 会游到面前看着你，轻敲缸壁能从水草里探头，对着麦克风吹气会吓得乱窜，长时间不理（或离开数小时）就钻进草里只露尾巴。没有饥饿，不会死亡。含固件、host 测试与 Alex Arcade 柜机。
 
-- 新增《经典坦克大战 1990 (Battle City Neo)》：包含 8x8 子砖局部瓦解物理、4 星超级穿甲重坦摧毁钢板、基地雄鹰保卫战、7 大经典宝箱道具、16kHz 复古 chiptune 拟音、基于 ESP-NOW 的无感双机无线联机对战/合作，以及 `simulator/hub.html` 与 `arcade/` 的 Web 街机模拟器集成。
-- 新增 `arcade/` 对外大厅：十台柜机墙加世界钟休息室，仓库根目录与 `simulator/index.html` 会跳到这里，方便以后挂 GitHub Pages。
+- 新增《经典坦克大战 1990 (Battle City Neo)》：包含 8x8 子砖局部瓦解物理、4 星超级穿甲重坦摧毁钢板、基地雄鹰保卫战、7 大经典宝箱道具、16kHz 复古 chiptune 拟音、基于 ESP-NOW 的无感双机无线联机对战/合作，以及 `simulator/game.html` 与 `arcade/` 的 Web 街机模拟器集成。
+- 新增 `arcade/` 对外大厅：柜机墙加世界钟休息室，仓库根目录与 `simulator/index.html` 会跳到这里，方便以后挂 GitHub Pages。
 - 雷霆飞车固件 HUD 会显示擦车连击，并在夜间切换赛道配色。
 
 - 加入厂家为优特利 520mAh 电芯生成的 80 字节 CW2017 profile，并实现内容与更新标志检查、写入后校验、规定的重启时序以及有上限的 SOC 就绪等待。

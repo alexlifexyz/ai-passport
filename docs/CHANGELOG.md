@@ -6,10 +6,14 @@
 
 ## Unreleased
 
+- Added Cyber Match-3: Neon Pop, a high-performance tile-matching arcade title designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features zero-malloc deterministic state machine, 2-step directional neighbor swap, line laser and rainbow core syntheses, cascading gravity refills, and automatic deadlock reshuffling. Delivered with 40 FPS zero-DRAM immediate-mode vector rendering, 16kHz 8-bit retro audio synthesis, complete host unit tests, and an Alex Arcade browser cabinet.
+
+- Rebuilt the Alex Arcade lobby: thirteen floor cabinets plus the world-clock lounge, pixel attract stills, a nightly/continue pick, keyboard coin-in, and cabinet high scores. Cabinets open the HD hub and standalone tables (`hub.html`, `thunder.html`, `flysaber.html`, `flydriver.html`); Fish, Roulette, and Match-3 stay on `game.html`.
+
 - Added Hiding Fish, a pocket aquarium companion: talk or press OK and it swims up to look at you, tap the glass to peek it out of the weeds, blow into the microphone to startle it, and ignore it for a while (or leave it for hours) and it hides with only its tail showing. No hunger, no death. Firmware, host tests, and an Alex Arcade cabinet.
 
-- Added Battle City Neo (1990 classic tank combat) with 8x8 sub-tile destructible brick physics, steel penetration at tier 4, eagle base protection, 7 bonus powerups, 16kHz retro chiptune audio synthesis, zero-config ESP-NOW wireless dual-device co-op, and browser simulator integration in `simulator/hub.html` and `arcade/`.
-- Added the Alex Arcade public lobby under `arcade/`: a cabinet-wall homepage for the ten playable titles plus the world-clock lounge, with GitHub Pages redirects from the repository root and `simulator/index.html`.
+- Added Battle City Neo (1990 classic tank combat) with 8x8 sub-tile destructible brick physics, steel penetration at tier 4, eagle base protection, 7 bonus powerups, 16kHz retro chiptune audio synthesis, zero-config ESP-NOW wireless dual-device co-op, and browser simulator integration in `simulator/game.html` and `arcade/`.
+- Added the Alex Arcade public lobby under `arcade/`: a cabinet-wall homepage for the playable titles plus the world-clock lounge, with GitHub Pages redirects from the repository root and `simulator/index.html`.
 - Thunder Racer firmware HUD now shows near-miss combo streaks and switches the track palette at night.
 
 - Added the supplied 80-byte CW2017 profile for the specified 520 mAh cell, including content/update-flag checks, verified writes, the required restart sequence, and bounded SOC-readiness polling.

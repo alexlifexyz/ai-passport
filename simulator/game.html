@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Alex Arcade · 柜机</title>
+<link rel="icon" href="../arcade/assets/coin.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg-main: #140c0a;
+    --bg-main: #100a08;
     --cyan: #7dffb3;
     --pink: #ff3d7f;
     --gold: #f0c14b;
@@ -17,7 +18,7 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background-color: var(--bg-main);
+    background: var(--bg-main);
     color: var(--text-main);
     font-family: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", sans-serif;
     min-height: 100vh;
@@ -25,333 +26,275 @@
     flex-direction: column;
   }
   .space-bg {
-    position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    background: radial-gradient(circle at 50% 20%, #2a1612 0%, #140c0a 70%);
-    z-index: -1;
+    position: fixed; inset: 0; z-index: -1;
+    background:
+      radial-gradient(circle at 50% 12%, #2a1612 0%, #100a08 68%),
+      url("../arcade/assets/hall.jpg") center / cover;
+    opacity: .28;
+    filter: saturate(.6);
   }
-
-  /* 顶栏 */
   header {
-    background: rgba(12, 8, 7, 0.88);
+    background: rgba(12, 8, 7, 0.9);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(240, 193, 75, 0.25);
-    padding: 12px 24px;
+    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-  .brand-back {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #fff;
-    text-decoration: none;
-    font-weight: 800;
-    font-size: 14px;
-  }
-  .brand-back { font-family: "Bebas Neue", Impact, sans-serif; letter-spacing: 0.12em; font-size: 18px; }
-  .brand-back:hover { color: var(--gold); }
-  .nav-right {
-    display: flex;
-    align-items: center;
     gap: 12px;
   }
+  .brand-back {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--gold); text-decoration: none;
+    font-family: "Bebas Neue", Impact, sans-serif;
+    letter-spacing: 0.12em; font-size: 18px;
+  }
+  .brand-back img { width: 22px; height: 22px; border-radius: 50%; }
+  .nav-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .btn-pill {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: #fff;
-    padding: 6px 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(242,226,196,0.2);
+    color: var(--text-main);
+    padding: 6px 12px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 700;
     text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s;
   }
-  .btn-pill:hover {
-    background: rgba(240,193,75,0.18);
-    border-color: var(--gold);
+  .btn-pill:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-gold { background: var(--gold); color: #1a1008; border-color: var(--gold); }
+
+  .rail {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 10px 20px 8px;
+    border-bottom: 1px solid rgba(240,193,75,.15);
+    scrollbar-width: thin;
+  }
+  .rail a {
+    flex: 0 0 auto;
+    text-decoration: none; color: var(--text-sub);
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    border: 1px solid rgba(242,226,196,.15);
+    padding: 6px 10px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .rail a.on, .rail a:hover {
+    color: #1a1008; background: var(--gold); border-color: var(--gold);
   }
 
-  /* 双栏独立落地布局 */
   .game-layout {
     max-width: 1100px;
-    margin: 24px auto;
-    padding: 0 20px;
+    margin: 20px auto;
+    padding: 0 20px 28px;
     display: grid;
-    grid-template-columns: 1.1fr 1fr;
-    gap: 40px;
+    grid-template-columns: 1.05fr .95fr;
+    gap: 36px;
     align-items: center;
     flex-grow: 1;
   }
-
-  /* 左侧详情介绍 */
   .game-details {
-    background: rgba(18, 24, 43, 0.6);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 24px;
-    padding: 32px;
-    backdrop-filter: blur(16px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+    background: rgba(26, 16, 14, 0.82);
+    border: 1px solid #3a2a22;
+    padding: 28px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.55);
   }
-  .game-icon-large {
-    font-size: 54px;
-    margin-bottom: 12px;
-  }
+  .game-icon-large { font-size: 42px; margin-bottom: 8px; }
   .game-title-lg {
-    font-size: 30px;
-    font-weight: 900;
-    line-height: 1.2;
-    background: linear-gradient(90deg, #fff 0%, var(--gold) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 6px;
+    font-family: "Bebas Neue", Impact, sans-serif;
+    font-size: 40px; letter-spacing: .06em; line-height: .9;
+    color: var(--gold); margin-bottom: 6px;
   }
   .game-sub-lg {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--cyan);
-    letter-spacing: 1px;
-    margin-bottom: 16px;
+    font-size: 12px; font-weight: 700; color: var(--cyan);
+    letter-spacing: .14em; margin-bottom: 14px;
   }
   .game-desc-lg {
-    font-size: 14px;
-    color: #cbd5e1;
-    line-height: 1.7;
-    margin-bottom: 20px;
+    font-size: 14px; color: var(--text-sub); line-height: 1.7; margin-bottom: 16px;
   }
-  .game-tags-lg {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 24px;
-  }
+  .game-tags-lg { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
   .tag-lg {
-    background: rgba(0,240,255,0.1);
-    border: 1px solid rgba(0,240,255,0.3);
-    color: var(--cyan);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 700;
+    border: 1px solid rgba(125,255,179,.35); color: var(--cyan);
+    padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;
   }
+  .score-row {
+    display: flex; gap: 16px; margin-bottom: 16px;
+    font-family: "Bebas Neue", Impact, sans-serif;
+    letter-spacing: .12em; font-size: 18px;
+  }
+  .score-row span { color: var(--text-sub); font-size: 12px; letter-spacing: .16em; }
   .control-card {
-    background: rgba(0,0,0,0.4);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 20px;
-    border: 1px dashed rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.35);
+    border: 1px dashed rgba(242,226,196,0.22);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 18px;
   }
   .control-card h4 {
-    font-size: 12px;
-    color: var(--gold);
-    margin-bottom: 8px;
-    letter-spacing: 0.5px;
+    font-size: 12px; color: var(--gold); margin-bottom: 8px; letter-spacing: 0.5px;
   }
-  .control-card p {
-    font-size: 12px;
-    color: #94a3b8;
-    line-height: 1.6;
-  }
+  .control-card p { font-size: 12px; color: var(--text-sub); line-height: 1.65; }
   .control-card strong { color: #fff; }
+  .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 
-  /* 右侧掌机设备容器 */
-  .device-column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+  .device-column { display: flex; flex-direction: column; align-items: center; }
   .device-shell {
     position: relative;
-    width: 320px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%);
-    border: 2px solid rgba(255,255,255,0.25);
-    border-radius: 28px;
-    padding: 18px 14px 22px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.05);
+    width: 300px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03));
+    border: 2px solid rgba(255,255,255,0.28);
+    border-radius: 22px;
+    padding: 16px 14px 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.85), inset 0 0 20px rgba(255,255,255,0.05);
     backdrop-filter: blur(16px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: flex; flex-direction: column; align-items: center;
   }
   .device-brand {
     width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex; justify-content: space-between; align-items: center;
     padding: 0 4px 8px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    color: var(--cyan);
-    border-bottom: 1px dashed rgba(0, 240, 255, 0.2);
+    font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+    color: var(--gold);
+    border-bottom: 1px dashed rgba(240, 193, 75, 0.25);
     margin-bottom: 10px;
   }
   .screen-bezel {
-    width: 256px;
-    height: 336px;
-    background: #000;
-    border-radius: 12px;
+    width: 256px; height: 336px;
+    background: #050308;
+    border-radius: 10px;
     padding: 8px;
-    box-shadow: inset 0 0 14px rgba(0,0,0,0.95), 0 0 24px rgba(0, 240, 255, 0.2);
-    border: 2px solid #222c3d;
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.95), 0 0 24px rgba(240, 193, 75, 0.12);
+    border: 2px solid #2a2218;
   }
   #gameCanvas {
-    width: 240px;
-    height: 320px;
+    width: 240px; height: 320px;
     background: #080a14;
-    border-radius: 6px;
+    border-radius: 4px;
     display: block;
     image-rendering: pixelated;
   }
-
   .controls-panel {
-    margin-top: 14px;
-    width: 100%;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
+    margin-top: 14px; width: 100%;
+    display: flex; justify-content: space-around; align-items: center;
   }
   .hw-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    user-select: none;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; user-select: none;
   }
   .btn-circle {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: linear-gradient(145deg, #2b354d, #141b2b);
-    border: 2px solid rgba(255,255,255,0.25);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 16px;
-    color: #fff;
-    transition: transform 0.05s, background 0.05s;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, #ff5a5a, #b11a1a 55%, #6a0d0d);
+    border: 2px solid rgba(255,255,255,0.28);
+    box-shadow: 0 6px 0 #3a0a0a, inset 0 2px 3px rgba(255,255,255,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 14px; color: #fff;
   }
   .btn-circle.active, .btn-circle:active {
-    transform: translateY(3px) scale(0.96);
-    background: var(--cyan);
-    color: #000;
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #3a0a0a;
+    filter: brightness(1.15);
   }
-  #btn-ok .btn-circle.active, #btn-ok .btn-circle:active {
-    background: var(--gold);
-    color: #000;
+  #btn-ok .btn-circle {
+    background: radial-gradient(circle at 30% 25%, #ffe08a, #f0c14b 55%, #8a5a10);
+    color: #1a1008;
+    box-shadow: 0 6px 0 #5a3a08, inset 0 2px 3px rgba(255,255,255,0.4);
   }
-  .btn-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #cbd5e1;
-  }
-  .key-hint { font-size: 9px; color: #64748b; }
-  kbd {
-    background: #334155; color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 9px;
+  #btn-ok .btn-circle.active, #btn-ok .btn-circle:active { box-shadow: 0 2px 0 #5a3a08; }
+  .btn-label { font-size: 11px; font-weight: 700; color: var(--text-sub); }
+  .key-hint { font-size: 9px; color: #8a7460; }
+  kbd { background: #2a1c16; color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid #5a4336; }
+  .swap {
+    margin-top: 12px; display: flex; gap: 8px;
   }
 
   footer {
     border-top: 1px solid rgba(255,255,255,0.08);
-    padding: 20px;
+    padding: 16px 20px 24px;
     text-align: center;
     font-size: 12px;
-    color: #64748b;
+    color: #8a7460;
   }
+  footer a { color: var(--gold); }
 
   @media (max-width: 860px) {
     .game-layout { grid-template-columns: 1fr; }
+    .game-details { order: 2; }
+    .device-column { order: 1; }
   }
 </style>
 </head>
 <body>
-
 <div class="space-bg"></div>
 
 <header>
   <a href="../arcade/" class="brand-back">
-    ◀ ALEX ARCADE
+    <img src="../arcade/assets/coin.jpg" alt=""> ALEX ARCADE
   </a>
   <div class="nav-right">
-    <button class="btn-pill" id="btn-share-link">复制链接</button>
-    <a href="../arcade/" class="btn-pill" style="background:var(--gold);color:#1a1008;border:none;">大厅十台柜机</a>
+    <button class="btn-pill" id="btn-share-link" type="button">复制链接</button>
+    <a href="../arcade/" class="btn-pill btn-gold">返回大厅</a>
   </div>
 </header>
 
+<nav class="rail" id="rail"></nav>
+
 <div class="game-layout">
-  <!-- 左侧详情 -->
   <div class="game-details">
     <div class="game-icon-large" id="gIcon">🏎️</div>
-    <h1 class="game-title-lg" id="gTitle">雷霆飞车：极速武装</h1>
-    <div class="game-sub-lg" id="gSub">THUNDER RACER: ARMORED SPEED</div>
-    <p class="game-desc-lg" id="gDesc">
-      驾驶重装武装超跑在赛博高速上极速狂飙！0ms触底瞬发高爆飞弹轰碎前车，近身擦车激活倍数连击，按住OK点燃氮气暴走无敌冲撞！
-    </p>
-
-    <div class="game-tags-lg" id="gTags">
-      <span class="tag-lg">3D透视公路</span>
-      <span class="tag-lg">0ms极速飞弹</span>
-      <span class="tag-lg">擦车连击</span>
+    <h1 class="game-title-lg" id="gTitle">雷霆飞车</h1>
+    <div class="game-sub-lg" id="gSub">THUNDER RACER</div>
+    <p class="game-desc-lg" id="gDesc"></p>
+    <div class="score-row">
+      <div>NOW <span id="gNow">0</span></div>
+      <div>BEST <span id="gBest">0</span></div>
     </div>
-
+    <div class="game-tags-lg" id="gTags"></div>
     <div class="control-card">
-      <h4>🕹️ 掌机按键指南：</h4>
-      <p id="gHelp">
-        • <strong>UP / DOWN</strong>：左右极速切换车道躲避警车与障碍。<br>
-        • <strong>OK 键连按</strong>：无限战术充能飞弹，按多快射多快！<br>
-        • <strong>OK 键长按</strong>：点燃超频氮气，无敌冲撞沿途一切！
-      </p>
+      <h4>三键操作</h4>
+      <p id="gHelp"></p>
     </div>
-
-    <div style="display:flex;gap:12px;">
-      <button class="btn-pill" id="btn-restart" style="background:linear-gradient(90deg,#00f0ff,#0099ff);color:#060913;font-weight:900;">
-        🔄 重新开局
-      </button>
-      <button class="btn-pill" id="btn-sound-toggle">
-        🔊 静音 / 开启音效
-      </button>
+    <div class="row-btns">
+      <button class="btn-pill btn-gold" id="btn-restart" type="button">重新开局</button>
+      <button class="btn-pill" id="btn-sound-toggle" type="button">音效开</button>
     </div>
   </div>
 
-  <!-- 右侧仿真掌机 -->
   <div class="device-column">
     <div class="device-shell">
       <div class="device-brand">
-        <span>AI PASSPORT<span style="color:#ff0055">//</span>STANDALONE</span>
-        <span id="gBadge">THUNDER RACER</span>
+        <span>AI PASSPORT // 240×320</span>
+        <span id="gBadge">CABINET</span>
       </div>
-
       <div class="screen-bezel">
         <canvas id="gameCanvas" width="240" height="320"></canvas>
       </div>
-
       <div class="controls-panel">
         <div class="hw-btn" id="hw-btn-up">
           <div class="btn-circle" id="circle-up">◄</div>
           <span class="btn-label" id="lbl-up">UP</span>
-          <span class="key-hint"><kbd>←</kbd> 或 <kbd>W</kbd></span>
+          <span class="key-hint"><kbd>←</kbd> / <kbd>W</kbd></span>
         </div>
         <div class="hw-btn" id="hw-btn-down">
           <div class="btn-circle" id="circle-down">►</div>
           <span class="btn-label" id="lbl-down">DOWN</span>
-          <span class="key-hint"><kbd>→</kbd> 或 <kbd>S</kbd></span>
+          <span class="key-hint"><kbd>→</kbd> / <kbd>S</kbd></span>
         </div>
         <div class="hw-btn" id="hw-btn-ok">
           <div class="btn-circle" id="circle-ok">OK</div>
-          <span class="btn-label" id="lbl-ok">OK (开火)</span>
-          <span class="key-hint"><kbd>Space</kbd> / <kbd>Enter</kbd></span>
+          <span class="btn-label" id="lbl-ok">OK</span>
+          <span class="key-hint"><kbd>Space</kbd></span>
         </div>
       </div>
+    </div>
+    <div class="swap">
+      <button class="btn-pill" id="btn-prev" type="button">◀ 上一台</button>
+      <button class="btn-pill" id="btn-next" type="button">下一台 ▶</button>
     </div>
   </div>
 </div>
 
 <footer>
-  <p>© 2026 Alex Arcade · Independent playground for AI Passport</p>
+  <p>© 2026 Alex Arcade · <a href="../arcade/">大厅</a> · 高分存在这台浏览器里</p>
 </footer>
 
 <script src="games-engine.js"></script>
@@ -359,28 +302,53 @@
 <script>
 const snd = new SoundEngine();
 const fx = new FXEngine();
+const ids = (window.GAME_REGISTRY || []).map(g => g.id);
+
+function hsGet(id) { try { return +localStorage.getItem('aa_hs_' + id) || 0; } catch (e) { return 0; } }
+function hsSet(id, v) {
+  try {
+    const p = hsGet(id);
+    if (v > p) localStorage.setItem('aa_hs_' + id, String(v));
+  } catch (e) {}
+}
+function remember(id) { try { localStorage.setItem('aa_last', id); } catch (e) {} }
 
 const urlParams = new URLSearchParams(window.location.search);
 let gameId = urlParams.get('id') || 'thunderracer';
-if (!GAMES[gameId]) gameId = 'thunderracer';
+if (!GAMES[gameId]) gameId = ids.includes(gameId) ? gameId : 'thunderracer';
+if (!GAMES[gameId]) gameId = Object.keys(GAMES)[0];
+remember(gameId);
 
-const meta = GAME_REGISTRY.find(m => m.id === gameId);
-if (meta) {
-  document.title = `${meta.title} · Alex Indie Arcade`;
-  document.getElementById('gIcon').textContent = meta.icon;
-  document.getElementById('gTitle').textContent = meta.title;
-  document.getElementById('gSub').textContent = meta.subtitle;
-  document.getElementById('gDesc').textContent = meta.desc;
-  document.getElementById('gBadge').textContent = meta.subtitle;
-  document.getElementById('gHelp').innerHTML = meta.help;
-  document.getElementById('lbl-up').textContent = meta.upHint;
-  document.getElementById('lbl-down').textContent = meta.downHint;
-  document.getElementById('lbl-ok').textContent = meta.okHint;
-  document.getElementById('gTags').innerHTML = meta.tags.map(t => `<span class="tag-lg">${t}</span>`).join('');
+if (localStorage.getItem('aa_mute') === '1') snd.muted = true;
+
+function meta() { return GAME_REGISTRY.find(m => m.id === gameId) || {}; }
+
+function paintMeta() {
+  const m = meta();
+  document.title = (m.title || gameId) + ' · Alex Arcade';
+  document.getElementById('gIcon').textContent = m.icon || '🎮';
+  document.getElementById('gTitle').textContent = m.title || gameId;
+  document.getElementById('gSub').textContent = m.subtitle || '';
+  document.getElementById('gDesc').textContent = m.desc || '';
+  document.getElementById('gBadge').textContent = m.subtitle || gameId;
+  document.getElementById('gHelp').innerHTML = m.help || '';
+  document.getElementById('lbl-up').textContent = m.upHint || 'UP';
+  document.getElementById('lbl-down').textContent = m.downHint || 'DOWN';
+  document.getElementById('lbl-ok').textContent = m.okHint || 'OK';
+  document.getElementById('gTags').innerHTML = (m.tags || []).map(t => '<span class="tag-lg">' + t + '</span>').join('');
+  document.getElementById('gBest').textContent = hsGet(gameId);
+  document.getElementById('btn-sound-toggle').textContent = snd.muted ? '已静音' : '音效开';
+  document.getElementById('rail').innerHTML = ids.map(id => {
+    const g = GAME_REGISTRY.find(x => x.id === id) || { title: id };
+    const short = (g.title || id).split('：')[0].split(':')[0];
+    return '<a href="?id=' + encodeURIComponent(id) + '" class="' + (id === gameId ? 'on' : '') + '">' + short + '</a>';
+  }).join('');
 }
+paintMeta();
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
 
 let lastTime = performance.now();
 let frameCount = 0;
@@ -403,6 +371,12 @@ window.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyB') keys.blow = true;
   if (e.code === 'KeyV') keys.voice = true;
+  if (e.code === 'KeyM') {
+    snd.muted = !snd.muted;
+    try { localStorage.setItem('aa_mute', snd.muted ? '1' : '0'); } catch (err) {}
+    document.getElementById('btn-sound-toggle').textContent = snd.muted ? '已静音' : '音效开';
+  }
+  if (e.code === 'KeyP' || e.code === 'KeyR') restart();
 });
 window.addEventListener('keyup', e => {
   if (['ArrowUp', 'ArrowLeft', 'KeyW'].includes(e.code)) {
@@ -433,6 +407,7 @@ function bindBtn(id, circleId, keyName) {
   };
   el.addEventListener('mousedown', press);
   el.addEventListener('mouseup', release);
+  el.addEventListener('mouseleave', release);
   el.addEventListener('touchstart', press, { passive: false });
   el.addEventListener('touchend', release, { passive: false });
 }
@@ -443,24 +418,42 @@ bindBtn('hw-btn-ok', 'circle-ok', 'ok');
 function triggerOk() {
   if (GAMES[gameId] && GAMES[gameId].onOk) GAMES[gameId].onOk(snd, fx);
 }
-
-document.getElementById('btn-restart').addEventListener('click', () => {
+function restart() {
   if (GAMES[gameId]) {
     fx.reset();
     GAMES[gameId].init();
     if (snd) snd.playClick();
   }
-});
+}
+function neighbor(delta) {
+  const i = Math.max(0, ids.indexOf(gameId));
+  const next = ids[(i + delta + ids.length) % ids.length];
+  location.href = '?id=' + encodeURIComponent(next);
+}
+
+document.getElementById('btn-restart').addEventListener('click', restart);
 document.getElementById('btn-sound-toggle').addEventListener('click', () => {
   snd.muted = !snd.muted;
-  document.getElementById('btn-sound-toggle').textContent = snd.muted ? '🔇 已静音' : '🔊 音效开启';
+  try { localStorage.setItem('aa_mute', snd.muted ? '1' : '0'); } catch (e) {}
+  document.getElementById('btn-sound-toggle').textContent = snd.muted ? '已静音' : '音效开';
 });
 document.getElementById('btn-share-link').addEventListener('click', () => {
   const url = window.location.href;
   navigator.clipboard.writeText(url).then(() => {
-    alert(`🎮 游戏直达链接已复制到剪贴板！\n\n${url}`);
+    document.getElementById('btn-share-link').textContent = '已复制';
+    setTimeout(() => { document.getElementById('btn-share-link').textContent = '复制链接'; }, 1200);
   }).catch(() => prompt('复制此链接：', url));
 });
+document.getElementById('btn-prev').addEventListener('click', () => neighbor(-1));
+document.getElementById('btn-next').addEventListener('click', () => neighbor(1));
+
+function currentScore() {
+  const g = GAMES[gameId];
+  if (!g) return 0;
+  if (typeof g.score === 'number') return g.score | 0;
+  if (g.p && typeof g.p.score === 'number') return g.p.score | 0;
+  return 0;
+}
 
 function loop(now) {
   requestAnimationFrame(loop);
@@ -482,6 +475,10 @@ function loop(now) {
   if (GAMES[gameId]) {
     GAMES[gameId].update(dt, keys, snd, fx);
     fx.update();
+    const sc = currentScore();
+    document.getElementById('gNow').textContent = sc;
+    hsSet(gameId, sc);
+    document.getElementById('gBest').textContent = hsGet(gameId);
 
     ctx.save();
     if (fx.shake > 0) {

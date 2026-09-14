@@ -84,6 +84,10 @@ run_static_checks() {
         tests/test_fish_logic.c main/fish_logic.c \
         -o "${test_dir}/test_fish_logic"
     "${test_dir}/test_fish_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_match3_logic.c main/match3_logic.c \
+        -o "${test_dir}/test_match3_logic"
+    "${test_dir}/test_match3_logic"
     python3 tests/test_verify_firmware.py
     rm -rf "${test_dir}"
     echo "Host tests: PASS"

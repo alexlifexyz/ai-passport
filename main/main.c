@@ -19,6 +19,7 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { "Neon Pop",  demo_match3_enter,       demo_match3_exit,       demo_match3_key       },
     { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
     { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
     { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
@@ -34,7 +35,7 @@ static lv_obj_t *s_menu_scr;
 static lv_obj_t *s_cards[DEMO_COUNT];
 static lv_obj_t *s_rows[DEMO_COUNT];
 static lv_obj_t *s_mascot;
-static int  s_sel = 0;             // 当前选中项 (默认停在 Tank 1990)
+static int  s_sel = 0;             // 当前选中项 (默认停在第一项 Neon Pop)
 static int  s_active = -1;         // 当前所在演示页;-1 = 在菜单
 
 static void menu_refresh(void) {
@@ -51,10 +52,14 @@ static void menu_refresh(void) {
 static void menu_build(void) {
     s_menu_scr = ui_pixel_screen_create("ARCADE");
 
+    int card_h = (DEMO_COUNT > 5) ? 30 : 34;
+    int step_y = (DEMO_COUNT > 5) ? 36 : 42;
+    int start_y = (DEMO_COUNT > 5) ? 42 : 46;
+
     for (size_t i = 0; i < DEMO_COUNT; i++) {
         int x = 16;
-        int y = 46 + (int)i * 42;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 208, 34, UI_PAPER);
+        int y = start_y + (int)i * step_y;
+        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 208, card_h, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
