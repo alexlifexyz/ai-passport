@@ -681,7 +681,7 @@ void demo_battlecity_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
         }
     } else if (btn == BSP_BTN_DOWN) {
         // DOWN 键：按下或单击即刻赋予 6 帧步进充能 (36 像素大步流星！按住持续全速狂飙)
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK || ev == BSP_BTN_LONG) {
             s_step_ticks = 6;
             bc_player_move(&s_game, 1, true);
         }

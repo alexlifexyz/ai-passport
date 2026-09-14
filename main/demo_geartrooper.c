@@ -570,7 +570,7 @@ void demo_geartrooper_exit(void)
 // 极速硬件按键分发：0ms 触底响应，20ms 防抖，支持爽快连招
 void demo_geartrooper_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+    if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK || ev == BSP_BTN_LONG) {
         static uint32_t s_last_press_tick = 0;
         uint32_t now = esp_log_timestamp();
         if (now - s_last_press_tick < 20) return; // 极短 20ms 防抖，支持疯狂快切

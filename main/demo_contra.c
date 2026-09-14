@@ -1090,7 +1090,7 @@ void demo_contra_key(bsp_btn_t btn, bsp_btn_ev_t ev)
             }
         }
     } else if (btn == BSP_BTN_DOWN) {
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK || ev == BSP_BTN_LONG) {
             contra_logic_btn_down(&s_game, true);
         }
     }

@@ -93,8 +93,8 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
     if (!bsp_lvgl_lock(500)) return;
 
     if (s_active >= 0) {
-        // 全局长按任意键均可直接返回主菜单！
-        if (ev == BSP_BTN_LONG) {
+        // 仅 OK 键长按全局拦截返回主菜单；中间键(DOWN)和上键(UP)的长按与事件正常传递给运行中的 demo
+        if (btn == BSP_BTN_OK && ev == BSP_BTN_LONG) {
             bsp_demo_return_to_menu();
         } else {
             DEMOS[s_active].key(btn, ev);
