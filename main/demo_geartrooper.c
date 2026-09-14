@@ -70,8 +70,8 @@ static void geartrooper_audio_task(void *arg)
                         bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                     }
                 }
-            } else if (snd == GT_SND_PLUNGE) {
-                // 重锤俯冲下刺 (低频急速跌落 300Hz -> 80Hz, 50ms)
+            } else if (snd == GT_SND_STEAM_BLOW) {
+                // 蒸汽泄压轰鸣 (低频急速跌落 300Hz -> 80Hz, 50ms)
                 const int total = 800;
                 float phase = 0.0f;
                 for (int i = 0; i < total; i++) {
@@ -336,14 +336,14 @@ static void draw_enemies(lv_layer_t *layer, const gt_game_t *game)
         int ex = (int)e->x;
         int ey = (int)e->y;
 
-        if (e->type == ENEMY_DRONE) {
-            // 1. 发条战蜂 (带双旋翼与探测眼)
+        if (e->type == ENEMY_FALCON) {
+            // 1. 齿轮飞隼 (带双展翼与发光侦察眼)
             int wing_phase = (game->tick_count % 2 == 0) ? -2 : 2;
-            // 旋翼
+            // 机械双翼
             draw_box(layer, ex, ey - 4 + wing_phase, 18, 2, 0x94A3B8);
-            // 机身
+            // 鸟躯
             draw_box(layer, ex + 3, ey, 12, 10, 0xDC2626);
-            // 探测红眼
+            // 发光黄铜目镜
             draw_box(layer, ex + 1, ey + 3, 3, 4, 0xFDE047);
         } else if (e->type == ENEMY_SPIDER) {
             // 2. 地面发条蜘蛛 (多足疾走)
@@ -373,7 +373,7 @@ static void draw_enemies(lv_layer_t *layer, const gt_game_t *game)
     }
 }
 
-// 绘制粒子效果 (蒸汽气团、剧烈火花与崩裂齿轮碎片)
+// 绘制粒子效果 (蒸汽气团与剧烈火花)
 static void draw_particles(lv_layer_t *layer, const gt_game_t *game)
 {
     for (int i = 0; i < GT_MAX_PARTICLES; i++) {
@@ -389,10 +389,6 @@ static void draw_particles(lv_layer_t *layer, const gt_game_t *game)
         } else if (p->type == PART_SPARK) {
             // 高亮火花小晶点
             draw_box(layer, px, py, 2, 2, p->color);
-        } else if (p->type == PART_GEAR) {
-            // 崩飞的小十字齿片
-            draw_box(layer, px - 1, py - 2, 3, 5, p->color);
-            draw_box(layer, px - 2, py - 1, 5, 3, p->color);
         }
     }
 }
@@ -468,7 +464,7 @@ static void geartrooper_timer_cb(lv_timer_t *timer)
 
     // 更新 HUD 标签
     if (s_hud_score) {
-        lv_label_set_text_fmt(s_hud_score, "SCR:%ld  x%d", (long)s_game.score, s_game.combo_count > 1 ? s_game.combo_count : 1);
+        lv_label_set_text_fmt(s_hud_score, "SCR:%ld  x%lu", (long)s_game.score, (unsigned long)(s_game.combo_count > 1 ? s_game.combo_count : 1));
     }
     if (s_hud_hp) {
         // 耐久度 5 格齿轮图标
