@@ -403,7 +403,7 @@
     <a href="#floor">柜机</a>
     <a href="#lounge">休息室</a>
     <button type="button" id="btn-mute">音效开</button>
-    <span class="count-pill" id="cab-count">12 CABINETS</span>
+    <span class="count-pill" id="cab-count">14 CABINETS</span>
   </nav>
 </header>
 
@@ -411,9 +411,9 @@
   <div>
     <div class="hero-kicker">Independent playground · 240×320 · 3 buttons</div>
     <h1>ALEX<br>AR<span>CADE</span></h1>
-    <p id="hero-copy">十三台柜机，一间通宵游乐场。为 AI Passport 写的独立游戏，也能在浏览器里投币开玩。没有账号，没有加载条，只有三颗键。</p>
+    <p id="hero-copy">十四台柜机，一间通宵游乐场。为 AI Passport 写的独立游戏，也能在浏览器里投币开玩。没有账号，没有加载条，只有三颗键。</p>
     <div class="hero-stats">
-      <span><b id="stat-cabs">12</b> cabinets</span>
+      <span><b id="stat-cabs">14</b> cabinets</span>
       <span><b>3</b> keys</span>
       <span><b>240×320</b> passport</span>
       <span><b>FREE</b> play</span>
@@ -512,7 +512,8 @@ const PLAY_URL = {
   fish: '../simulator/game.html?id=fish',
   sparkler: '../simulator/hub.html?game=sparkler',
   worldtime: '../simulator/hub.html?game=worldtime',
-  match3: '../simulator/game.html?id=match3'
+  match3: '../simulator/game.html?id=match3',
+  gearcavalry: '../simulator/game.html?id=gearcavalry'
 };
 const CATS = [
   { id: 'all', label: '全部' },
@@ -523,6 +524,7 @@ const CATS = [
   { id: 'chill', label: '轻松' }
 ];
 const CABINETS = [
+  { id: 'gearcavalry', marquee: 'CAVALRY', short: '齿轮骑兵', cat: 'action', accent: '#78350f', glow: '#fbbf24' },
   { id: 'thunderracer', marquee: 'RACER', short: '雷霆飞车', cat: 'race', accent: '#9b1c1c', glow: '#ff6b6b' },
   { id: 'thunder', marquee: 'STRIKER', short: '雷霆战机', cat: 'shoot', accent: '#123c4a', glow: '#7dffb3' },
   { id: 'battlecity', marquee: 'TANK 1990', short: '坦克大战', cat: 'shoot', accent: '#854d0e', glow: '#fde047' },

@@ -3161,6 +3161,426 @@
         if (this.state === 'gameover') drawOver(ctx, 'OUT OF MOVES', this.score);
         if (this.state === 'victory') drawOver(ctx, 'STAGE CLEAR', this.score);
       }
+    },
+
+    // --- 14. 齿轮骑兵：蒸汽过载 (Gear Cavalry: Steam Overdrive) ---
+    gearcavalry: {
+      init() {
+        this.y = 200;
+        this.vy = 0;
+        this.stance = 'run'; // 'run', 'jump', 'plunge', 'slide'
+        this.stanceTimer = 0;
+        this.lanceActive = false;
+        this.lanceTimer = 0;
+        this.lanceReach = 38;
+        this.hp = 5;
+        this.score = 0;
+        this.steam = 0; // 0 ~ 100 PSI
+        this.overdrive = false;
+        this.overdriveTimer = 0;
+        this.invuln = 0;
+        this.combo = 0;
+        this.tick = 0;
+        this.dead = false;
+
+        // 4 组地面咬合旋转大齿轮
+        this.gears = [
+          { x: 30,  y: 260, r: 24, a: 0, spd: 4.0 },
+          { x: 90,  y: 260, r: 20, a: 20, spd: -4.8 },
+          { x: 155, y: 260, r: 28, a: 45, spd: 3.5 },
+          { x: 220, y: 260, r: 22, a: 10, spd: -4.2 }
+        ];
+
+        this.enemies = [];
+        this.particles = [];
+        this.spawnTimer = 0;
+      },
+      btn(code, snd, fx) {
+        if (this.dead) {
+          if (code === 'ok') {
+            this.init();
+            if (snd && snd.playJump) snd.playJump();
+          }
+          return;
+        }
+
+        if (code === 'up') {
+          if (this.y >= 199) {
+            // 地面起跳
+            this.vy = -340;
+            this.stance = 'jump';
+            if (snd && snd.playJump) snd.playJump();
+            this.emitSteam(45, this.y + 10, -20, 20);
+          } else {
+            // 空中下刺
+            this.vy = 480;
+            this.stance = 'plunge';
+            if (snd && snd.playMissile) snd.playMissile();
+          }
+        } else if (code === 'down') {
+          if (this.y >= 199) {
+            this.stance = 'slide';
+            this.stanceTimer = 18; // 持续帧
+            if (snd && snd.playLaser) snd.playLaser();
+            this.emitSparks(60, 215, 6);
+          }
+        } else if (code === 'ok') {
+          if (this.steam >= 100 && !this.overdrive) {
+            // 激活 100 PSI 蒸汽过载！
+            this.overdrive = true;
+            this.overdriveTimer = 180; // 约 4.5 秒无敌
+            this.steam = 0;
+            if (snd && snd.playPower) snd.playPower();
+            if (fx) { fx.shake = 10; fx.flash = 6; }
+          } else {
+            // 骑枪突刺
+            this.lanceActive = true;
+            this.lanceTimer = 12;
+            if (snd && snd.playLaser) snd.playLaser();
+          }
+        }
+      },
+      emitSteam(x, y, vx, vy) {
+        for (let i = 0; i < 3; i++) {
+          this.particles.push({
+            type: 'steam', x, y,
+            vx: vx + (Math.random() * 20 - 10),
+            vy: vy + (Math.random() * 20 - 10),
+            life: 1.0, decay: 0.04
+          });
+        }
+      },
+      emitSparks(x, y, count) {
+        for (let i = 0; i < count; i++) {
+          this.particles.push({
+            type: 'spark', x, y,
+            vx: -80 - Math.random() * 60,
+            vy: -20 - Math.random() * 60,
+            life: 1.0, decay: 0.07,
+            color: Math.random() > 0.5 ? '#fbbf24' : '#ef4444'
+          });
+        }
+      },
+      update(snd, fx) {
+        if (this.dead) return;
+        this.tick++;
+
+        if (this.invuln > 0) this.invuln--;
+        if (this.overdrive) {
+          if (--this.overdriveTimer <= 0) {
+            this.overdrive = false;
+          }
+        }
+
+        // 齿轮转动
+        for (const g of this.gears) {
+          g.a = (g.a + g.spd) % 360;
+        }
+
+        // 重力与竖直物理
+        if (this.y < 200 || this.vy !== 0) {
+          this.vy += 850 * 0.025;
+          this.y += this.vy * 0.025;
+          if (this.y >= 200) {
+            this.y = 200;
+            this.vy = 0;
+            if (this.stance === 'jump' || this.stance === 'plunge') {
+              this.stance = 'run';
+              this.emitSteam(55, 210, -20, -10);
+            }
+          }
+        }
+
+        // 动作计时
+        if (this.stance === 'slide') {
+          if (--this.stanceTimer <= 0) this.stance = 'run';
+          if (this.tick % 2 === 0) this.emitSparks(55, 218, 2);
+        }
+        if (this.lanceActive) {
+          if (--this.lanceTimer <= 0) this.lanceActive = false;
+        }
+
+        // 排气管喷白烟
+        if (this.tick % 4 === 0) {
+          this.emitSteam(35, this.y - 18, -30, -20);
+        }
+
+        // 敌兵生成
+        if (++this.spawnTimer > 60) {
+          this.spawnTimer = 0;
+          const r = Math.random();
+          if (r < 0.45) {
+            // 贴地发条蜘蛛
+            this.enemies.push({ type: 'spider', x: 250, y: 204, vx: -120, hp: 1 });
+          } else if (r < 0.8) {
+            // 空中侦查战蜂
+            this.enemies.push({ type: 'drone', x: 250, y: 130 + Math.random() * 35, vx: -95, hp: 1 });
+          } else {
+            // 重装傀儡
+            this.enemies.push({ type: 'golem', x: 250, y: 188, vx: -65, hp: 3 });
+          }
+        }
+
+        // 更新敌兵
+        const px = 45;
+        const py = (this.stance === 'slide') ? this.y + 8 : this.y - 14;
+        const pw = 34;
+        const ph = (this.stance === 'slide') ? 14 : 32;
+
+        const lanceX = 45 + 32;
+        const lanceY = (this.stance === 'plunge') ? this.y + 6 : ((this.stance === 'slide') ? this.y + 10 : this.y - 6);
+        const lanceW = (this.lanceActive || this.stance === 'plunge' || this.stance === 'slide') ? this.lanceReach : 18;
+        const lanceH = (this.stance === 'plunge') ? 24 : 10;
+
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+          const e = this.enemies[i];
+          e.x += e.vx * 0.025;
+          if (e.x < -30) { this.enemies.splice(i, 1); continue; }
+
+          const ew = (e.type === 'golem') ? 24 : 16;
+          const eh = (e.type === 'golem') ? 28 : 14;
+
+          // 骑枪碰撞
+          if (this.lanceActive || this.stance === 'plunge') {
+            if (lanceX < e.x + ew && lanceX + lanceW > e.x && lanceY < e.y + eh && lanceY + lanceH > e.y) {
+              if (--e.hp <= 0) {
+                this.enemies.splice(i, 1);
+                this.score += (e.type === 'golem') ? 300 : 120;
+                this.steam = Math.min(100, this.steam + 15);
+                this.combo++;
+                if (snd && snd.playHit) snd.playHit();
+                this.emitSparks(e.x + 8, e.y + 8, 8);
+                continue;
+              }
+            }
+          }
+
+          // 滑铲碾碎蜘蛛
+          if (this.stance === 'slide' && e.type === 'spider') {
+            if (px < e.x + ew && px + pw > e.x && py < e.y + eh && py + ph > e.y) {
+              this.enemies.splice(i, 1);
+              this.score += 150;
+              this.steam = Math.min(100, this.steam + 12);
+              if (snd && snd.playHit) snd.playHit();
+              this.emitSparks(e.x + 8, e.y + 8, 8);
+              continue;
+            }
+          }
+
+          // 玩家碰撞
+          if (px < e.x + ew && px + pw > e.x && py < e.y + eh && py + ph > e.y) {
+            if (this.overdrive) {
+              // 过载冲撞直接消灭！
+              this.enemies.splice(i, 1);
+              this.score += 200;
+              if (snd && snd.playHit) snd.playHit();
+              this.emitSparks(e.x + 8, e.y + 8, 12);
+              if (fx) fx.shake = 5;
+            } else if (this.invuln <= 0) {
+              this.hp--;
+              this.invuln = 45;
+              this.combo = 0;
+              if (snd && snd.playHurt) snd.playHurt();
+              if (fx) { fx.shake = 8; fx.burst(px + 16, py + 16, 10, ['#ef4444', '#fbbf24']); }
+              if (this.hp <= 0) {
+                this.hp = 0;
+                this.dead = true;
+                if (snd && snd.playGameOver) snd.playGameOver();
+              }
+            }
+          }
+        }
+
+        // 更新粒子
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx * 0.025;
+          p.y += p.vy * 0.025;
+          if (p.type === 'spark') p.vy += 400 * 0.025;
+          p.life -= p.decay;
+          if (p.life <= 0) this.particles.splice(i, 1);
+        }
+      },
+      render(ctx) {
+        // 1. 工业暗沉背景
+        ctx.fillStyle = '#14110e';
+        ctx.fillRect(0, 0, 240, 320);
+
+        // 2. 远景工业烟囱
+        ctx.fillStyle = '#1f1a15';
+        ctx.fillRect(20, 50, 16, 170);
+        ctx.fillStyle = '#1a1612';
+        ctx.fillRect(80, 70, 24, 150);
+        ctx.fillStyle = '#1f1a15';
+        ctx.fillRect(180, 40, 20, 180);
+        ctx.fillStyle = '#241f1a';
+        ctx.fillRect(0, 110, 240, 6);
+
+        // 3. 黄铜导轨与机械地基
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(0, 220, 240, 4);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(0, 224, 240, 2);
+        ctx.fillStyle = '#1c1917';
+        ctx.fillRect(0, 226, 240, 74);
+        ctx.fillStyle = '#78716c';
+        for (let rx = 8; rx < 240; rx += 24) {
+          ctx.fillRect(rx, 230, 2, 2);
+        }
+
+        // 4. 地表咬合旋转大齿轮
+        for (const g of this.gears) {
+          ctx.save();
+          ctx.translate(g.x, g.y);
+          ctx.rotate(g.a * Math.PI / 180);
+          // 齿轮主体
+          ctx.fillStyle = '#78350f';
+          ctx.beginPath();
+          ctx.arc(0, 0, g.r, 0, Math.PI * 2);
+          ctx.fill();
+          // 8 颗轮齿
+          ctx.fillStyle = '#d97706';
+          for (let t = 0; t < 8; t++) {
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-3, -g.r - 4, 6, 6);
+          }
+          // 轴孔
+          ctx.fillStyle = '#0a0f1d';
+          ctx.beginPath();
+          ctx.arc(0, 0, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 5. 粒子
+        for (const p of this.particles) {
+          if (p.type === 'steam') {
+            ctx.fillStyle = `rgba(240, 244, 248, ${Math.max(0, p.life * 0.7)})`;
+            ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+          } else {
+            ctx.fillStyle = p.color || '#fbbf24';
+            ctx.fillRect(p.x, p.y, 2, 2);
+          }
+        }
+
+        // 6. 敌兵
+        for (const e of this.enemies) {
+          if (e.type === 'drone') {
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(e.x, e.y - 3, 18, 2);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(e.x + 3, e.y, 12, 10);
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(e.x + 1, e.y + 3, 3, 4);
+          } else if (e.type === 'spider') {
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(e.x + 2, e.y + 2, 14, 8);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(e.x + 7, e.y - 3, 4, 5);
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(e.x, e.y + 8, 4, 5);
+            ctx.fillRect(e.x + 14, e.y + 8, 4, 5);
+          } else if (e.type === 'golem') {
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(e.x + 6, e.y, 12, 8);
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(e.x + 8, e.y + 2, 8, 3);
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(e.x, e.y + 8, 24, 18);
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(e.x + 3, e.y + 11, 18, 12);
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(e.x - 3, e.y + 10, 4, 14);
+            ctx.fillRect(e.x + 23, e.y + 10, 4, 14);
+          }
+        }
+
+        // 7. 骑兵战马与骑士
+        if (this.invuln <= 0 || Math.floor(this.tick / 3) % 2 === 0) {
+          const px = 45;
+          const py = Math.floor(this.y);
+          const armorCol = this.overdrive ? '#38bdf8' : '#b45309';
+          const steelCol = '#475569';
+          const glowCol  = this.overdrive ? '#ffffff' : '#fbbf24';
+
+          if (this.stance === 'slide') {
+            ctx.fillStyle = steelCol; ctx.fillRect(px - 6, py + 10, 36, 12);
+            ctx.fillStyle = armorCol; ctx.fillRect(px - 2, py + 8, 30, 10);
+            ctx.fillStyle = armorCol; ctx.fillRect(px + 26, py + 6, 12, 10);
+            ctx.fillStyle = glowCol;  ctx.fillRect(px + 34, py + 8, 3, 3);
+            // 骑枪
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(px + 34, py + 10, this.lanceReach, 4);
+            ctx.fillStyle = glowCol;
+            ctx.fillRect(px + 34 + this.lanceReach, py + 9, 6, 6);
+          } else {
+            // 马身
+            ctx.fillStyle = steelCol; ctx.fillRect(px - 6, py - 4, 32, 18);
+            ctx.fillStyle = armorCol; ctx.fillRect(px - 2, py - 6, 26, 18);
+            // 排气管
+            ctx.fillStyle = '#334155'; ctx.fillRect(px - 8, py - 14, 5, 12);
+            // 骑士
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(px + 2, py - 18, 14, 14);
+            ctx.fillStyle = armorCol; ctx.fillRect(px + 6, py - 24, 10, 10);
+            ctx.fillStyle = glowCol;  ctx.fillRect(px + 12, py - 21, 4, 2);
+            // 马首
+            ctx.fillStyle = armorCol; ctx.fillRect(px + 20, py - 12, 10, 14);
+            ctx.fillStyle = armorCol; ctx.fillRect(px + 24, py - 18, 12, 12);
+            ctx.fillStyle = glowCol;  ctx.fillRect(px + 32, py - 16, 3, 3);
+            // 蹄腿
+            const leg = (Math.floor(this.tick / 3) % 4 < 2) ? 3 : -3;
+            ctx.fillStyle = steelCol;
+            ctx.fillRect(px + 18 + leg, py + 14, 5, 8);
+            ctx.fillRect(px - 2 - leg, py + 14, 5, 8);
+
+            // 骑枪
+            if (this.stance === 'plunge') {
+              ctx.fillStyle = '#cbd5e1'; ctx.fillRect(px + 28, py - 4, 16, 16);
+              ctx.fillStyle = glowCol;  ctx.fillRect(px + 36, py + 4, 14, 14);
+            } else if (this.lanceActive) {
+              ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px + 28, py - 8, this.lanceReach, 5);
+              ctx.fillStyle = glowCol;  ctx.fillRect(px + 34, py - 7, this.lanceReach - 10, 3);
+              ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 28 + this.lanceReach, py - 9, 8, 7);
+            } else {
+              ctx.fillStyle = '#94a3b8'; ctx.fillRect(px + 28, py - 8, 22, 4);
+            }
+          }
+        }
+
+        // 8. 顶部 HUD 栏
+        ctx.fillStyle = 'rgba(28, 25, 23, 0.9)';
+        ctx.fillRect(0, 0, 240, 36);
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, 0, 240, 36);
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = '10px monospace';
+        ctx.fillText(`SCR:${this.score}  x${this.combo > 1 ? this.combo : 1}`, 6, 14);
+
+        ctx.fillStyle = '#22c55e';
+        let hpStr = 'HP:';
+        for (let i = 0; i < 5; i++) hpStr += (i < this.hp) ? '#' : '.';
+        ctx.fillText(hpStr, 150, 14);
+
+        if (this.overdrive) {
+          ctx.fillStyle = (Math.floor(this.tick / 2) % 2 === 0) ? '#38bdf8' : '#ffffff';
+          ctx.fillText('>>> OVERDRIVE! <<<', 6, 28);
+        } else if (this.steam >= 100) {
+          ctx.fillStyle = (Math.floor(this.tick / 4) % 2 === 0) ? '#fbbf24' : '#ef4444';
+          ctx.fillText('[OK] OVERDRIVE READY!', 6, 28);
+        } else {
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(`STEAM: ${this.steam} PSI`, 6, 28);
+        }
+
+        // 底部提示
+        ctx.fillStyle = '#d97706';
+        ctx.font = '9px monospace';
+        ctx.fillText('UP:JUMP/PLUNGE  DN:SLIDE  OK:LANCE', 20, 312);
+
+        if (this.dead) drawOver(ctx, 'STEAM VENTED', this.score);
+      }
     }
   };
 

@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- Added Gear Cavalry: Steam Overdrive, a fast-paced steampunk horizontal action runner for the 3-button (UP/DOWN/OK) AI Passport handheld. Features rotating ground gear physics, 3-button multi-action state machine (Jump, Plunge, Slide, and Lance Thrust), 100 PSI steam pressure overdrive invincible charge, zero-malloc entity/particle pools, 40 FPS immediate-mode vector graphics, 16kHz retro steampunk audio synthesis, and an Alex Arcade browser cabinet.
+
 - Added Cyber Match-3: Neon Pop, a high-performance tile-matching arcade title designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features zero-malloc deterministic state machine, 2-step directional neighbor swap, line laser and rainbow core syntheses, cascading gravity refills, and automatic deadlock reshuffling. Delivered with 40 FPS zero-DRAM immediate-mode vector rendering, 16kHz 8-bit retro audio synthesis, complete host unit tests, and an Alex Arcade browser cabinet.
 
 - Rebuilt the Alex Arcade lobby: thirteen floor cabinets plus the world-clock lounge, pixel attract stills, a nightly/continue pick, keyboard coin-in, and cabinet high scores. Cabinets open the HD hub and standalone tables (`hub.html`, `thunder.html`, `flysaber.html`, `flydriver.html`); Fish, Roulette, and Match-3 stay on `game.html`.

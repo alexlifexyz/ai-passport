@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- 新增《齿轮骑兵：蒸汽过载 (Gear Cavalry: Steam Overdrive)》：专为 AI Passport 三键（UP/DOWN/OK）打造的高速蒸汽朋克动作跑酷游戏。具备地表高速啮合旋转大齿轮物理、三键多姿态状态机（腾空跃马、重骑枪空中下刺、贴地俯冲滑铲与螺旋长矛突刺）、100 PSI 蒸汽超压激活狂暴过载无敌冲撞机制、纯静态零堆分配敌兵与粒子对象池、40 FPS 即时矢量渲染、16kHz 蒸汽工坊合成音效与 Alex Arcade Web 街机仿真柜机。
+
 - 新增《赛博晶核消消乐：极速连击 (Cyber Match-3: Neon Pop)》：专为 AI Passport 三键（UP/DOWN/OK）打造的高性能消除游戏。采用零堆分配状态机、双步式定向邻居轮换交换算法、4/5连激光射线与彩虹星核合成、重力掉落下落级联与死局自动洗牌。配备 40 FPS 零显存开销即时矢量渲染、16kHz 8-bit 复古合成音效、完整的 Host 自动化单测与 Alex Arcade Web 街机仿真柜机。
 
 - 重做 Alex Arcade 大厅：十三台柜机加世界钟休息室、像素吸引画面、今晚主打/继续游戏、键盘投币、本机高分。柜机打开 HD 桌面（`hub.html`、`thunder.html`、`flysaber.html`、`flydriver.html`）；鱼、轮盘与消消乐走 `game.html`。

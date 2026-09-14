@@ -60,6 +60,9 @@ void demo_pacman_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 void demo_match3_enter(void); void demo_match3_exit(void);
 void demo_match3_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
+void demo_geartrooper_enter(void); void demo_geartrooper_exit(void);
+void demo_geartrooper_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+
 void bsp_demo_return_to_menu(void);
 
 

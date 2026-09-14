@@ -533,6 +533,21 @@
       downHint: '下移 / 顺时针选向',
       okHint: '锁定 / 确认交换',
       help: '• <strong>未选中时</strong>：UP/DOWN 快速沿棋盘前后移动光标。<br>• <strong>按 OK 键</strong>：锁定当前宝石，周围出现定向箭头。<br>• <strong>此时按 UP/DOWN</strong>：顺/逆时针切换要交换的相邻方块。<br>• <strong>再次按 OK 键</strong>：确认交换！若未形成消除则自动弹回。<br>• 4 连生成行列激光，5 连生成彩虹全消核！'
+    },
+    {
+      id: 'gearcavalry',
+      title: '齿轮骑兵：蒸汽过载',
+      subtitle: 'GEAR CAVALRY: STEAM OVERDRIVE',
+      icon: '⚙️',
+      category: 'action',
+      badge: 'STEAMPUNK',
+      difficulty: 3,
+      tags: ['三键跑酷格斗', '跃马下刺与滑铲', '100PSI蒸汽过载', '黄铜齿轮物理'],
+      desc: '蒸汽朋克横版战马破阵动作跑酷！驾驭发条战马在巨型咬合齿轮轴承上疾驰，三键精准切换跃马、下刺、贴地滑铲与长矛突刺。积攒 100 PSI 蒸汽压力开启狂暴过载模式，粉碎一切发条傀儡！',
+      upHint: '跃马腾空 / 空中下刺',
+      downHint: '俯身滑铲 (碾碎蜘蛛)',
+      okHint: '骑枪突刺 / 满气开启过载',
+      help: '• <strong>UP 键</strong>：地面按为【跃马跳跃】，空中按为【重骑枪下刺】！<br>• <strong>DOWN 键</strong>：贴地【俯身滑铲】，可高速钻过障碍并碾碎发条蜘蛛。<br>• <strong>OK 键</strong>：向前刺出螺旋骑枪；当蒸汽压力达到 100 PSI 时，按 OK 激活【蒸汽过载】无敌冲撞！'
     }
   ];
 

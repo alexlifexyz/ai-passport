@@ -19,6 +19,7 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { "Cavalry",   demo_geartrooper_enter,  demo_geartrooper_exit,  demo_geartrooper_key  },
     { "Neon Pop",  demo_match3_enter,       demo_match3_exit,       demo_match3_key       },
     { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
     { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
