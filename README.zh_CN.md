@@ -16,7 +16,7 @@
 
 | 游戏名称 | 独立目录 / Slug | 游戏类型 | 快速链接 |
 | :--- | :--- | :--- | :--- |
-| [🐶 **短腿爪爪运动会**](games/paws-sprint/README.zh_CN.md) | `paws-sprint` | 萌宠跑酷 / 竞速避障 | [🚀 在线体验](https://ai-passport.folotoy.cn/play/community-3133e9da) |
+| [🐶 **短腿爪爪运动会**](games/paws-sprint/README.zh_CN.md) | `paws-sprint` | 萌宠跑酷 / 竞速避障 | [🚀 在线体验 (待过审)](https://ai-passport.folotoy.cn/play/community-3133e9da) |
 | [⚡ **赛博信使·幻影疾跑**](games/cyber-runner/README.zh_CN.md) | `cyber-runner` | 屋脊跑酷 / 动作跳跃 | [📖 查看详情](games/cyber-runner/README.zh_CN.md) |
 | [⚙️ **齿轮骑兵·蒸汽过载**](games/gear-cavalry/README.zh_CN.md) | `gear-cavalry` | 蒸汽朋克 / 横版冲锋 | [📖 查看详情](games/gear-cavalry/README.zh_CN.md) |
 | [🍬 **赛博消消乐**](games/neon-pop/README.zh_CN.md) | `neon-pop` | 霓虹三消 / 益智消除 | [📖 查看详情](games/neon-pop/README.zh_CN.md) |

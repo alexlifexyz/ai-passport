@@ -12,7 +12,7 @@
 
 ![短腿爪爪运动会 封面](cover.jpg)
 
-> 🚀 **网页一键在线刷入**：可在电脑 Chrome 浏览器打开 [官方社区落地页](https://ai-passport.folotoy.cn/play/community-3133e9da)，连上数据线点击「一键安装」秒玩！
+> 🚀 **网页一键在线刷入**：可在电脑 Chrome 浏览器打开 [官方社区落地页](https://ai-passport.folotoy.cn/play/community-3133e9da)（**官方审核通过后激活**），连上数据线点击「一键安装」秒玩！
 
 ### 📖 游戏简介
 

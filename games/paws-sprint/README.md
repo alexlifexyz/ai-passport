@@ -12,7 +12,7 @@
 
 ![Paws Sprint: Fluffy Runner Cover](cover.jpg)
 
-> 🚀 **Web 1-Click Flash**: Open the [Official Community Play Page](https://ai-passport.folotoy.cn/play/community-3133e9da) in Chrome/Edge, plug in via USB, and click 'Install' to play in seconds!
+> 🚀 **Web 1-Click Flash**: Available on the [Official Community Play Page](https://ai-passport.folotoy.cn/play/community-3133e9da) (**activates after review approval**)! Plug in via USB to install.
 
 ### 📖 Overview
 

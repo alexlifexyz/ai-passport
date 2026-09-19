@@ -16,7 +16,7 @@ Every game has its own dedicated directory and page. Share any link below direct
 
 | Game | Folder / Slug | Genre | Direct Link |
 | :--- | :--- | :--- | :--- |
-| [🐶 **Paws Sprint: Fluffy Runner**](games/paws-sprint/README.md) | `paws-sprint` | Pet Runner / Reflex Arcade | [🚀 Play Online](https://ai-passport.folotoy.cn/play/community-3133e9da) |
+| [🐶 **Paws Sprint: Fluffy Runner**](games/paws-sprint/README.md) | `paws-sprint` | Pet Runner / Reflex Arcade | [🚀 Play Online (Pending)](https://ai-passport.folotoy.cn/play/community-3133e9da) |
 | [⚡ **Cyber Courier: Phantom Dash**](games/cyber-runner/README.md) | `cyber-runner` | Rooftop Action Runner | [📖 Details](games/cyber-runner/README.md) |
 | [⚙️ **Gear Cavalry: Steam Overdrive**](games/gear-cavalry/README.md) | `gear-cavalry` | Steampunk Action Runner | [📖 Details](games/gear-cavalry/README.md) |
 | [🍬 **Neon Pop: Cyber Match-3**](games/neon-pop/README.md) | `neon-pop` | Neon Match-3 Puzzle | [📖 Details](games/neon-pop/README.md) |
