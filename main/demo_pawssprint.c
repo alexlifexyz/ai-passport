@@ -245,62 +245,213 @@ static void draw_big_cushion(lv_layer_t *layer, int cx, int cy)
     draw_round_box(layer, cx - 60, cy - 18, 30, 6, 3, 0xFFFFFF);
 }
 
-// 绘制萌宠角色
+// 2D 旋转坐标映射
+static inline void rot_pt(float cx, float cy, float ox, float oy, float cos_a, float sin_a, int *rx, int *ry)
+{
+    *rx = (int)(cx + ox * cos_a - oy * sin_a);
+    *ry = (int)(cy + ox * sin_a + oy * cos_a);
+}
+
+static inline void draw_rot_round_box(lv_layer_t *layer, float cx, float cy,
+                                      float ox, float oy, float w, float h,
+                                      int radius, uint32_t color_hex,
+                                      float cos_a, float sin_a)
+{
+    int rx, ry;
+    rot_pt(cx, cy, ox, oy, cos_a, sin_a, &rx, &ry);
+    draw_round_box(layer, rx - (int)(w * 0.5f), ry - (int)(h * 0.5f), (int)w, (int)h, radius, color_hex);
+}
+
+static inline void draw_rot_box(lv_layer_t *layer, float cx, float cy,
+                                float ox, float oy, float w, float h,
+                                uint32_t color_hex,
+                                float cos_a, float sin_a)
+{
+    int rx, ry;
+    rot_pt(cx, cy, ox, oy, cos_a, sin_a, &rx, &ry);
+    draw_box(layer, rx - (int)(w * 0.5f), ry - (int)(h * 0.5f), (int)w, (int)h, color_hex);
+}
+
+// 绘制超萌萌宠正面脸部与动态身体
 static void draw_animal(lv_layer_t *layer, int x, int y, ps_char_type_t ch,
                         float sx, float sy, float angle, float run_frame)
 {
-    (void)angle;
-    int bob = (int)(sinf(run_frame) * 2.5f);
-    int butt = (int)(sinf(run_frame * 1.2f) * 3.5f);
-    const ps_char_info_t *info = pawssprint_get_char_info(ch);
+    float s = (sx + sy) * 0.5f;
+    float bob = sinf(run_frame) * 2.5f * s;
+    float p1 = sinf(run_frame * 1.5f) * 3.5f * s;
 
-    int w = (int)(26.0f * sx);
-    int h = (int)(26.0f * sy);
-    if (w < 10) w = 10;
-    if (h < 10) h = 10;
+    float cx = (float)x;
+    float cy = (float)y + bob;
+    float cos_a = cosf(angle);
+    float sin_a = sinf(angle);
 
-    // 地面投影
-    draw_round_box(layer, x - 14, y + 10, 28, 8, 4, 0x4D7C0F);
+    // 地面软影
+    draw_round_box(layer, x - (int)(16.0f * s), y + (int)(12.0f * s),
+                   (int)(32.0f * s), (int)(8.0f * s), 4, 0x4D7C0F);
 
     if (ch == PS_CHAR_CORGI) {
-        // 柯基：金黄蜜桃圆屁屁 + 尾尖爱心白毛 + 标志性大耳朵
-        draw_round_box(layer, x - w / 2 + butt, y - h / 2 + bob, w, h, 12, info->body_color);
-        draw_round_box(layer, x - 7 + butt, y - 2 + bob, 6, 8, 3, info->belly_color);
-        draw_round_box(layer, x + 1 + butt, y - 2 + bob, 6, 8, 3, info->belly_color);
-        draw_round_box(layer, x - 2 + butt, y - h / 2 - 4 + bob, 5, 5, 2, info->belly_color);
-        draw_box(layer, x - 11, y - h / 2 - 8 + bob, 5, 8, info->accent_color);
-        draw_box(layer, x + 6,  y - h / 2 - 8 + bob, 5, 8, info->accent_color);
-        int p1 = (int)(sinf(run_frame) * 3.0f);
-        draw_box(layer, x - 9, y + h / 2 - 4 + p1, 5, 5, 0xFFFFFF);
-        draw_box(layer, x + 4, y + h / 2 - 4 - p1, 5, 5, 0xFFFFFF);
+        // ============================================================
+        // 1. 柯基·球球 (CORGI)：大尖立耳 + 额头白鼻梁 + 大眼高光 + 粉舌头
+        // ============================================================
+        // 左右大立耳 (外耳焦糖褐，内耳粉嫩嫩)
+        draw_rot_round_box(layer, cx, cy, -11.0f * s, -14.0f * s, 10.0f * s, 16.0f * s, 4, 0xB45309, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, -11.0f * s, -13.0f * s, 6.0f * s, 10.0f * s, 3, 0xFBCFE8, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +11.0f * s, -14.0f * s, 10.0f * s, 16.0f * s, 4, 0xB45309, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +11.0f * s, -13.0f * s, 6.0f * s, 10.0f * s, 3, 0xFBCFE8, cos_a, sin_a);
+
+        // 金黄圆润大萌脸
+        draw_rot_round_box(layer, cx, cy, 0, 0, 28.0f * s, 24.0f * s, 11, 0xF59E0B, cos_a, sin_a);
+
+        // 额头与鼻梁正中纯白斑条 (Blaze)
+        draw_rot_round_box(layer, cx, cy, 0, 0, 8.0f * s, 16.0f * s, 4, 0xFFFFFF, cos_a, sin_a);
+        // 白口吻
+        draw_rot_round_box(layer, cx, cy, 0, 5.0f * s, 16.0f * s, 11.0f * s, 5, 0xFFFFFF, cos_a, sin_a);
+
+        // 黑色大眼睛带闪亮双高光
+        draw_rot_round_box(layer, cx, cy, -7.0f * s, -1.0f * s, 5.0f * s, 6.0f * s, 2, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -8.0f * s, -2.5f * s, 2.0f * s, 2.0f * s, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -6.5f * s, 0.5f * s, 1.0f * s, 1.0f * s, 0xFFFFFF, cos_a, sin_a);
+
+        draw_rot_round_box(layer, cx, cy, +7.0f * s, -1.0f * s, 5.0f * s, 6.0f * s, 2, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +6.0f * s, -2.5f * s, 2.0f * s, 2.0f * s, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +7.5f * s, 0.5f * s, 1.0f * s, 1.0f * s, 0xFFFFFF, cos_a, sin_a);
+
+        // 粉扑扑大腮红
+        draw_rot_round_box(layer, cx, cy, -10.5f * s, 4.0f * s, 5.5f * s, 4.0f * s, 2, 0xFB7185, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +10.5f * s, 4.0f * s, 5.5f * s, 4.0f * s, 2, 0xFB7185, cos_a, sin_a);
+
+        // 黑色湿润小倒三角鼻头
+        draw_rot_round_box(layer, cx, cy, 0, 3.0f * s, 4.0f * s, 3.0f * s, 1, 0x1E293B, cos_a, sin_a);
+
+        // 欢快伸出的小粉舌头
+        draw_rot_round_box(layer, cx, cy, 0, 7.5f * s, 4.5f * s, 5.0f * s, 2, 0xFB7185, cos_a, sin_a);
+
+        // 前方两只雪白小肉爪踏步
+        draw_rot_round_box(layer, cx, cy, -8.0f * s, 13.0f * s + p1, 6.0f * s, 6.0f * s, 3, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +8.0f * s, 13.0f * s - p1, 6.0f * s, 6.0f * s, 3, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, -8.0f * s, 14.0f * s + p1, 3.0f * s, 2.5f * s, 1, 0xFBCFE8, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +8.0f * s, 14.0f * s - p1, 3.0f * s, 2.5f * s, 1, 0xFBCFE8, cos_a, sin_a);
 
     } else if (ch == PS_CHAR_SHIBA) {
-        // 柴犬：暖黄身体 + 卷卷黑尾 + 眯眼飞机耳
-        draw_round_box(layer, x - w / 2, y - h / 2 + bob, w, h, 11, info->body_color);
-        draw_round_box(layer, x - 4 + butt, y - h / 2 - 5 + bob, 8, 8, 4, info->accent_color);
-        draw_box(layer, x - 14, y - h / 2 - 3 + bob, 6, 5, info->body_color);
-        draw_box(layer, x + 8,  y - h / 2 - 3 + bob, 6, 5, info->body_color);
-        draw_round_box(layer, x - 5, y + bob, 10, 8, 4, info->belly_color);
-        int p1 = (int)(sinf(run_frame) * 3.0f);
-        draw_box(layer, x - 8, y + h / 2 - 4 + p1, 4, 5, 0xFFFFFF);
-        draw_box(layer, x + 4, y + h / 2 - 4 - p1, 4, 5, 0xFFFFFF);
+        // ============================================================
+        // 2. 柴犬·阿柴 (SHIBA)：三角飞机耳 + 灵魂白豆豆眉 + 治愈微笑
+        // ============================================================
+        // 飞机三角耳
+        draw_rot_round_box(layer, cx, cy, -11.0f * s, -11.0f * s, 9.0f * s, 11.0f * s, 3, 0xB45309, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, -10.0f * s, -10.0f * s, 5.0f * s, 7.0f * s, 2, 0xFEF3C7, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +11.0f * s, -11.0f * s, 9.0f * s, 11.0f * s, 3, 0xB45309, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +10.0f * s, -10.0f * s, 5.0f * s, 7.0f * s, 2, 0xFEF3C7, cos_a, sin_a);
+
+        // 暖栗黄大饼脸
+        draw_rot_round_box(layer, cx, cy, 0, 0, 28.0f * s, 24.0f * s, 12, 0xD97706, cos_a, sin_a);
+
+        // 鼓鼓的奶油白脸颊与下巴
+        draw_rot_round_box(layer, cx, cy, 0, 4.5f * s, 22.0f * s, 14.0f * s, 7, 0xFEF3C7, cos_a, sin_a);
+
+        // 柴犬灵魂：两颗雪白圆圆豆豆眉 (Maro)
+        draw_rot_round_box(layer, cx, cy, -6.5f * s, -6.0f * s, 4.5f * s, 3.5f * s, 2, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +6.5f * s, -6.0f * s, 4.5f * s, 3.5f * s, 2, 0xFFFFFF, cos_a, sin_a);
+
+        // 治愈大眼带高光
+        draw_rot_round_box(layer, cx, cy, -6.5f * s, -1.0f * s, 5.0f * s, 5.5f * s, 2, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -7.5f * s, -2.0f * s, 2.0f * s, 2.0f * s, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +6.5f * s, -1.0f * s, 5.0f * s, 5.5f * s, 2, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +5.5f * s, -2.0f * s, 2.0f * s, 2.0f * s, 0xFFFFFF, cos_a, sin_a);
+
+        // 暖粉元气大腮红
+        draw_rot_round_box(layer, cx, cy, -10.5f * s, 4.0f * s, 6.0f * s, 4.5f * s, 2, 0xFB7185, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +10.5f * s, 4.0f * s, 6.0f * s, 4.5f * s, 2, 0xFB7185, cos_a, sin_a);
+
+        // 黑色小鼻头与微笑嘴角
+        draw_rot_round_box(layer, cx, cy, 0, 3.0f * s, 4.0f * s, 3.0f * s, 1, 0x1E293B, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, 0, 5.5f * s, 4.0f * s, 1.5f * s, 0x92400E, cos_a, sin_a);
+
+        // 黄毛白手套小爪爪踏步
+        draw_rot_round_box(layer, cx, cy, -8.0f * s, 13.0f * s + p1, 6.0f * s, 6.0f * s, 3, 0xFEF3C7, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +8.0f * s, 13.0f * s - p1, 6.0f * s, 6.0f * s, 3, 0xFEF3C7, cos_a, sin_a);
 
     } else if (ch == PS_CHAR_SEAL) {
-        // 海豹：圆滚滚糯米雪白大团子 + 小尾鳍 + 侧翼鳍
-        draw_round_box(layer, x - w / 2 - 2, y - h / 2 + bob, w + 4, h - 2, 13, info->body_color);
-        draw_round_box(layer, x - 5 + butt, y - h / 2 - 6 + bob, 10, 5, 2, info->accent_color);
-        draw_round_box(layer, x - w / 2 - 6, y - 2 + bob, 5, 7, 2, info->accent_color);
-        draw_round_box(layer, x + w / 2 + 1, y - 2 + bob, 5, 7, 2, info->accent_color);
+        // ============================================================
+        // 3. 海豹·糯米 (SEAL)：糯米大雪球 + 无辜水灵大黑眼 + 可爱小胡须
+        // ============================================================
+        // 纯白糯米圆团子身躯
+        draw_rot_round_box(layer, cx, cy, 0, 0, 30.0f * s, 26.0f * s, 13, 0xF8FAFC, cos_a, sin_a);
+
+        // 无辜大圆眼 (超萌水汪汪大黑眸 + 双层高光)
+        draw_rot_round_box(layer, cx, cy, -7.0f * s, -2.0f * s, 7.0f * s, 7.0f * s, 3, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -8.5f * s, -3.5f * s, 2.5f * s, 2.5f * s, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -6.0f * s, -0.5f * s, 1.5f * s, 1.5f * s, 0xFFFFFF, cos_a, sin_a);
+
+        draw_rot_round_box(layer, cx, cy, +7.0f * s, -2.0f * s, 7.0f * s, 7.0f * s, 3, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +5.5f * s, -3.5f * s, 2.5f * s, 2.5f * s, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +8.0f * s, -0.5f * s, 1.5f * s, 1.5f * s, 0xFFFFFF, cos_a, sin_a);
+
+        // 黑色椭圆鼻头
+        draw_rot_round_box(layer, cx, cy, 0, 2.5f * s, 4.5f * s, 3.5f * s, 2, 0x334155, cos_a, sin_a);
+
+        // 软萌小胡须
+        draw_rot_box(layer, cx, cy, -10.0f * s, 2.0f * s, 5.0f * s, 1.5f * s, 0x94A3B8, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -10.0f * s, 4.5f * s, 5.0f * s, 1.5f * s, 0x94A3B8, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +10.0f * s, 2.0f * s, 5.0f * s, 1.5f * s, 0x94A3B8, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +10.0f * s, 4.5f * s, 5.0f * s, 1.5f * s, 0x94A3B8, cos_a, sin_a);
+
+        // 樱花粉大腮红
+        draw_rot_round_box(layer, cx, cy, -11.0f * s, 3.5f * s, 6.0f * s, 5.0f * s, 3, 0xFBCFE8, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +11.0f * s, 3.5f * s, 6.0f * s, 5.0f * s, 3, 0xFBCFE8, cos_a, sin_a);
+
+        // 左右挥舞拍打的小白鳍手
+        draw_rot_round_box(layer, cx, cy, -15.0f * s, 3.0f * s + p1, 7.0f * s, 5.0f * s, 2, 0xE2E8F0, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +15.0f * s, 3.0f * s - p1, 7.0f * s, 5.0f * s, 2, 0xE2E8F0, cos_a, sin_a);
 
     } else if (ch == PS_CHAR_PENGUIN) {
-        // 企鹅：曜石黑大衣 + 纯白肚兜 + 橘红小脚
-        draw_round_box(layer, x - w / 2, y - h / 2 + bob, w, h, 11, info->body_color);
-        draw_round_box(layer, x - 6, y - 4 + bob, 12, 12, 5, info->belly_color);
-        int p1 = (int)(sinf(run_frame) * 2.5f);
-        draw_box(layer, x - 8, y + h / 2 - 3 + p1, 5, 4, info->accent_color);
-        draw_box(layer, x + 3, y + h / 2 - 3 - p1, 5, 4, info->accent_color);
-        draw_box(layer, x - w / 2 - 3, y - 4 + bob, 4, 9, info->body_color);
-        draw_box(layer, x + w / 2 - 1, y - 4 + bob, 4, 9, info->body_color);
+        // ============================================================
+        // 4. 企鹅·波波 (PENGUIN)：黑曜石小披风 + 桃心白脸 + 橙色小嘴 + 领结
+        // ============================================================
+        // 黑头罩与身体
+        draw_rot_round_box(layer, cx, cy, 0, 0, 28.0f * s, 26.0f * s, 12, 0x1E293B, cos_a, sin_a);
+
+        // 桃心形雪白大脸蛋
+        draw_rot_round_box(layer, cx, cy, 0, 1.0f * s, 20.0f * s, 20.0f * s, 10, 0xFFFFFF, cos_a, sin_a);
+
+        // 呆萌大黑眼
+        draw_rot_round_box(layer, cx, cy, -6.0f * s, -2.0f * s, 5.0f * s, 5.0f * s, 2, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, -7.0f * s, -3.0f * s, 2.0f * s, 2.0f * s, 0xFFFFFF, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +6.0f * s, -2.0f * s, 5.0f * s, 5.0f * s, 2, 0x0F172A, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +5.0f * s, -3.0f * s, 2.0f * s, 2.0f * s, 0xFFFFFF, cos_a, sin_a);
+
+        // 亮橙色立体小尖嘴 (Beak)
+        draw_rot_round_box(layer, cx, cy, 0, 2.0f * s, 7.0f * s, 4.5f * s, 2, 0xF97316, cos_a, sin_a);
+
+        // 呆萌绅士红色小领结
+        draw_rot_box(layer, cx, cy, -2.5f * s, 6.5f * s, 3.0f * s, 3.0f * s, 0xEF4444, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, +2.5f * s, 6.5f * s, 3.0f * s, 3.0f * s, 0xEF4444, cos_a, sin_a);
+        draw_rot_box(layer, cx, cy, 0, 6.5f * s, 2.0f * s, 2.0f * s, 0xFCA5A5, cos_a, sin_a);
+
+        // 粉嫩小腮红
+        draw_rot_round_box(layer, cx, cy, -9.0f * s, 2.0f * s, 4.5f * s, 3.5f * s, 2, 0xFB7185, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +9.0f * s, 2.0f * s, 4.5f * s, 3.5f * s, 2, 0xFB7185, cos_a, sin_a);
+
+        // 黑色小短翅膀扑腾
+        draw_rot_round_box(layer, cx, cy, -14.0f * s, 1.0f * s + p1, 5.0f * s, 10.0f * s, 2, 0x1E293B, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +14.0f * s, 1.0f * s - p1, 5.0f * s, 10.0f * s, 2, 0x1E293B, cos_a, sin_a);
+
+        // 橙黄小脚蹼踏步
+        draw_rot_round_box(layer, cx, cy, -6.0f * s, 13.0f * s + p1, 6.0f * s, 5.0f * s, 2, 0xF97316, cos_a, sin_a);
+        draw_rot_round_box(layer, cx, cy, +6.0f * s, 13.0f * s - p1, 6.0f * s, 5.0f * s, 2, 0xF97316, cos_a, sin_a);
+    }
+
+    // ============================================================
+    // 旋转特技特效：踩香蕉皮华丽 360° 打转时的眩晕旋转金星
+    // ============================================================
+    if (angle > 0.05f) {
+        for (int st = 0; st < 3; st++) {
+            float sa = angle * 2.5f + (float)st * 2.094f;
+            float star_ox = cosf(sa) * (20.0f * s);
+            float star_oy = -22.0f * s + sinf(sa) * (7.0f * s);
+            draw_rot_box(layer, cx, cy, star_ox, star_oy, 5.0f * s, 5.0f * s, 0xFDE047, 1.0f, 0.0f);
+            draw_rot_box(layer, cx, cy, star_ox, star_oy - 2.0f * s, 2.0f * s, 7.0f * s, 0xFACC15, 1.0f, 0.0f);
+            draw_rot_box(layer, cx, cy, star_ox - 2.0f * s, star_oy, 7.0f * s, 2.0f * s, 0xFACC15, 1.0f, 0.0f);
+        }
     }
 }
 
@@ -692,10 +843,10 @@ void demo_pawssprint_exit(void)
     }
 }
 
-// 三键输入响应
+// 三键输入响应 (仅响应 CLICK，杜绝双事件触发导致跳过中间车道)
 void demo_pawssprint_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    if (ev != BSP_BTN_PRESS && ev != BSP_BTN_CLICK) return;
+    if (ev != BSP_BTN_CLICK) return;
 
     if (btn == BSP_BTN_UP) {
         pawssprint_input_up(&s_game);
