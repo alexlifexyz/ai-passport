@@ -31,7 +31,7 @@ int main(void)
     cyber_runner_init(&g, 0x1111);
     cyber_runner_input_up(&g);
     assert(g.stance == CR_STANCE_JUMP);
-    assert(g.vy < -400.0f);
+    assert(g.vy < -300.0f);
     assert(g.pending_sound == CR_SND_JUMP);
 
     // 运行数帧进入空中
@@ -39,7 +39,7 @@ int main(void)
     cyber_runner_step(&g, 25);
     assert(g.y < g.buildings[0].y);
 
-    // 空中二段跳
+    // 空中二段跳 (阿童木火箭靴喷火腾跃)
     cyber_runner_input_up(&g);
     assert(g.stance == CR_STANCE_DOUBLE_JUMP);
     assert(g.air_jumps_left == 0);
@@ -75,37 +75,36 @@ int main(void)
     cyber_runner_input_up(&g);
     assert(g.is_wall_sliding == false);
     assert(g.stance == CR_STANCE_JUMP);
-    assert(g.vy < -400.0f); // 强力反弹腾空
+    assert(g.vy < -340.0f); // 紧凑反弹腾空
     assert(g.air_jumps_left == 1); // 刷新二段跳
     assert(g.pending_sound == CR_SND_WALL_KICK);
     printf("  ✓ Wall slide slow-fall & wall kick rescue leap OK\n");
 
-    // [TEST 4] 影刃锁定突进斩 (Blade Slash) 与杀怪刷新 (Kill Reset)
-    printf("[TEST 4] Testing Cyber Blade Slash & Kill Reset...\n");
+    // [TEST 4] 月牙光刃发射 (Crescent Moon Blade) 与远程击碎无人机
+    printf("[TEST 4] Testing Crescent Moon Blade Projectile & Slicing...\n");
     cyber_runner_init(&g, 0x3333);
     g.air_jumps_left = 0; // 消耗掉二段跳
-    g.blink_charges = 1;
 
-    // 在主角正前方 40px 放置一架巡逻无人机
+    // 在远处 100px 放置一架无人机
     g.hazards[0].active = true;
     g.hazards[0].type = CR_HAZARD_DRONE;
-    g.hazards[0].x = (float)CR_PLAYER_X + 40.0f;
-    g.hazards[0].y = g.y - 25.0f;
+    g.hazards[0].x = (float)CR_PLAYER_X + 100.0f;
+    g.hazards[0].y = g.y - 20.0f;
     g.hazards[0].w = 18.0f;
     g.hazards[0].h = 14.0f;
 
-    uint32_t prev_score = g.score;
-    // 按 OK 挥动影刃触发锁定瞬影斩爆！
+    // 按下 OK 键发射月牙光刃
     cyber_runner_input_ok(&g);
+    assert(g.projectiles[0].active == true);
+    assert(g.projectiles[0].vx > 300.0f);
 
-    assert(g.hazards[0].active == false); // 无人机瞬间被斩爆
-    assert(g.score > prev_score);
-    assert(g.air_jumps_left == 1); // ★★★ 杀怪刷新二段跳！
-    assert(g.blink_charges == 2);  // ★★★ 充能回复！
-    assert(g.vy < -300.0f);        // 借力爆跃升空！
-    assert(g.slash_active == true);
-    assert(g.pending_sound == CR_SND_SLASH_HIT);
-    printf("  ✓ Target lock-on slice, kill-reset & aerial bounce OK\n");
+    // 光刃向前飞掠命中远处无人机
+    for (int step = 0; step < 10; step++) {
+        cyber_runner_step(&g, 25);
+    }
+    assert(g.hazards[0].active == false); // 远处无人机被飞来的月牙光刃斩爆！
+    assert(g.air_jumps_left == 1);        // 击毁敌人奖励刷新二段跳！
+    printf("  ✓ Crescent Moon Blade firing, flight slicing & kill-reset OK\n");
 
     // [TEST 5] 地面滑铲与空中重力俯冲下砸 (Dive Slam) 冲击波
     printf("[TEST 5] Testing Slide & Dive Slam Shockwave...\n");

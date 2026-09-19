@@ -408,26 +408,68 @@ static void on_draw_playfield(lv_event_t *e)
         }
     }
 
-    // 9. 影刃瞬影飞斩轨迹 (Blade Slash Line)
-    if (s_game.slash_active) {
-        int sx = (int)s_game.slash_start_x;
-        int sy = (int)s_game.slash_start_y;
-        int tx = (int)s_game.slash_target_x;
-        int ty = (int)s_game.slash_target_y;
+    // 9. 月牙光刃 / 飞刀投射物渲染 (Crescent Moon Blade)
+    for (int i = 0; i < CR_MAX_PROJECTILES; i++) {
+        cr_projectile_t *p = &s_game.projectiles[i];
+        if (!p->active) continue;
 
-        int steps = 6;
-        for (int s = 0; s <= steps; s++) {
-            float t = (float)s / (float)steps;
-            int cx = (int)(sx + (tx - sx) * t);
-            int cy = (int)(sy + (ty - sy) * t);
-            draw_box(layer, cx - 2, cy - 2, 5, 5, 0x00FFFF);
-            draw_box(layer, cx - 1, cy - 1, 3, 3, 0xFFFFFF);
+        int cx = (int)p->x;
+        int cy = (int)p->y;
+        if (cx < -10 || cx > SCREEN_W + 10) continue;
+
+        // 旋转相位 (0 ~ 7)
+        int phase = ((int)p->rot_deg / 45) % 8;
+
+        // 颜色定义：月光金 + 纯白锋刃 + 电光青晕
+        const uint32_t COL_BLADE_GOLD = 0xFACC15;
+        const uint32_t COL_BLADE_WHT  = 0xFFFFFF;
+        const uint32_t COL_BLADE_CYAN = 0x38BDF8;
+
+        // 旋转弦月像素画法 (外凸内凹弦月弧刃)
+        if (phase == 0 || phase == 4) {
+            // 水平向右弧刃 (开角向左)
+            draw_box(layer, cx - 2, cy - 6, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx,     cy - 5, 3, 2, COL_BLADE_GOLD);
+            draw_box(layer, cx + 2, cy - 3, 3, 2, COL_BLADE_GOLD);
+            draw_box(layer, cx + 3, cy - 1, 3, 3, COL_BLADE_WHT);
+            draw_box(layer, cx + 2, cy + 2, 3, 2, COL_BLADE_GOLD);
+            draw_box(layer, cx,     cy + 4, 3, 2, COL_BLADE_GOLD);
+            draw_box(layer, cx - 2, cy + 5, 2, 2, COL_BLADE_CYAN);
+            // 内弧与光芒
+            draw_box(layer, cx + 1, cy - 2, 2, 5, COL_BLADE_WHT);
+        } else if (phase == 2 || phase == 6) {
+            // 垂直向上弧刃
+            draw_box(layer, cx - 6, cy - 2, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx - 5, cy,     2, 3, COL_BLADE_GOLD);
+            draw_box(layer, cx - 3, cy + 2, 2, 3, COL_BLADE_GOLD);
+            draw_box(layer, cx - 1, cy + 3, 3, 3, COL_BLADE_WHT);
+            draw_box(layer, cx + 2, cy + 2, 2, 3, COL_BLADE_GOLD);
+            draw_box(layer, cx + 4, cy,     2, 3, COL_BLADE_GOLD);
+            draw_box(layer, cx + 5, cy - 2, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx - 2, cy + 1, 5, 2, COL_BLADE_WHT);
+        } else if (phase == 1 || phase == 5) {
+            // 斜上 45 度飞旋
+            draw_box(layer, cx - 4, cy - 5, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx - 2, cy - 4, 3, 2, COL_BLADE_GOLD);
+            draw_box(layer, cx + 1, cy - 2, 3, 3, COL_BLADE_GOLD);
+            draw_box(layer, cx + 3, cy + 1, 3, 3, COL_BLADE_WHT);
+            draw_box(layer, cx + 2, cy + 4, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx,     cy - 1, 3, 3, COL_BLADE_WHT);
+        } else {
+            // 斜下 45 度飞旋
+            draw_box(layer, cx + 4, cy - 5, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx + 1, cy - 3, 3, 3, COL_BLADE_GOLD);
+            draw_box(layer, cx - 1, cy,     3, 3, COL_BLADE_WHT);
+            draw_box(layer, cx - 3, cy + 2, 3, 2, COL_BLADE_GOLD);
+            draw_box(layer, cx - 5, cy + 4, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx - 1, cy - 1, 3, 3, COL_BLADE_WHT);
         }
-        // 斩击爆发十字星
-        draw_box(layer, tx - 8, ty - 1, 17, 3, 0xFFFFFF);
-        draw_box(layer, tx - 1, ty - 8, 3, 17, 0xFFFFFF);
-        draw_box(layer, tx - 12, ty, 25, 1, 0x00FFFF);
-        draw_box(layer, tx, ty - 12, 1, 25, 0x00FFFF);
+
+        // 月牙后方流光微粒
+        if (s_game.tick_count % 2 == 0) {
+            draw_box(layer, cx - 6, cy - 1, 2, 2, COL_BLADE_CYAN);
+            draw_box(layer, cx - 10, cy, 1, 1, COL_BLADE_GOLD);
+        }
     }
 
     // 10. 幽灵闪现残影 (Afterimages)
@@ -440,129 +482,209 @@ static void on_draw_playfield(lv_event_t *e)
         }
     }
 
-    // 11. 玩家主角 (Cyber Courier 信使) —— 极致灵动赛博信使 (完美复刻 attract-cyberrunner.jpg)
-    // 纯正午夜蓝战衣 + 灵动流光绯红围巾 + 璀璨电光青目镜 + 高反差纯白运动战靴
+    // 11. 玩家主角 —— 【阿童木 / 超级飞人】(Astro Boy Super Flyer)
+    // 标志性黑尖双角发型 + 阳光清澈大眼睛 + 健美身躯 + 经典大红短裤 + 翠绿腰带 + 纯正大红火箭靴与炽热喷火尾焰！
     bool blink_hide = (s_game.invuln_timer_ms > 0 && (s_game.tick_count % 3 == 0));
     if (!blink_hide) {
         int px = (int)((float)CR_PLAYER_X + s_game.render_x_offset);
         int ph = (s_game.stance == CR_STANCE_SLIDE) ? CR_SLIDE_H : CR_PLAYER_H;
         int py = (int)(s_game.y - (float)ph);
 
-        // 统一配色常量
-        const uint32_t COL_SUIT_DARK  = 0x1E1B38; // 沉稳深靛潜行服底色 (清晰区别于背景暗空)
-        const uint32_t COL_SUIT_MID   = 0x353068; // 装甲主体蓝紫
-        const uint32_t COL_SUIT_LIGHT = 0x524C96; // 肩背与关节高光
-        const uint32_t COL_VISOR_CYAN = 0x00FFFF; // 电光青面罩目镜
-        const uint32_t COL_VISOR_WHT  = 0xFFFFFF; // 目镜反光白芯
-        const uint32_t COL_BOOT_WHT   = 0xFFFFFF; // 纯白高帮运动跑鞋
-        const uint32_t COL_BOOT_SOLE  = 0x0F172A; // 鞋底抓地深色纹
+        // 阿童木色彩定义
+        const uint32_t COL_HAIR_DARK   = 0x0F172A; // 经典乌黑发色
+        const uint32_t COL_HAIR_LIGHT  = 0x334155; // 头发高光
+        const uint32_t COL_SKIN_BASE   = 0xFED7AA; // 明亮阳光少年肤色
+        const uint32_t COL_SKIN_SHADOW = 0xFDBA74; // 脸颊暗部
+        const uint32_t COL_EYE_PUPIL   = 0x000000; // 英雄大眼珠
+        const uint32_t COL_EYE_GLEAM   = 0xFFFFFF; // 晶莹高光点
+        const uint32_t COL_BELT_GRN    = 0x10B981; // 标志性翡翠绿腰带
+        const uint32_t COL_BELT_GOLD   = 0xFACC15; // 金色腰带方扣
+        const uint32_t COL_SHORTS_RED  = 0xEF4444; // 经典纯正大红短裤
+        const uint32_t COL_BOOT_RED    = 0xDC2626; // 经典正红火箭靴
+        const uint32_t COL_BOOT_TOP    = 0xFFFFFF; // 火箭靴白折边
+        const uint32_t COL_BOOT_NOZZLE = 0x475569; // 靴底金属喷气口
+        const uint32_t COL_FLAME_CORE  = 0xFFFFFF; // 喷火纯白热核
+        const uint32_t COL_FLAME_MID   = 0xFACC15; // 喷火金黄主束
+        const uint32_t COL_FLAME_OUT   = 0xF97316; // 喷火炽橙外焰
 
         if (s_game.stance == CR_STANCE_SLIDE) {
-            // 1) 地面超低空极速滑铲姿势 (贴地飞驰，火花四溅)
-            // 头部与前倾目镜
-            draw_box(layer, px + 15, py + 2, 8, 8, COL_SUIT_DARK);
-            draw_box(layer, px + 18, py + 4, 6, 3, COL_VISOR_CYAN);
-            draw_box(layer, px + 20, py + 4, 3, 2, COL_VISOR_WHT);
-            // 水平流线型躯干
-            draw_box(layer, px + 5, py + 4, 12, 7, COL_SUIT_MID);
-            draw_box(layer, px + 7, py + 5, 8, 3, COL_SUIT_LIGHT);
-            // 贴地蹬踏的纯白跑鞋
-            draw_box(layer, px - 2, py + 6, 7, 5, COL_BOOT_WHT);
-            draw_box(layer, px - 2, py + 10, 7, 2, COL_BOOT_SOLE);
-            // 尾部喷气推进火花
-            draw_box(layer, px - 4, py + 7, 3, 4, 0x38BDF8);
-            draw_box(layer, px + 6, py + 12, 5, 2, 0xFFFFFF); // 地面摩擦火花
-        } else if (s_game.stance == CR_STANCE_WALL_SLIDE) {
-            // 2) 贴墙下滑姿态 (单手贴墙减速，身躯紧贴墙体)
-            // 头部侧视
-            draw_box(layer, px + 4, py + 1, 9, 8, COL_SUIT_DARK);
-            draw_box(layer, px + 8, py + 3, 6, 3, COL_VISOR_CYAN);
-            draw_box(layer, px + 10, py + 3, 3, 2, COL_VISOR_WHT);
-            // 紧凑纵向身躯
-            draw_box(layer, px + 2, py + 9, 10, 10, COL_SUIT_MID);
-            draw_box(layer, px + 4, py + 10, 6, 6, COL_SUIT_LIGHT);
-            // 贴墙支撑手臂
-            draw_box(layer, px + 11, py + 9, 5, 4, COL_SUIT_LIGHT);
-            // 垂挂脚部与蹬墙白鞋
-            draw_box(layer, px + 4, py + 19, 6, 5, COL_SUIT_DARK);
-            draw_box(layer, px + 8, py + 22, 6, 5, COL_BOOT_WHT);
-            draw_box(layer, px + 12, py + 22, 2, 5, COL_BOOT_SOLE);
+            // ==========================================
+            // 1) 地面贴地极速滑铲 (低姿态飞驰，身后火箭靴喷火推进)
+            // ==========================================
+            // 头部前倾与经典前角发型
+            draw_box(layer, px + 17, py + 1, 2, 2, COL_HAIR_DARK); // 前额翘角
+            draw_box(layer, px + 12, py + 1, 6, 8, COL_HAIR_DARK); // 脑后头发
+            draw_box(layer, px + 14, py + 3, 6, 6, COL_SKIN_BASE); // 侧脸
+            draw_box(layer, px + 17, py + 4, 3, 3, COL_EYE_PUPIL); // 大眼睛
+            draw_box(layer, px + 18, py + 4, 1, 1, COL_EYE_GLEAM); // 高光
 
-            // 蹬墙剧烈摩擦火花 (白色 + 青色 + 金黄)
+            // 水平流线身躯与绿腰带、红短裤
+            draw_box(layer, px + 7, py + 4, 7, 6, COL_SKIN_BASE);
+            draw_box(layer, px + 5, py + 4, 2, 6, COL_BELT_GRN);   // 绿腰带
+            draw_box(layer, px + 5, py + 6, 2, 2, COL_BELT_GOLD);  // 金扣
+            draw_box(layer, px + 1, py + 4, 4, 6, COL_SHORTS_RED); // 红短裤
+
+            // 笔直后伸的大红火箭靴
+            draw_box(layer, px - 5, py + 5, 6, 5, COL_BOOT_RED);
+            draw_box(layer, px - 6, py + 5, 2, 5, COL_BOOT_NOZZLE);
+
+            // 火箭靴向后水平喷火尾焰 (烈橙 + 金黄 + 纯白)
+            draw_box(layer, px - 11, py + 6, 5, 3, COL_FLAME_OUT);
+            draw_box(layer, px - 9,  py + 6, 3, 2, COL_FLAME_MID);
+            draw_box(layer, px - 7,  py + 7, 2, 1, COL_FLAME_CORE);
+            draw_box(layer, px + 6,  py + 12, 6, 2, 0xFFFFFF); // 地面火花
+        } else if (s_game.stance == CR_STANCE_WALL_SLIDE) {
+            // ==========================================
+            // 2) 贴墙下滑 (单手撑墙，外侧火箭靴微喷气缓冲)
+            // ==========================================
+            // 阿童木经典双尖角头部侧视
+            draw_box(layer, px + 3, py - 2, 2, 3, COL_HAIR_DARK); // 脑后后翘尖角
+            draw_box(layer, px + 9, py - 1, 2, 2, COL_HAIR_DARK); // 前额小尖角
+            draw_box(layer, px + 4, py,     8, 8, COL_HAIR_DARK);
+            draw_box(layer, px + 6, py + 2, 6, 6, COL_SKIN_BASE);
+            draw_box(layer, px + 9, py + 3, 3, 4, COL_EYE_PUPIL);
+            draw_box(layer, px + 10, py + 3, 1, 1, COL_EYE_GLEAM);
+
+            // 身躯与衣服
+            draw_box(layer, px + 3, py + 8, 8, 7, COL_SKIN_BASE);
+            draw_box(layer, px + 3, py + 15, 8, 2, COL_BELT_GRN);
+            draw_box(layer, px + 6, py + 15, 2, 2, COL_BELT_GOLD);
+            draw_box(layer, px + 3, py + 17, 8, 4, COL_SHORTS_RED);
+
+            // 撑墙手臂
+            draw_box(layer, px + 11, py + 9, 5, 3, COL_SKIN_BASE);
+
+            // 大红火箭靴
+            draw_box(layer, px + 4, py + 21, 6, 6, COL_BOOT_RED);
+            draw_box(layer, px + 4, py + 27, 6, 2, COL_BOOT_NOZZLE);
+
+            // 贴墙剧烈摩擦火花 (白色 + 金黄)
             int spk_x = px + CR_PLAYER_W - 1;
-            draw_box(layer, spk_x, py + 15, 3, 3, 0xFFFFFF);
-            draw_box(layer, spk_x + 1, py + 10, 2, 4, 0x00FFFF);
-            draw_box(layer, spk_x, py + 22, 2, 3, 0xFDE047);
+            draw_box(layer, spk_x, py + 12, 3, 3, 0xFFFFFF);
+            draw_box(layer, spk_x, py + 18, 2, 4, 0xFACC15);
+            // 靴底缓冲火花
+            draw_box(layer, px + 5, py + 29, 4, 2, COL_FLAME_MID);
         } else if (s_game.stance == CR_STANCE_RUN) {
-            // 3) 楼顶极速疾跑姿态 (经典 4 帧灵动步态，双足白鞋清晰交代触地与步频)
+            // ==========================================
+            // 3) 楼顶极速飞奔 (经典 4 帧大步流星，阿童木帅气前倾)
+            // ==========================================
             int run_frame = (s_game.tick_count / 3) % 4;
 
-            // 头盔头部 (微微前倾，带流线型头盔高光)
-            draw_box(layer, px + 3, py + 1, 10, 9, COL_SUIT_DARK);
-            draw_box(layer, px + 5, py + 1, 6, 2, COL_SUIT_LIGHT);
-            // 发光青色横向面罩目镜 (极富未来科技感)
-            draw_box(layer, px + 8, py + 4, 7, 3, COL_VISOR_CYAN);
-            draw_box(layer, px + 10, py + 4, 3, 2, COL_VISOR_WHT);
+            // 经典阿童木发型：前后双尖角极其醒目！
+            draw_box(layer, px + 2,  py - 3, 3, 4, COL_HAIR_DARK);  // ★ 脑后经典耸立尖角！
+            draw_box(layer, px + 10, py - 2, 2, 3, COL_HAIR_DARK);  // ★ 前额帅气微翘小尖角！
+            draw_box(layer, px + 3,  py,     9, 8, COL_HAIR_DARK);  // 黑色头发主体
+            draw_box(layer, px + 5,  py + 1, 5, 2, COL_HAIR_LIGHT); // 头发高光
 
-            // 躯干 (健美身形，前胸装甲板微光)
-            draw_box(layer, px + 4, py + 10, 9, 9, COL_SUIT_MID);
-            draw_box(layer, px + 6, py + 11, 5, 5, COL_SUIT_LIGHT);
-            // 战术腰带与能量指示灯
-            draw_box(layer, px + 4, py + 18, 9, 2, 0x0F172A);
-            draw_box(layer, px + 8, py + 18, 2, 1, 0x00FFFF);
+            // 阳光少年脸庞与英雄大眼睛
+            draw_box(layer, px + 6, py + 2, 7, 7, COL_SKIN_BASE);
+            draw_box(layer, px + 9, py + 3, 4, 4, COL_EYE_PUPIL);   // 灵动大眼睛
+            draw_box(layer, px + 10, py + 3, 2, 2, COL_EYE_GLEAM);  // 白色晶莹高光点
+            draw_box(layer, px + 12, py + 7, 2, 1, COL_SKIN_SHADOW); // 下颌微笑线
 
-            // 双腿与纯白战靴 (4 帧跑动：两腿分明，白鞋无论在亮空还是暗楼均清晰可见)
-            if (run_frame == 0) {
-                // 前蹬后扬
-                draw_box(layer, px + 8, py + 19, 4, 5, COL_SUIT_DARK);
-                draw_box(layer, px + 9, py + 23, 6, 5, COL_BOOT_WHT);
-                draw_box(layer, px + 9, py + 27, 6, 2, COL_BOOT_SOLE);
-
-                draw_box(layer, px + 2, py + 19, 4, 4, COL_SUIT_DARK);
-                draw_box(layer, px,     py + 22, 5, 4, COL_BOOT_WHT);
-                draw_box(layer, px,     py + 25, 5, 2, COL_BOOT_SOLE);
-            } else if (run_frame == 1 || run_frame == 3) {
-                // 腾空交汇
-                draw_box(layer, px + 4, py + 19, 5, 5, COL_SUIT_DARK);
-                draw_box(layer, px + 5, py + 24, 7, 4, COL_BOOT_WHT);
-                draw_box(layer, px + 5, py + 27, 7, 2, COL_BOOT_SOLE);
+            // 少年健美胸膛 (肤色)
+            draw_box(layer, px + 4, py + 9, 8, 7, COL_SKIN_BASE);
+            // 手臂前摆与后摆
+            if (run_frame == 0 || run_frame == 1) {
+                draw_box(layer, px + 11, py + 11, 4, 3, COL_SKIN_BASE); // 前伸手臂
+                draw_box(layer, px + 1,  py + 10, 3, 3, COL_SKIN_BASE); // 后摆手臂
             } else {
-                // 后蹬前扬 (左右反向)
-                draw_box(layer, px + 1, py + 19, 4, 5, COL_SUIT_DARK);
-                draw_box(layer, px - 1, py + 23, 5, 4, COL_BOOT_WHT);
-                draw_box(layer, px - 1, py + 26, 5, 2, COL_BOOT_SOLE);
+                draw_box(layer, px + 12, py + 10, 3, 3, COL_SKIN_BASE);
+                draw_box(layer, px + 1,  py + 11, 4, 3, COL_SKIN_BASE);
+            }
 
-                draw_box(layer, px + 7, py + 19, 4, 4, COL_SUIT_DARK);
-                draw_box(layer, px + 8, py + 22, 6, 5, COL_BOOT_WHT);
-                draw_box(layer, px + 8, py + 26, 6, 2, COL_BOOT_SOLE);
+            // 标志性绿腰带 + 金扣
+            draw_box(layer, px + 4, py + 16, 8, 2, COL_BELT_GRN);
+            draw_box(layer, px + 7, py + 16, 2, 2, COL_BELT_GOLD);
+
+            // 经典纯正大红短裤
+            draw_box(layer, px + 4, py + 18, 8, 4, COL_SHORTS_RED);
+
+            // 双腿与经典大红火箭长靴 (4 帧奔跑步频交替，红靴与暗色屋顶高对比)
+            if (run_frame == 0) {
+                // 前跨后蹬
+                draw_box(layer, px + 8, py + 20, 5, 5, COL_BOOT_RED);
+                draw_box(layer, px + 8, py + 25, 6, 4, COL_BOOT_RED);
+                draw_box(layer, px + 8, py + 29, 6, 2, COL_BOOT_NOZZLE);
+
+                draw_box(layer, px + 1, py + 19, 4, 4, COL_BOOT_RED);
+                draw_box(layer, px - 1, py + 23, 5, 4, COL_BOOT_RED);
+                draw_box(layer, px - 1, py + 27, 5, 2, COL_BOOT_NOZZLE);
+                // 蹬地火花微粒
+                draw_box(layer, px - 2, py + 29, 2, 2, COL_FLAME_MID);
+            } else if (run_frame == 1 || run_frame == 3) {
+                // 腾空交汇步伐
+                draw_box(layer, px + 5, py + 20, 5, 5, COL_BOOT_RED);
+                draw_box(layer, px + 5, py + 25, 6, 4, COL_BOOT_RED);
+                draw_box(layer, px + 5, py + 29, 6, 2, COL_BOOT_NOZZLE);
+            } else {
+                // 后跨前蹬 (反向)
+                draw_box(layer, px + 1, py + 20, 4, 4, COL_BOOT_RED);
+                draw_box(layer, px,     py + 24, 5, 4, COL_BOOT_RED);
+                draw_box(layer, px,     py + 28, 5, 2, COL_BOOT_NOZZLE);
+
+                draw_box(layer, px + 7, py + 19, 5, 5, COL_BOOT_RED);
+                draw_box(layer, px + 8, py + 23, 6, 5, COL_BOOT_RED);
+                draw_box(layer, px + 8, py + 28, 6, 2, COL_BOOT_NOZZLE);
+                draw_box(layer, px + 9, py + 30, 2, 2, COL_FLAME_MID);
             }
         } else {
-            // 4) 空中腾空/跳跃/俯冲姿势 (完美复刻 attract-cyberrunner.jpg 飞跃剪影)
-            // 头部前视
-            draw_box(layer, px + 3, py + 1, 10, 9, COL_SUIT_DARK);
-            draw_box(layer, px + 5, py + 1, 6, 2, COL_SUIT_LIGHT);
-            draw_box(layer, px + 8, py + 4, 7, 3, COL_VISOR_CYAN);
-            draw_box(layer, px + 10, py + 4, 3, 2, COL_VISOR_WHT);
+            // ==========================================
+            // 4) 空中腾空 / 飞跃 / 两段跳 / 俯冲 —— 【超级飞人冲天姿态】！
+            // ==========================================
+            // 阿童木经典双尖角头部
+            draw_box(layer, px + 2,  py - 3, 3, 4, COL_HAIR_DARK); // 脑后翘发
+            draw_box(layer, px + 10, py - 2, 2, 3, COL_HAIR_DARK); // 前额翘发
+            draw_box(layer, px + 3,  py,     9, 8, COL_HAIR_DARK);
+            draw_box(layer, px + 5,  py + 1, 5, 2, COL_HAIR_LIGHT);
 
-            // 躯干倾斜
-            draw_box(layer, px + 4, py + 10, 9, 9, COL_SUIT_MID);
-            draw_box(layer, px + 6, py + 11, 5, 5, COL_SUIT_LIGHT);
+            // 英雄大眼睛 (仰望前方飞翔)
+            draw_box(layer, px + 6, py + 2, 7, 7, COL_SKIN_BASE);
+            draw_box(layer, px + 9, py + 3, 4, 4, COL_EYE_PUPIL);
+            draw_box(layer, px + 10, py + 3, 2, 2, COL_EYE_GLEAM);
 
-            // 忍者腾跃收腿姿势：前脚向前舒展，后脚自然勾起
-            draw_box(layer, px + 8, py + 18, 4, 4, COL_SUIT_DARK);
-            draw_box(layer, px + 9, py + 21, 6, 5, COL_BOOT_WHT);
-            draw_box(layer, px + 9, py + 25, 6, 2, COL_BOOT_SOLE);
+            // 超级飞人前伸飞拳！经典的超人前冲手臂！
+            draw_box(layer, px + 12, py + 8, 6, 3, COL_SKIN_BASE); // 前伸飞拳
+            draw_box(layer, px + 16, py + 7, 3, 4, COL_SKIN_BASE); // 紧握飞拳
 
-            draw_box(layer, px + 1, py + 18, 4, 5, COL_SUIT_DARK);
-            draw_box(layer, px + 1, py + 22, 5, 4, COL_BOOT_WHT);
-            draw_box(layer, px + 1, py + 25, 5, 2, COL_BOOT_SOLE);
+            // 健美身躯与绿腰带金扣
+            draw_box(layer, px + 4, py + 9, 8, 7, COL_SKIN_BASE);
+            draw_box(layer, px + 4, py + 16, 8, 2, COL_BELT_GRN);
+            draw_box(layer, px + 7, py + 16, 2, 2, COL_BELT_GOLD);
 
-            // 二段跳 / 俯冲离子推进尾迹
-            if (s_game.stance == CR_STANCE_DOUBLE_JUMP || s_game.stance == CR_STANCE_DIVE) {
-                draw_box(layer, px + 10, py + 27, 4, 3, 0x00FFFF);
-                draw_box(layer, px + 2,  py + 27, 4, 3, 0x00FFFF);
-                draw_box(layer, px + 11, py + 28, 2, 2, 0xFFFFFF);
-                draw_box(layer, px + 3,  py + 28, 2, 2, 0xFFFFFF);
+            // 经典大红短裤
+            draw_box(layer, px + 4, py + 18, 8, 4, COL_SHORTS_RED);
+
+            // 飞行收腿姿态：双腿向后斜下方并拢
+            draw_box(layer, px + 7, py + 20, 5, 4, COL_BOOT_RED);
+            draw_box(layer, px + 7, py + 24, 6, 4, COL_BOOT_RED);
+            draw_box(layer, px + 7, py + 28, 6, 2, COL_BOOT_NOZZLE);
+
+            draw_box(layer, px + 1, py + 19, 4, 4, COL_BOOT_RED);
+            draw_box(layer, px + 1, py + 23, 5, 4, COL_BOOT_RED);
+            draw_box(layer, px + 1, py + 27, 5, 2, COL_BOOT_NOZZLE);
+
+            // ★★★ 超级飞人核心灵魂：火箭靴炽热喷射尾焰！★★★
+            if (s_game.stance == CR_STANCE_DOUBLE_JUMP) {
+                // 两段跳 (Double Jump)：爆发粗壮双管火箭大尾焰 (12px 长焰)！
+                // 前脚火箭喷火
+                draw_box(layer, px + 7, py + 30, 6, 5, COL_FLAME_OUT);
+                draw_box(layer, px + 8, py + 30, 4, 8, COL_FLAME_MID);
+                draw_box(layer, px + 9, py + 30, 2, 12, COL_FLAME_CORE);
+                // 后脚火箭喷火
+                draw_box(layer, px + 1, py + 29, 5, 5, COL_FLAME_OUT);
+                draw_box(layer, px + 2, py + 29, 3, 8, COL_FLAME_MID);
+                draw_box(layer, px + 3, py + 29, 1, 12, COL_FLAME_CORE);
+            } else if (s_game.stance == CR_STANCE_DIVE) {
+                // 俯冲砸地：火箭靴向上反冲强力排气
+                draw_box(layer, px + 7, py + 15, 4, 6, COL_FLAME_OUT);
+                draw_box(layer, px + 8, py + 13, 2, 8, COL_FLAME_MID);
+            } else {
+                // 一段跳或浮空：平稳火箭推进尾焰 (6px)
+                draw_box(layer, px + 8, py + 30, 4, 3, COL_FLAME_OUT);
+                draw_box(layer, px + 9, py + 30, 2, 6, COL_FLAME_MID);
+                draw_box(layer, px + 2, py + 29, 3, 3, COL_FLAME_OUT);
+                draw_box(layer, px + 3, py + 29, 1, 5, COL_FLAME_MID);
             }
         }
 

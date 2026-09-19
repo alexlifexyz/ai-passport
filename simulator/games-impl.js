@@ -3678,8 +3678,18 @@
           { x: 710, y: 230, w: 160, glass: false, crumble: 0, fallen: false }
         ];
 
-        this.hazards = [];
-        this.items = [];
+        // 初始障碍物与道具 (开局生动丰富)
+        this.hazards = [
+          { type: 'laser_low', x: 190 + 75, y: 220 - 10, w: 16, h: 10, active: true },
+          { type: 'drone', x: 360 + 70, y: 240 - 34, w: 18, h: 14, bob: 0, active: true },
+          { type: 'vent', x: 530 + 65, y: 215 - 6, w: 20, h: 6, active: true },
+          { type: 'drone', x: 710 + 80, y: 230 - 36, w: 18, h: 14, bob: 0, active: true }
+        ];
+        this.items = [
+          { type: 'gem', x: 190 + 40, y: 220 - 24, bob: 0, active: true },
+          { type: 'battery', x: 530 + 120, y: 215 - 24, bob: 0, active: true }
+        ];
+        this.projectiles = [];
         this.particles = [];
         this.afterimages = [];
 
@@ -3702,26 +3712,27 @@
             // 蹬墙反弹跳 (Wall Kick)!
             this.isWallSliding = false;
             this.stance = 'jump';
-            this.vy = -450;
+            this.vy = -360;
             this.airJumps = 1;
             if (snd) snd.playJump();
             if (fx) {
-              fx.burst(64, this.y - 12, 10, ['#00ffff', '#ffffff']);
-              fx.float(54, this.y - 20, 'WALL KICK!', '#00ffff');
+              fx.burst(64, this.y - 12, 10, ['#facc15', '#ffffff']);
+              fx.float(54, this.y - 20, 'WALL KICK!', '#facc15');
             }
           } else if (this.stance === 'run' || this.stance === 'slide' || this.coyoteTimer > 0) {
             this.coyoteTimer = 0;
             this.stance = 'jump';
-            this.vy = -440;
+            this.vy = -330;
             this.airJumps = 1;
             if (snd) snd.playJump();
-            if (fx) fx.burst(50, this.y, 6, ['#00ffff', '#ffffff']);
+            if (fx) fx.burst(50, this.y, 6, ['#facc15', '#ffffff']);
           } else if (this.airJumps > 0) {
+            // 阿童木火箭靴喷火腾跃两段跳
             this.airJumps = 0;
             this.stance = 'double_jump';
-            this.vy = -390;
+            this.vy = -310;
             if (snd) snd.playJump();
-            if (fx) fx.burst(52, this.y - 4, 8, ['#00ffff', '#ff0055']);
+            if (fx) fx.burst(52, this.y + 4, 10, ['#facc15', '#f97316', '#ffffff']);
           } else {
             this.jumpBuffer = 0.12;
           }
@@ -3730,16 +3741,28 @@
             this.stance = 'slide';
             this.stanceTimer = 0.42;
             if (snd) snd.playLaser();
-            if (fx) fx.burst(44, this.y, 6, ['#f59e0b', '#fbbf24']);
+            if (fx) fx.burst(44, this.y, 6, ['#f97316', '#facc15']);
           } else if (this.stance === 'jump' || this.stance === 'double_jump' || this.stance === 'blink' || this.stance === 'fall' || this.stance === 'wall_slide') {
             this.stance = 'dive';
             this.vy = 650;
             this.isWallSliding = false;
           }
         } else if (btn === 'ok') {
-          // 影刃锁定瞬影突进斩 (Blade Slash)
+          // ★★★ 发射向前飞旋的月牙光刃 / 飞刀 (Crescent Moon Blade) ★★★
           const px = 48 + this.renderXOff;
           const py = this.y - 15;
+
+          if (this.projectiles.length < 4) {
+            this.projectiles.push({
+              x: px + 16,
+              y: py + 2,
+              vx: 420,
+              rot: 0,
+              life: 0.7,
+              active: true
+            });
+          }
+
           let target = null;
           let minDist = 999;
           for (const h of this.hazards) {
@@ -3760,21 +3783,22 @@
             this.score += 200 * (1 + this.combo);
             this.combo++;
             this.comboTimer = 3.0;
-            // 杀怪刷新机制 (Kill Reset)
+            // 杀怪刷新二段跳 (Kill Reset)
             this.airJumps = 1;
             if (this.blinkCharges < 3) this.blinkCharges++;
-            this.vy = -390;
+            this.vy = -310;
             this.renderXOff = 36;
             this.phaseShift = true;
             this.phaseTimer = 0.18;
             this.stance = 'jump';
             if (snd) snd.playExplode(false);
             if (fx) {
-              fx.burst(target.x + target.w / 2, target.y + target.h / 2, 14, ['#00ffff', '#ffffff', '#ff0055']);
-              fx.float(target.x, target.y - 12, 'SLASH RESET!', '#00ffff');
+              fx.burst(target.x + target.w / 2, target.y + target.h / 2, 14, ['#facc15', '#ffffff', '#ef4444']);
+              fx.float(target.x, target.y - 12, 'SLASH!', '#facc15');
             }
           } else {
             this.slashTarget = { x: px + 60, y: py };
+            if (snd) snd.playLaser();
             if (this.blinkCharges > 0 && !this.phaseShift) {
               this.blinkCharges--;
               this.phaseShift = true;
@@ -3782,13 +3806,12 @@
               this.stance = 'blink';
               this.vy = 0;
               this.renderXOff = 36;
-              if (snd) snd.playBlink();
               this.afterimages = [
-                { x: 32, y: this.y, alpha: 0.8, col: '#00ffff' },
-                { x: 20, y: this.y, alpha: 0.6, col: '#ff0055' },
+                { x: 32, y: this.y, alpha: 0.8, col: '#facc15' },
+                { x: 20, y: this.y, alpha: 0.6, col: '#ef4444' },
                 { x: 8,  y: this.y, alpha: 0.4, col: '#38bdf8' }
               ];
-              if (fx) fx.burst(54, this.y - 14, 10, ['#00ffff', '#ff0055', '#ffffff']);
+              if (fx) fx.burst(54, this.y - 14, 10, ['#facc15', '#ef4444', '#ffffff']);
             }
           }
         }
@@ -3852,9 +3875,9 @@
         if (!this.phaseShift && this.stance !== 'run' && this.stance !== 'slide') {
           if (this.isWallSliding) {
             if (this.vy > 90) this.vy = 90;
-            else this.vy += (1150 * 0.35) * dt;
+            else this.vy += (1350 * 0.35) * dt;
           } else {
-            this.vy += 1150 * dt;
+            this.vy += 1350 * dt;
           }
           this.y += this.vy * dt;
         }
@@ -3925,26 +3948,24 @@
             maxRight = b.x + b.w;
             lastY = b.y;
 
-            // 障碍与道具生成
-            if (w >= 110 && !b.glass) {
+            // 障碍与道具生成 (丰富多彩)
+            if (w >= 90 && !b.glass) {
               const r = Math.random();
-              if (r < 0.4) {
-                const ht = Math.floor(Math.random() * 4);
+              if (r < 0.55) {
+                const ht = Math.floor(Math.random() * 3);
                 if (ht === 0) {
-                  this.hazards.push({ type: 'laser_low', x: b.x + b.w * 0.55, y: b.y - 8, w: 12, h: 8, active: true });
+                  this.hazards.push({ type: 'laser_low', x: b.x + b.w * 0.55, y: b.y - 10, w: 16, h: 10, active: true });
                 } else if (ht === 1) {
-                  this.hazards.push({ type: 'laser_high', x: b.x + b.w * 0.5, y: b.y - 28, w: 14, h: 10, active: true });
-                } else if (ht === 2) {
-                  this.hazards.push({ type: 'laser_wall', x: b.x + b.w * 0.6, y: b.y - 48, w: 8, h: 48, active: true });
+                  this.hazards.push({ type: 'laser_high', x: b.x + b.w * 0.5, y: b.y - 28, w: 16, h: 10, active: true });
                 } else {
-                  this.hazards.push({ type: 'drone', x: b.x + b.w * 0.5, y: b.y - 36, w: 18, h: 14, bob: 0, active: true });
+                  this.hazards.push({ type: 'drone', x: b.x + b.w * 0.5, y: b.y - 34, w: 18, h: 14, bob: 0, active: true });
                 }
-              } else if (r < 0.65) {
-                this.hazards.push({ type: 'vent', x: b.x + b.w * 0.4, y: b.y - 6, w: 20, h: 6, active: true });
-              } else if (r < 0.85) {
+              } else if (r < 0.75) {
+                this.hazards.push({ type: 'vent', x: b.x + b.w * 0.45, y: b.y - 6, w: 20, h: 6, active: true });
+              } else if (r < 0.95) {
                 const it = Math.random();
                 const type = it < 0.6 ? 'gem' : (it < 0.9 ? 'battery' : 'shield');
-                this.items.push({ type, x: b.x + b.w * 0.5, y: b.y - 20, bob: 0, active: true });
+                this.items.push({ type, x: b.x + b.w * 0.5, y: b.y - 22, bob: 0, active: true });
               }
             }
           }
@@ -3973,7 +3994,7 @@
           if (this.stance !== 'slide') this.stance = 'run';
           if (this.jumpBuffer > 0) {
             this.stance = 'jump';
-            this.vy = -440;
+            this.vy = -330;
             this.airJumps = 1;
             this.jumpBuffer = 0;
             if (snd) snd.playJump();
@@ -3993,6 +4014,35 @@
           this.dead = true;
           if (snd) snd.playExplode(true);
           return;
+        }
+
+        // 月牙光刃 / 飞刀投射物更新与命中检测
+        for (const p of this.projectiles) {
+          if (!p.active) continue;
+          p.x += p.vx * dt;
+          p.rot = (p.rot + 720 * dt) % 360;
+          p.life -= dt;
+          if (p.life <= 0 || p.x > 260) { p.active = false; continue; }
+
+          for (const h of this.hazards) {
+            if (!h.active) continue;
+            if (p.x + 7 > h.x && p.x - 7 < h.x + h.w && p.y + 7 > h.y && p.y - 7 < h.y + h.h) {
+              if (h.type === 'drone' || h.type === 'laser_low' || h.type === 'laser_high') {
+                h.active = false;
+                p.active = false;
+                this.score += 200 * (1 + this.combo);
+                this.combo++;
+                this.comboTimer = 3.0;
+                this.airJumps = 1; // 杀怪刷新二段跳！
+                if (snd) snd.playExplode(false);
+                if (fx) {
+                  fx.burst(h.x + h.w / 2, h.y + h.h / 2, 12, ['#facc15', '#ffffff', '#ef4444']);
+                  fx.float(h.x, h.y - 12, 'SLASH!', '#facc15');
+                }
+                break;
+              }
+            }
+          }
         }
 
         // 障碍检测
@@ -4206,19 +4256,34 @@
           }
         }
 
-        // 9. 影刃斩击弧光
-        if (this.slashActive) {
-          ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 4;
+        // 9. 月牙光刃 / 飞刀投射物渲染 (Crescent Moon Blade)
+        for (const p of this.projectiles) {
+          if (!p.active) continue;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rot * Math.PI) / 180);
+
+          // 月牙弧刃：外圈金黄 + 纯白锋刃
+          ctx.fillStyle = '#facc15';
           ctx.beginPath();
-          ctx.moveTo(this.slashStart.x, this.slashStart.y);
-          ctx.lineTo(this.slashTarget.x, this.slashTarget.y);
-          ctx.stroke();
-          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
-          ctx.stroke();
+          ctx.arc(0, 0, 7, -Math.PI * 0.4, Math.PI * 0.4, false);
+          ctx.arc(2, 0, 5, Math.PI * 0.4, -Math.PI * 0.4, true);
+          ctx.closePath();
+          ctx.fill();
 
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(this.slashTarget.x - 8, this.slashTarget.y - 1, 16, 2);
-          ctx.fillRect(this.slashTarget.x - 1, this.slashTarget.y - 8, 2, 16);
+          ctx.beginPath();
+          ctx.arc(0, 0, 6, -Math.PI * 0.25, Math.PI * 0.25, false);
+          ctx.arc(1.5, 0, 4.5, Math.PI * 0.25, -Math.PI * 0.25, true);
+          ctx.closePath();
+          ctx.fill();
+
+          // 两侧尖端高光
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(-2, -6, 2, 2);
+          ctx.fillRect(-2, 5, 2, 2);
+
+          ctx.restore();
         }
 
         // 10. 残影
@@ -4231,101 +4296,187 @@
           }
         }
 
-        // 11. 玩家主角 (Cyber Courier 信使 —— 灵动午夜蓝战衣 + 纯白战靴 + 璀璨电光青目镜)
+        // 11. 玩家主角 —— 【阿童木 / 超级飞人】(Astro Boy Super Flyer)
+        // 标志性黑尖双角发型 + 阳光少年大眼睛 + 经典大红短裤 + 翠绿腰带 + 纯正大红火箭靴与火箭推进烈焰！
         const hideBlink = (this.invuln > 0 && Math.floor(this.tick / 3) % 2 === 0);
         if (!hideBlink) {
           const px = 48 + this.renderXOff;
           const ph = (this.stance === 'slide') ? 14 : 30;
           const py = this.y - ph;
 
-          const COL_SUIT_DARK  = '#1e1b38';
-          const COL_SUIT_MID   = '#353068';
-          const COL_SUIT_LIGHT = '#524c96';
-          const COL_VISOR_CYAN = '#00ffff';
-          const COL_VISOR_WHT  = '#ffffff';
-          const COL_BOOT_WHT   = '#ffffff';
-          const COL_BOOT_SOLE  = '#0f172a';
+          const COL_HAIR_DARK   = '#0f172a';
+          const COL_HAIR_LIGHT  = '#334155';
+          const COL_SKIN_BASE   = '#fed7aa';
+          const COL_SKIN_SHADOW = '#fdba74';
+          const COL_EYE_PUPIL   = '#000000';
+          const COL_EYE_GLEAM   = '#ffffff';
+          const COL_BELT_GRN    = '#10b981';
+          const COL_BELT_GOLD   = '#facc15';
+          const COL_SHORTS_RED  = '#ef4444';
+          const COL_BOOT_RED    = '#dc2626';
+          const COL_BOOT_NOZZLE = '#475569';
+          const COL_FLAME_CORE  = '#ffffff';
+          const COL_FLAME_MID   = '#facc15';
+          const COL_FLAME_OUT   = '#f97316';
 
           if (this.stance === 'slide') {
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 15, py + 2, 8, 8);
-            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 18, py + 4, 6, 3);
-            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 20, py + 4, 3, 2);
-            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 5, py + 4, 12, 7);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 7, py + 5, 8, 3);
-            ctx.fillStyle = COL_BOOT_WHT; ctx.fillRect(px - 2, py + 6, 7, 5);
-            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px - 2, py + 10, 7, 2);
-            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px - 4, py + 7, 3, 4);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 6, py + 12, 5, 2);
+            // 1) 地面贴地极速滑铲
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 17, py + 1, 2, 2);
+            ctx.fillRect(px + 12, py + 1, 6, 8);
+            ctx.fillStyle = COL_SKIN_BASE;
+            ctx.fillRect(px + 14, py + 3, 6, 6);
+            ctx.fillStyle = COL_EYE_PUPIL;
+            ctx.fillRect(px + 17, py + 4, 3, 3);
+            ctx.fillStyle = COL_EYE_GLEAM;
+            ctx.fillRect(px + 18, py + 4, 1, 1);
+
+            ctx.fillStyle = COL_SKIN_BASE; ctx.fillRect(px + 7, py + 4, 7, 6);
+            ctx.fillStyle = COL_BELT_GRN;  ctx.fillRect(px + 5, py + 4, 2, 6);
+            ctx.fillStyle = COL_BELT_GOLD; ctx.fillRect(px + 5, py + 6, 2, 2);
+            ctx.fillStyle = COL_SHORTS_RED;ctx.fillRect(px + 1, py + 4, 4, 6);
+
+            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px - 5, py + 5, 6, 5);
+            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px - 6, py + 5, 2, 5);
+
+            // 火箭靴水平喷焰
+            ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px - 11, py + 6, 5, 3);
+            ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px - 9,  py + 6, 3, 2);
+            ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px - 7,  py + 7, 2, 1);
+            ctx.fillStyle = '#ffffff';      ctx.fillRect(px + 6,  py + 12, 6, 2);
           } else if (this.stance === 'wall_slide') {
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 4, py + 1, 9, 8);
-            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 8, py + 3, 6, 3);
-            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 10, py + 3, 3, 2);
-            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 2, py + 9, 10, 10);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 4, py + 10, 6, 6);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 11, py + 9, 5, 4);
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 4, py + 19, 6, 5);
-            ctx.fillStyle = COL_BOOT_WHT; ctx.fillRect(px + 8, py + 22, 6, 5);
-            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 12, py + 22, 2, 5);
+            // 2) 贴墙下滑
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 3, py - 2, 2, 3);
+            ctx.fillRect(px + 9, py - 1, 2, 2);
+            ctx.fillRect(px + 4, py,     8, 8);
+            ctx.fillStyle = COL_SKIN_BASE;
+            ctx.fillRect(px + 6, py + 2, 6, 6);
+            ctx.fillStyle = COL_EYE_PUPIL;
+            ctx.fillRect(px + 9, py + 3, 3, 4);
+            ctx.fillStyle = COL_EYE_GLEAM;
+            ctx.fillRect(px + 10, py + 3, 1, 1);
 
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 17, py + 15, 3, 3);
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 18, py + 10, 2, 4);
-            ctx.fillStyle = '#fde047'; ctx.fillRect(px + 17, py + 22, 2, 3);
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 3, py + 8, 8, 7);
+            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 3, py + 15, 8, 2);
+            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 6, py + 15, 2, 2);
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 3, py + 17, 8, 4);
+
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 11, py + 9, 5, 3);
+            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 4, py + 21, 6, 6);
+            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 4, py + 27, 6, 2);
+
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 17, py + 12, 3, 3);
+            ctx.fillStyle = '#facc15'; ctx.fillRect(px + 17, py + 18, 2, 4);
+            ctx.fillStyle = COL_FLAME_MID; ctx.fillRect(px + 5, py + 29, 4, 2);
           } else if (this.stance === 'run') {
+            // 3) 楼顶极速飞奔 (经典阿童木双尖发型 + 阳光大眼 + 纯正大红短裤 + 大红火箭长靴)
             const runFrame = Math.floor(this.tick / 3) % 4;
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 3, py + 1, 10, 9);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 5, py + 1, 6, 2);
-            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 8, py + 4, 7, 3);
-            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 10, py + 4, 3, 2);
 
-            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 4, py + 10, 9, 9);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 6, py + 11, 5, 5);
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 4, py + 18, 9, 2);
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 8, py + 18, 2, 1);
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 2,  py - 3, 3, 4); // 脑后经典耸立后翘尖角！
+            ctx.fillRect(px + 10, py - 2, 2, 3); // 前额帅气微翘小尖角！
+            ctx.fillRect(px + 3,  py,     9, 8);
+            ctx.fillStyle = COL_HAIR_LIGHT;
+            ctx.fillRect(px + 5,  py + 1, 5, 2);
+
+            ctx.fillStyle = COL_SKIN_BASE;
+            ctx.fillRect(px + 6, py + 2, 7, 7);
+            ctx.fillStyle = COL_EYE_PUPIL;
+            ctx.fillRect(px + 9, py + 3, 4, 4);
+            ctx.fillStyle = COL_EYE_GLEAM;
+            ctx.fillRect(px + 10, py + 3, 2, 2);
+
+            ctx.fillStyle = COL_SKIN_BASE;
+            ctx.fillRect(px + 4, py + 9, 8, 7);
+            if (runFrame === 0 || runFrame === 1) {
+              ctx.fillRect(px + 11, py + 11, 4, 3);
+              ctx.fillRect(px + 1,  py + 10, 3, 3);
+            } else {
+              ctx.fillRect(px + 12, py + 10, 3, 3);
+              ctx.fillRect(px + 1,  py + 11, 4, 3);
+            }
+
+            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 4, py + 16, 8, 2);
+            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 7, py + 16, 2, 2);
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 4, py + 18, 8, 4);
 
             if (runFrame === 0) {
-              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 8, py + 19, 4, 5);
-              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 9, py + 23, 6, 5);
-              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 9, py + 27, 6, 2);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 8, py + 20, 5, 5);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 8, py + 25, 6, 4);
+              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 8, py + 29, 6, 2);
 
-              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 2, py + 19, 4, 4);
-              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px,     py + 22, 5, 4);
-              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px,     py + 25, 5, 2);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 19, 4, 4);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px - 1, py + 23, 5, 4);
+              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px - 1, py + 27, 5, 2);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px - 2, py + 29, 2, 2);
             } else if (runFrame === 1 || runFrame === 3) {
-              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 4, py + 19, 5, 5);
-              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 5, py + 24, 7, 4);
-              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 5, py + 27, 7, 2);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 5, py + 20, 5, 5);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 5, py + 25, 6, 4);
+              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 5, py + 29, 6, 2);
             } else {
-              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 1, py + 19, 4, 5);
-              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px - 1, py + 23, 5, 4);
-              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px - 1, py + 26, 5, 2);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 20, 4, 4);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px,     py + 24, 5, 4);
+              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px,     py + 28, 5, 2);
 
-              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 7, py + 19, 4, 4);
-              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 8, py + 22, 6, 5);
-              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 8, py + 26, 6, 2);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 7, py + 19, 5, 5);
+              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 8, py + 23, 6, 5);
+              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 8, py + 28, 6, 2);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 9, py + 30, 2, 2);
             }
           } else {
-            // 空中飞跃姿势
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 3, py + 1, 10, 9);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 5, py + 1, 6, 2);
-            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 8, py + 4, 7, 3);
-            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 10, py + 4, 3, 2);
+            // 4) 空中腾空 / 飞跃 / 两段跳 / 俯冲 —— 【超级飞人冲天飞行姿态】！
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 2,  py - 3, 3, 4);
+            ctx.fillRect(px + 10, py - 2, 2, 3);
+            ctx.fillRect(px + 3,  py,     9, 8);
+            ctx.fillStyle = COL_HAIR_LIGHT;
+            ctx.fillRect(px + 5,  py + 1, 5, 2);
 
-            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 4, py + 10, 9, 9);
-            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 6, py + 11, 5, 5);
+            ctx.fillStyle = COL_SKIN_BASE;
+            ctx.fillRect(px + 6, py + 2, 7, 7);
+            ctx.fillStyle = COL_EYE_PUPIL;
+            ctx.fillRect(px + 9, py + 3, 4, 4);
+            ctx.fillStyle = COL_EYE_GLEAM;
+            ctx.fillRect(px + 10, py + 3, 2, 2);
 
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 8, py + 18, 4, 4);
-            ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 9, py + 21, 6, 5);
-            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 9, py + 25, 6, 2);
+            // 超级飞人前伸飞拳！
+            ctx.fillStyle = COL_SKIN_BASE;
+            ctx.fillRect(px + 12, py + 8, 6, 3);
+            ctx.fillRect(px + 16, py + 7, 3, 4);
 
-            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 1, py + 18, 4, 5);
-            ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 1, py + 22, 5, 4);
-            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 1, py + 25, 5, 2);
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 4, py + 9, 8, 7);
+            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 4, py + 16, 8, 2);
+            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 7, py + 16, 2, 2);
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 4, py + 18, 8, 4);
 
-            if (this.stance === 'double_jump' || this.stance === 'dive') {
-              ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 10, py + 27, 4, 3);
-              ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 2, py + 27, 4, 3);
-              ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 11, py + 28, 2, 2);
-              ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 3, py + 28, 2, 2);
+            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 7, py + 20, 5, 4);
+            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 7, py + 24, 6, 4);
+            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 7, py + 28, 6, 2);
+
+            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 19, 4, 4);
+            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 23, 5, 4);
+            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 1, py + 27, 5, 2);
+
+            // ★★★ 火箭靴推进尾焰 ★★★
+            if (this.stance === 'double_jump') {
+              // 两段跳：爆发粗壮双管火箭大尾焰 (12px 长焰)
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 7, py + 30, 6, 5);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 8, py + 30, 4, 8);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 9, py + 30, 2, 12);
+
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 1, py + 29, 5, 5);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 2, py + 29, 3, 8);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 3, py + 29, 1, 12);
+            } else if (this.stance === 'dive') {
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 7, py + 15, 4, 6);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 8, py + 13, 2, 8);
+            } else {
+              // 一段跳推进火光
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 8, py + 30, 4, 3);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 9, py + 30, 2, 6);
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 2, py + 29, 3, 3);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 3, py + 29, 1, 5);
             }
           }
 

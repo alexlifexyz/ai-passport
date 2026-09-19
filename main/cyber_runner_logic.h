@@ -26,6 +26,7 @@ extern "C" {
 #define CR_MAX_BUILDINGS     5     // 循环建筑平台池
 #define CR_MAX_HAZARDS       6     // 动态障碍/陷阱池 (激光、无人机、排风口)
 #define CR_MAX_ITEMS         6     // 收集物池 (数据晶体、电池、护盾)
+#define CR_MAX_PROJECTILES   4     // 玩家发射的月牙光刃/飞刀池
 #define CR_MAX_PARTICLES     32    // 动态微粒池
 #define CR_MAX_AFTERIMAGES   3     // 幽灵闪现残影数量
 #define CR_MAX_SCARF_NODES   5     // 围巾物理飘带节点
@@ -48,7 +49,7 @@ typedef enum {
     CR_HAZARD_LASER_LOW,     // 低位激光横梁 (需起跳躲避)
     CR_HAZARD_LASER_HIGH,    // 高位激光横梁 (需滑铲钻过)
     CR_HAZARD_LASER_WALL,    // 全高阻断激光墙 (必须空中闪现虚化穿透)
-    CR_HAZARD_DRONE,         // 浮游巡逻无人机 (可规避或被影刃斩爆)
+    CR_HAZARD_DRONE,         // 浮游巡逻无人机 (可规避或被月牙光刃击爆)
     CR_HAZARD_VENT           // 超导排风口 (踏上触发强力腾空弹射)
 } cr_hazard_type_t;
 
@@ -74,10 +75,10 @@ typedef enum {
 typedef enum {
     CR_SND_NONE = 0,
     CR_SND_JUMP,             // 离子起跳 (脉冲升频)
-    CR_SND_AIR_BOOST,        // 二段喷气跳跃
+    CR_SND_AIR_BOOST,        // 二段火箭靴喷火腾跃
     CR_SND_BLINK,            // 幽灵闪现电子穿梭滑音
     CR_SND_WALL_KICK,        // 蹬墙反弹跳金属铮鸣
-    CR_SND_SLASH_HIT,        // 影刃斩爆目标的爽脆切削声
+    CR_SND_SLASH_HIT,        // 月牙光刃击爆目标的爽脆切削声
     CR_SND_SLIDE,            // 贴地滑铲高频摩擦
     CR_SND_DIVE_SLAM,        // 俯冲砸地震地轰鸣
     CR_SND_GEM,              // 拾取数据晶体双音和弦
@@ -86,6 +87,17 @@ typedef enum {
     CR_SND_HURT,             // 受创警报音
     CR_SND_GAMEOVER          // 坠入深渊 / 离线停机
 } cr_sound_t;
+
+// 月牙光刃 / 飞刀投射物
+typedef struct {
+    bool active;
+    float x;                 // 飞行中心 X
+    float y;                 // 飞行中心 Y
+    float vx;                // 横向飞行速度 (px/s)
+    float vy;                // 纵向轻微浮动
+    float life_ms;           // 剩余生命周期 (ms)
+    float rot_deg;           // 自转角度 (0 ~ 360)
+} cr_projectile_t;
 
 // 建筑屋顶实体
 typedef struct {
@@ -206,6 +218,7 @@ typedef struct {
     cr_building_t buildings[CR_MAX_BUILDINGS];
     cr_hazard_t hazards[CR_MAX_HAZARDS];
     cr_item_t items[CR_MAX_ITEMS];
+    cr_projectile_t projectiles[CR_MAX_PROJECTILES];
     cr_particle_t particles[CR_MAX_PARTICLES];
 
     // 随机数与时钟
