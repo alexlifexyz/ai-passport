@@ -1,4 +1,4 @@
-// main/cyber_runner_logic.c —— 《霓虹疾行：影刃闪现》核心算法与物理状态机实现
+// main/cyber_runner_logic.c —— 《霓虹疾行：影刃闪现》V2.0 核心引擎实现
 #include "cyber_runner_logic.h"
 #include <string.h>
 #include <math.h>
@@ -41,13 +41,12 @@ void cyber_runner_emit_particle(cr_game_t *g, cr_part_type_t type,
 
 static void spawn_hazard_or_item(cr_game_t *g, cr_building_t *b)
 {
-    // 如果大楼过窄，不生成障碍
     if (b->w < 110.0f || b->is_glass) return;
 
     uint32_t r = cr_rand(g) % 100;
 
-    // 40% 生成陷阱
-    if (r < 40) {
+    if (r < 42) {
+        // 生成陷阱
         for (int i = 0; i < CR_MAX_HAZARDS; i++) {
             if (!g->hazards[i].active) {
                 g->hazards[i].active = true;
@@ -58,14 +57,14 @@ static void spawn_hazard_or_item(cr_game_t *g, cr_building_t *b)
                 if (ht == 0) {
                     // 低位激光
                     g->hazards[i].type = CR_HAZARD_LASER_LOW;
-                    g->hazards[i].w = 12.0f;
+                    g->hazards[i].w = 14.0f;
                     g->hazards[i].h = 8.0f;
                     g->hazards[i].x = b->x + b->w * 0.55f;
                     g->hazards[i].y = b->y - g->hazards[i].h;
                 } else if (ht == 1) {
                     // 高位激光 (留出底部让玩家滑铲钻过)
                     g->hazards[i].type = CR_HAZARD_LASER_HIGH;
-                    g->hazards[i].w = 14.0f;
+                    g->hazards[i].w = 16.0f;
                     g->hazards[i].h = 10.0f;
                     g->hazards[i].x = b->x + b->w * 0.5f;
                     g->hazards[i].y = b->y - 28.0f;
@@ -77,18 +76,18 @@ static void spawn_hazard_or_item(cr_game_t *g, cr_building_t *b)
                     g->hazards[i].x = b->x + b->w * 0.6f;
                     g->hazards[i].y = b->y - g->hazards[i].h;
                 } else {
-                    // 浮游无人机
+                    // 浮游无人机 (空中巡逻，可被影刃斩爆)
                     g->hazards[i].type = CR_HAZARD_DRONE;
                     g->hazards[i].w = 18.0f;
                     g->hazards[i].h = 14.0f;
                     g->hazards[i].x = b->x + b->w * 0.5f;
-                    g->hazards[i].y = b->y - 36.0f;
+                    g->hazards[i].y = b->y - 34.0f;
                 }
                 break;
             }
         }
     } else if (r < 65) {
-        // 25% 生成排风口喷射器
+        // 23% 生成排风口喷射器
         for (int i = 0; i < CR_MAX_HAZARDS; i++) {
             if (!g->hazards[i].active) {
                 g->hazards[i].active = true;
@@ -125,7 +124,6 @@ static void spawn_hazard_or_item(cr_game_t *g, cr_building_t *b)
 
 static void recycle_building(cr_game_t *g, int idx)
 {
-    // 找出当前所有建筑最右侧边界
     float max_right = 0.0f;
     float last_y = 220.0f;
     for (int i = 0; i < CR_MAX_BUILDINGS; i++) {
@@ -135,12 +133,10 @@ static void recycle_building(cr_game_t *g, int idx)
         }
     }
 
-    // 随机跨度 (间隙与宽度)
     float gap = 36.0f + (float)(cr_rand(g) % 36); // 36 ~ 72 px
     float width = 130.0f + (float)(cr_rand(g) % 90); // 130 ~ 220 px
     
-    // 高度平滑过渡 (防止出现不可逾越的陡壁)
-    float dy = ((float)(cr_rand(g) % 70) - 35.0f);
+    float dy = ((float)(cr_rand(g) % 64) - 32.0f);
     float target_y = last_y + dy;
     if (target_y < 190.0f) target_y = 190.0f;
     if (target_y > 255.0f) target_y = 255.0f;
@@ -155,7 +151,6 @@ static void recycle_building(cr_game_t *g, int idx)
     b->crumbled = false;
     b->win_seed = cr_rand(g);
 
-    // 易碎天窗生成概率 (距离 > 120m 后概率 18%)
     if (g->distance_m > 120 && (cr_rand(g) % 100 < 18)) {
         b->is_glass = true;
     } else {
@@ -176,7 +171,6 @@ void cyber_runner_init(cr_game_t *g, uint32_t seed)
     g->air_jumps_left = 1;
     g->stance = CR_STANCE_RUN;
 
-    // 初始平稳建筑布局
     float start_xs[CR_MAX_BUILDINGS] = { 0.0f, 190.0f, 360.0f, 530.0f, 710.0f };
     float start_ys[CR_MAX_BUILDINGS] = { 230.0f, 220.0f, 240.0f, 215.0f, 230.0f };
     float start_ws[CR_MAX_BUILDINGS] = { 170.0f, 150.0f, 150.0f, 160.0f, 160.0f };
@@ -192,11 +186,9 @@ void cyber_runner_init(cr_game_t *g, uint32_t seed)
         g->buildings[i].win_seed = cr_rand(g);
     }
 
-    // 角色立于第 0 座大楼表面
     g->y = g->buildings[0].y;
     g->vy = 0.0f;
 
-    // 初始化围巾节点
     for (int i = 0; i < CR_MAX_SCARF_NODES; i++) {
         g->scarf[i].x = (float)(CR_PLAYER_X - i * 6);
         g->scarf[i].y = g->y - 20.0f;
@@ -210,33 +202,62 @@ void cyber_runner_input_up(cr_game_t *g)
         return;
     }
 
-    if (g->stance == CR_STANCE_RUN || g->stance == CR_STANCE_SLIDE) {
-        // 地面起跳
+    // 1. 贴墙下滑状态下的【蹬墙反弹大跳 (Wall Kick)】！
+    if (g->is_wall_sliding) {
+        g->is_wall_sliding = false;
+        g->stance = CR_STANCE_JUMP;
+        g->vy = -470.0f;             // 强力反弹腾空
+        g->render_x_offset = 24.0f;  // 冲上大厦平台
+        g->air_jumps_left = 1;       // 刷新空中二段跳
+        g->pending_sound = CR_SND_WALL_KICK;
+
+        for (int p = 0; p < 8; p++) {
+            cyber_runner_emit_particle(g, CR_PART_SPARK,
+                                       (float)CR_PLAYER_X + (float)CR_PLAYER_W,
+                                       g->y - 12.0f,
+                                       -50.0f - (float)(cr_rand(g) % 40),
+                                       -30.0f - (float)(cr_rand(g) % 30),
+                                       0x00FFFF);
+        }
+        return;
+    }
+
+    // 2. 地面起跳 (含土狼时间 Coyote Time 判定)
+    if (g->stance == CR_STANCE_RUN || g->stance == CR_STANCE_SLIDE || g->coyote_timer_ms > 0) {
         g->stance = CR_STANCE_JUMP;
         g->vy = -440.0f;
         g->air_jumps_left = 1;
+        g->coyote_timer_ms = 0;
         g->pending_sound = CR_SND_JUMP;
-        cyber_runner_emit_particle(g, CR_PART_SPARK, CR_PLAYER_X + 6, g->y, -40.0f, 10.0f, 0x06B6D4);
+        cyber_runner_emit_particle(g, CR_PART_SPARK, CR_PLAYER_X + 6, g->y, -40.0f, 10.0f, 0x00FFFF);
     } else if (g->air_jumps_left > 0) {
-        // 空中二段喷气跳跃
+        // 3. 空中二段喷气跳跃
         g->air_jumps_left = 0;
         g->stance = CR_STANCE_DOUBLE_JUMP;
         g->vy = -390.0f;
         g->pending_sound = CR_SND_AIR_BOOST;
-        // 向下喷涌离子粒子
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             cyber_runner_emit_particle(g, CR_PART_NEON_BURST,
                                        CR_PLAYER_X + 8, g->y - 4,
                                        ((float)(cr_rand(g) % 40) - 20.0f),
                                        60.0f + (float)(cr_rand(g) % 40),
-                                       0x22D3EE);
+                                       0x00FFFF);
         }
+    } else {
+        // 4. 输入预缓冲 (即将着陆时按键)
+        g->jump_buffer_ms = 120;
     }
 }
 
 void cyber_runner_input_down(cr_game_t *g)
 {
     if (g->game_over) return;
+
+    if (g->is_wall_sliding) {
+        // 贴墙时加速下滑
+        g->vy = 280.0f;
+        return;
+    }
 
     if (g->stance == CR_STANCE_RUN) {
         // 地面极速滑铲
@@ -246,7 +267,7 @@ void cyber_runner_input_down(cr_game_t *g)
         cyber_runner_emit_particle(g, CR_PART_SPARK, CR_PLAYER_X, g->y, -70.0f, -20.0f, 0xF59E0B);
     } else if (g->stance == CR_STANCE_JUMP || g->stance == CR_STANCE_DOUBLE_JUMP ||
                g->stance == CR_STANCE_FALL || g->stance == CR_STANCE_BLINK) {
-        // 空中急降俯冲
+        // 空中急降俯冲下砸 (Dive Slam)
         g->stance = CR_STANCE_DIVE;
         g->vy = 650.0f;
     }
@@ -259,31 +280,84 @@ void cyber_runner_input_ok(cr_game_t *g)
         return;
     }
 
-    // 空中或地面幽灵闪现
-    if (g->blink_charges > 0 && !g->phase_shift) {
-        g->blink_charges--;
+    // 无论地面还是空中，触发【影刃拔刀斩 / 锁定瞬影突进】！
+    g->slash_active = true;
+    g->slash_timer_ms = 90; // 弧光显示时长
+
+    float px = (float)CR_PLAYER_X + g->render_x_offset;
+    float py = g->y - (float)CR_PLAYER_H;
+
+    // 寻找前方 75px 内的可斩击目标 (无人机或全高激光)
+    int target_idx = -1;
+    float min_dist = 999.0f;
+
+    for (int i = 0; i < CR_MAX_HAZARDS; i++) {
+        cr_hazard_t *h = &g->hazards[i];
+        if (!h->active) continue;
+
+        if (h->x >= px - 10.0f && h->x <= px + 75.0f &&
+            h->y + h->h >= py - 20.0f && h->y <= py + (float)CR_PLAYER_H + 25.0f) {
+            float d = h->x - px;
+            if (d < min_dist) {
+                min_dist = d;
+                target_idx = i;
+            }
+        }
+    }
+
+    if (target_idx >= 0) {
+        // === 命中目标！触发【影刃锁定瞬影斩爆 (Target Slice)】===
+        cr_hazard_t *target = &g->hazards[target_idx];
+        target->active = false; // 目标直接斩裂消灭！
+
+        g->score += 200 * (1 + g->combo_count);
+        g->combo_count++;
+        g->combo_timer_ms = 3000;
+        g->pending_sound = CR_SND_SLASH_HIT;
+
+        // ★★★ 核心爽点：斩杀刷新 (Kill Reset) ★★★
+        g->air_jumps_left = 1; // 刷新二段跳！
+        if (g->blink_charges < 3) g->blink_charges++; // 回充 1 格瞬移能量！
+        g->vy = -390.0f;       // 借力爆跃升空！
+        g->render_x_offset = 36.0f;
         g->phase_shift = true;
         g->phase_timer_ms = 180;
-        g->stance = CR_STANCE_BLINK;
-        g->vy = 0.0f; // 重力清零，平飞闪现
-        g->render_x_offset = 36.0f;
-        g->pending_sound = CR_SND_BLINK;
+        g->stance = CR_STANCE_JUMP;
 
-        // 生成 3 道虚化残影
-        for (int i = 0; i < CR_MAX_AFTERIMAGES; i++) {
-            g->afterimages[i].x = (float)CR_PLAYER_X - (float)(i + 1) * 12.0f;
-            g->afterimages[i].y = g->y;
-            g->afterimages[i].alpha = 0.8f - (float)i * 0.25f;
-            g->afterimages[i].color = (i % 2 == 0) ? 0x06B6D4 : 0xEC4899;
+        // 斩裂火花与爆破粒子
+        for (int p = 0; p < 12; p++) {
+            cyber_runner_emit_particle(g, CR_PART_EXPLOSION,
+                                       target->x + target->w * 0.5f,
+                                       target->y + target->h * 0.5f,
+                                       ((float)(cr_rand(g) % 140) - 70.0f),
+                                       ((float)(cr_rand(g) % 140) - 70.0f),
+                                       0x00FFFF);
         }
+    } else {
+        // 空挥 / 幽灵闪现瞬移
+        if (g->blink_charges > 0 && !g->phase_shift) {
+            g->blink_charges--;
+            g->phase_shift = true;
+            g->phase_timer_ms = 180;
+            g->stance = CR_STANCE_BLINK;
+            g->vy = 0.0f; // 重力清零
+            g->render_x_offset = 36.0f;
+            g->pending_sound = CR_SND_BLINK;
 
-        // 闪现爆发粒子
-        for (int i = 0; i < 6; i++) {
-            cyber_runner_emit_particle(g, CR_PART_NEON_BURST,
-                                       CR_PLAYER_X + 10, g->y - 14,
-                                       ((float)(cr_rand(g) % 80) - 40.0f),
-                                       ((float)(cr_rand(g) % 80) - 40.0f),
-                                       0xEC4899);
+            for (int i = 0; i < CR_MAX_AFTERIMAGES; i++) {
+                g->afterimages[i].x = (float)CR_PLAYER_X - (float)(i + 1) * 12.0f;
+                g->afterimages[i].y = g->y;
+                g->afterimages[i].alpha = 0.85f - (float)i * 0.25f;
+                g->afterimages[i].color = 0x00FFFF;
+            }
+
+            for (int i = 0; i < 6; i++) {
+                cyber_runner_emit_particle(g, CR_PART_NEON_BURST,
+                                           CR_PLAYER_X + 10, g->y - 14,
+                                           ((float)(cr_rand(g) % 80) - 40.0f),
+                                           ((float)(cr_rand(g) % 80) - 40.0f),
+                                           0x00FFFF);
+            }
         }
     }
 }
@@ -293,13 +367,11 @@ static void apply_damage(cr_game_t *g)
     if (g->invuln_timer_ms > 0 || g->phase_shift) return;
 
     if (g->has_shield) {
-        // 护盾抵挡
         g->has_shield = false;
         g->invuln_timer_ms = 1200;
         g->pending_sound = CR_SND_HURT;
-        cyber_runner_emit_particle(g, CR_PART_NEON_BURST, CR_PLAYER_X + 8, g->y - 15, 0, 0, 0x38BDF8);
+        cyber_runner_emit_particle(g, CR_PART_NEON_BURST, CR_PLAYER_X + 8, g->y - 15, 0, 0, 0x00FFFF);
     } else {
-        // 受到伤害扣除生命
         if (g->hp > 0) g->hp--;
         g->combo_count = 0;
         g->invuln_timer_ms = 1500;
@@ -327,18 +399,15 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
     g->distance_m += (uint32_t)(dx * 0.12f);
     g->score += (uint32_t)(dx * 0.2f);
 
-    // 视差滚动偏移累加
     g->bg_far_scroll_px += dx * 0.15f;
     if (g->bg_far_scroll_px >= 240.0f) g->bg_far_scroll_px -= 240.0f;
     g->bg_mid_scroll_px += dx * 0.45f;
     if (g->bg_mid_scroll_px >= 240.0f) g->bg_mid_scroll_px -= 240.0f;
 
-    // 2. 状态计时器递减
-    if (g->invuln_timer_ms > dt_ms) {
-        g->invuln_timer_ms -= dt_ms;
-    } else {
-        g->invuln_timer_ms = 0;
-    }
+    // 2. 状态计时器
+    if (g->coyote_timer_ms > dt_ms) g->coyote_timer_ms -= dt_ms; else g->coyote_timer_ms = 0;
+    if (g->jump_buffer_ms > dt_ms) g->jump_buffer_ms -= dt_ms; else g->jump_buffer_ms = 0;
+    if (g->invuln_timer_ms > dt_ms) g->invuln_timer_ms -= dt_ms; else g->invuln_timer_ms = 0;
 
     if (g->combo_timer_ms > dt_ms) {
         g->combo_timer_ms -= dt_ms;
@@ -347,10 +416,17 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
         g->combo_count = 0;
     }
 
-    // 闪现充能自动缓慢回复 (在地面跑动时每 4.5s 回满一格)
+    if (g->slash_timer_ms > dt_ms) {
+        g->slash_timer_ms -= dt_ms;
+    } else {
+        g->slash_timer_ms = 0;
+        g->slash_active = false;
+    }
+
+    // 闪现充能自动缓慢回复 (地面跑动时每 4s 回满一格)
     if (g->blink_charges < 3 && (g->stance == CR_STANCE_RUN || g->stance == CR_STANCE_SLIDE)) {
         g->blink_recharge_ms += (float)dt_ms;
-        if (g->blink_recharge_ms >= 4500.0f) {
+        if (g->blink_recharge_ms >= 4000.0f) {
             g->blink_charges++;
             g->blink_recharge_ms = 0.0f;
         }
@@ -374,7 +450,6 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
     if (g->stance == CR_STANCE_SLIDE) {
         if (g->stance_timer_ms > dt_ms) {
             g->stance_timer_ms -= dt_ms;
-            // 持续溅射火花
             if (g->tick_count % 3 == 0) {
                 cyber_runner_emit_particle(g, CR_PART_SPARK, CR_PLAYER_X + 2, g->y,
                                            -60.0f - (float)(cr_rand(g) % 30),
@@ -386,16 +461,26 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
         }
     }
 
-    // 3. 玩家垂直物理计算
+    // 3. 玩家垂直重力计算 (贴墙下滑时减速 60%)
     float prev_y = g->y;
     if (!g->phase_shift && g->stance != CR_STANCE_RUN && g->stance != CR_STANCE_SLIDE) {
-        g->vy += CR_GRAVITY * dt;
+        if (g->is_wall_sliding) {
+            // 贴墙减速下滑
+            if (g->vy > 90.0f) g->vy = 90.0f;
+            else g->vy += (CR_GRAVITY * 0.35f) * dt;
+        } else {
+            g->vy += CR_GRAVITY * dt;
+        }
         g->y += g->vy * dt;
     }
 
-    // 4. 建筑滚动与脚下碰撞检测
+    // 4. 建筑滚动、碰撞与贴墙检测
     bool on_ground = false;
     float current_roof_y = 999.0f;
+    bool wall_touched = false;
+
+    float foot_x1 = (float)CR_PLAYER_X + 2.0f;
+    float foot_x2 = (float)CR_PLAYER_X + 14.0f;
 
     for (int i = 0; i < CR_MAX_BUILDINGS; i++) {
         cr_building_t *b = &g->buildings[i];
@@ -403,63 +488,107 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
 
         b->x -= dx;
 
-        // 踏在楼顶范围检测 (X 范围在主角脚底)
-        float foot_x1 = (float)CR_PLAYER_X + 2.0f;
-        float foot_x2 = (float)CR_PLAYER_X + 14.0f;
-
+        // A. 踏在楼顶检测
         if (b->x <= foot_x2 && (b->x + b->w) >= foot_x1 && !b->crumbled) {
-            // 在此大楼上方或恰好踩在上面
             if (prev_y <= b->y + 4.0f && g->y >= b->y - 1.0f) {
                 on_ground = true;
                 current_roof_y = b->y;
 
-                // 易碎天窗触发
                 if (b->is_glass) {
                     b->crumble_timer_ms += (float)dt_ms;
                     if (b->crumble_timer_ms >= 350.0f) {
                         b->crumbled = true;
-                        // 碎裂粒子
                         for (int p = 0; p < 8; p++) {
                             cyber_runner_emit_particle(g, CR_PART_NEON_BURST,
                                                        b->x + (float)(cr_rand(g) % (int)b->w),
                                                        b->y,
                                                        ((float)(cr_rand(g) % 60) - 30.0f),
                                                        40.0f + (float)(cr_rand(g) % 40),
-                                                       0x38BDF8);
+                                                       0x00FFFF);
                         }
                     }
                 }
             }
         }
 
-        // 建筑移出屏幕左侧回收
+        // B. 撞击前方大厦侧壁 -> 触发【贴墙下滑 (Wall Slide)】！
+        if (!on_ground && (g->stance == CR_STANCE_JUMP || g->stance == CR_STANCE_DOUBLE_JUMP ||
+                           g->stance == CR_STANCE_FALL || g->stance == CR_STANCE_WALL_SLIDE)) {
+            float player_right = (float)CR_PLAYER_X + (float)CR_PLAYER_W;
+            if (b->x <= player_right + 3.0f && b->x >= player_right - 6.0f) {
+                if (g->y > b->y + 6.0f && g->y < b->y + b->h) {
+                    wall_touched = true;
+                }
+            }
+        }
+
+        // 回收大楼
         if (b->x + b->w < -20.0f) {
             recycle_building(g, i);
         }
     }
 
+    // 贴墙状态判定
+    if (wall_touched && !on_ground) {
+        g->is_wall_sliding = true;
+        g->stance = CR_STANCE_WALL_SLIDE;
+        if (g->vy > 90.0f) g->vy = 90.0f; // 贴墙瞬间受到强力摩擦阻力刹车减速
+        if (g->tick_count % 3 == 0) {
+            cyber_runner_emit_particle(g, CR_PART_SPARK,
+                                       (float)CR_PLAYER_X + (float)CR_PLAYER_W,
+                                       g->y - 12.0f,
+                                       -30.0f, -15.0f, 0x00FFFF);
+        }
+    } else {
+        g->is_wall_sliding = false;
+    }
+
     // 地面着陆逻辑
     if (on_ground) {
         if (g->stance == CR_STANCE_DIVE) {
-            // 俯冲砸地
+            // 俯冲砸地冲击波！
             g->pending_sound = CR_SND_DIVE_SLAM;
-            for (int p = 0; p < 6; p++) {
+            g->shockwave_active = true;
+            g->shockwave_radius = 50.0f;
+            g->shockwave_x = (float)CR_PLAYER_X + 8.0f;
+
+            for (int p = 0; p < 8; p++) {
                 cyber_runner_emit_particle(g, CR_PART_SPARK, CR_PLAYER_X + 8, current_roof_y,
-                                           ((float)(cr_rand(g) % 120) - 60.0f),
+                                           ((float)(cr_rand(g) % 140) - 70.0f),
                                            -30.0f - (float)(cr_rand(g) % 30),
-                                           0xEC4899);
+                                           0x00FFFF);
+            }
+
+            // 冲击波摧毁附近所有地面激光
+            for (int i = 0; i < CR_MAX_HAZARDS; i++) {
+                if (g->hazards[i].active && g->hazards[i].type == CR_HAZARD_LASER_LOW) {
+                    if (fabsf(g->hazards[i].x - g->shockwave_x) < 55.0f) {
+                        g->hazards[i].active = false;
+                        g->score += 100;
+                    }
+                }
             }
         }
+
         g->y = current_roof_y;
         g->vy = 0.0f;
         g->air_jumps_left = 1;
-        if (g->stance != CR_STANCE_SLIDE) {
+        g->coyote_timer_ms = 0;
+
+        // 落地跳跃缓冲自动起跳
+        if (g->jump_buffer_ms > 0) {
+            g->jump_buffer_ms = 0;
+            g->stance = CR_STANCE_JUMP;
+            g->vy = -440.0f;
+            g->pending_sound = CR_SND_JUMP;
+        } else if (g->stance != CR_STANCE_SLIDE) {
             g->stance = CR_STANCE_RUN;
         }
     } else {
-        // 空中踏空脱离
         if (g->stance == CR_STANCE_RUN || g->stance == CR_STANCE_SLIDE) {
+            // 踏空脱离，激活土狼时间 (120ms 容错)
             g->stance = CR_STANCE_FALL;
+            g->coyote_timer_ms = 120;
         }
     }
 
@@ -484,22 +613,19 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
         h->x -= dx;
         h->state_tick++;
 
-        // 无人机上下浮动
         if (h->type == CR_HAZARD_DRONE) {
             h->bob_phase += dt * 3.5f;
             h->y += sinf(h->bob_phase) * 0.8f;
         }
 
-        // 移出屏幕回收
         if (h->x + h->w < -20.0f) {
             h->active = false;
             continue;
         }
 
-        // 碰撞判断
         if (cyber_runner_check_box(px, py, pw, ph, h->x, h->y, h->w, h->h)) {
             if (h->type == CR_HAZARD_VENT) {
-                // 超导排风口弹射
+                // 超导排风口暴风弹射
                 g->vy = -560.0f;
                 g->stance = CR_STANCE_JUMP;
                 g->air_jumps_left = 1;
@@ -509,11 +635,10 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
                                                h->x + 10.0f, h->y,
                                                ((float)(cr_rand(g) % 30) - 15.0f),
                                                -90.0f - (float)(cr_rand(g) % 50),
-                                               0x06B6D4);
+                                               0x00FFFF);
                 }
             } else if (h->type == CR_HAZARD_DRONE) {
                 if (g->phase_shift) {
-                    // 幽灵闪现穿爆无人机！
                     h->active = false;
                     g->score += 150 * (1 + g->combo_count);
                     g->combo_count++;
@@ -524,7 +649,7 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
                                                    h->x + 8.0f, h->y + 6.0f,
                                                    ((float)(cr_rand(g) % 100) - 50.0f),
                                                    ((float)(cr_rand(g) % 100) - 50.0f),
-                                                   0xF43F5E);
+                                                   0x00FFFF);
                     }
                 } else {
                     apply_damage(g);
@@ -533,7 +658,6 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
                        h->type == CR_HAZARD_LASER_LOW ||
                        h->type == CR_HAZARD_LASER_HIGH) {
                 if (g->phase_shift) {
-                    // 闪现虚化穿透激光
                     g->score += 50;
                     g->combo_count++;
                     g->combo_timer_ms = 2000;
@@ -565,7 +689,7 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
                 g->score += 50 * (1 + g->combo_count);
                 g->combo_count++;
                 g->combo_timer_ms = 2500;
-                cyber_runner_emit_particle(g, CR_PART_NEON_BURST, it->x, draw_y, 0, -20, 0x06B6D4);
+                cyber_runner_emit_particle(g, CR_PART_NEON_BURST, it->x, draw_y, 0, -20, 0x00FFFF);
             } else if (it->type == CR_ITEM_BATTERY) {
                 g->blink_charges = 3;
                 g->score += 100;
@@ -573,12 +697,12 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
             } else if (it->type == CR_ITEM_SHIELD) {
                 g->has_shield = true;
                 g->score += 150;
-                cyber_runner_emit_particle(g, CR_PART_NEON_BURST, it->x, draw_y, 0, -30, 0x38BDF8);
+                cyber_runner_emit_particle(g, CR_PART_NEON_BURST, it->x, draw_y, 0, -30, 0x00FFFF);
             }
         }
     }
 
-    // 7. 围巾动态追随物理模拟 (飘逸流光尾迹)
+    // 7. 围巾动态追随物理模拟
     float neck_x = px + 4.0f;
     float neck_y = py + 7.0f;
     g->scarf[0].x = neck_x;
@@ -607,7 +731,7 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
             g->particles[i].x += g->particles[i].vx * dt;
             g->particles[i].y += g->particles[i].vy * dt;
             if (g->particles[i].type == CR_PART_SPARK) {
-                g->particles[i].vy += 600.0f * dt; // 火花受重力
+                g->particles[i].vy += 600.0f * dt;
             }
             g->particles[i].life -= g->particles[i].decay * dt;
             if (g->particles[i].life <= 0.0f) {

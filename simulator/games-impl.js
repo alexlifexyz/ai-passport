@@ -3625,19 +3625,34 @@
       }
     },
 
-    // --- 15. 霓虹疾行：影刃闪现 (Cyber Courier: Phantom Dash) ---
+    // --- 15. 霓虹疾行：影刃闪现 V2.0 (Cyber Courier: Phantom Dash) ---
     cyberrunner: {
       init() {
         this.y = 230;
         this.vy = 0;
         this.renderXOff = 0;
-        this.stance = 'run'; // 'run', 'jump', 'double_jump', 'blink', 'slide', 'dive', 'fall'
+        this.stance = 'run'; // 'run', 'jump', 'double_jump', 'wall_slide', 'slide', 'dive', 'blink', 'fall'
         this.stanceTimer = 0;
         this.airJumps = 1;
         this.blinkCharges = 3;
         this.blinkRecharge = 0;
         this.phaseShift = false;
         this.phaseTimer = 0;
+
+        this.isWallSliding = false;
+        this.coyoteTimer = 0;
+        this.jumpBuffer = 0;
+
+        this.slashActive = false;
+        this.slashTimer = 0;
+        this.slashStart = { x: 0, y: 0 };
+        this.slashTarget = { x: 0, y: 0 };
+
+        this.shockwaveActive = false;
+        this.shockwaveTimer = 0;
+        this.shockwaveX = 0;
+        this.shockwaveY = 0;
+        this.shockwaveR = 0;
 
         this.hp = 3;
         this.maxHp = 3;
@@ -3671,7 +3686,7 @@
         // 围巾质点
         this.scarf = [];
         for (let i = 0; i < 5; i++) {
-          this.scarf.push({ x: 44 - i * 6, y: 210 });
+          this.scarf.push({ x: 48 - i * 6, y: 210 });
         }
       },
 
@@ -3683,18 +3698,32 @@
         }
 
         if (btn === 'up') {
-          if (this.stance === 'run' || this.stance === 'slide') {
+          if (this.isWallSliding) {
+            // 蹬墙反弹跳 (Wall Kick)!
+            this.isWallSliding = false;
+            this.stance = 'jump';
+            this.vy = -450;
+            this.airJumps = 1;
+            if (snd) snd.playJump();
+            if (fx) {
+              fx.burst(64, this.y - 12, 10, ['#00ffff', '#ffffff']);
+              fx.float(54, this.y - 20, 'WALL KICK!', '#00ffff');
+            }
+          } else if (this.stance === 'run' || this.stance === 'slide' || this.coyoteTimer > 0) {
+            this.coyoteTimer = 0;
             this.stance = 'jump';
             this.vy = -440;
             this.airJumps = 1;
             if (snd) snd.playJump();
-            if (fx) fx.burst(50, this.y, 6, ['#06b6d4', '#22d3ee']);
+            if (fx) fx.burst(50, this.y, 6, ['#00ffff', '#ffffff']);
           } else if (this.airJumps > 0) {
             this.airJumps = 0;
             this.stance = 'double_jump';
             this.vy = -390;
             if (snd) snd.playJump();
-            if (fx) fx.burst(52, this.y - 4, 8, ['#22d3ee', '#ec4899']);
+            if (fx) fx.burst(52, this.y - 4, 8, ['#00ffff', '#ff0055']);
+          } else {
+            this.jumpBuffer = 0.12;
           }
         } else if (btn === 'down') {
           if (this.stance === 'run') {
@@ -3702,28 +3731,65 @@
             this.stanceTimer = 0.42;
             if (snd) snd.playLaser();
             if (fx) fx.burst(44, this.y, 6, ['#f59e0b', '#fbbf24']);
-          } else if (this.stance === 'jump' || this.stance === 'double_jump' || this.stance === 'blink' || this.stance === 'fall') {
+          } else if (this.stance === 'jump' || this.stance === 'double_jump' || this.stance === 'blink' || this.stance === 'fall' || this.stance === 'wall_slide') {
             this.stance = 'dive';
             this.vy = 650;
+            this.isWallSliding = false;
           }
         } else if (btn === 'ok') {
-          if (this.blinkCharges > 0 && !this.phaseShift) {
-            this.blinkCharges--;
+          // 影刃锁定瞬影突进斩 (Blade Slash)
+          const px = 48 + this.renderXOff;
+          const py = this.y - 15;
+          let target = null;
+          let minDist = 999;
+          for (const h of this.hazards) {
+            if (!h.active) continue;
+            if (h.x >= px - 10 && h.x <= px + 75 && h.y + h.h >= py - 20 && h.y <= py + 45) {
+              const d = h.x - px;
+              if (d < minDist) { minDist = d; target = h; }
+            }
+          }
+
+          this.slashActive = true;
+          this.slashTimer = 0.12;
+          this.slashStart = { x: px, y: py };
+
+          if (target) {
+            target.active = false;
+            this.slashTarget = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
+            this.score += 200 * (1 + this.combo);
+            this.combo++;
+            this.comboTimer = 3.0;
+            // 杀怪刷新机制 (Kill Reset)
+            this.airJumps = 1;
+            if (this.blinkCharges < 3) this.blinkCharges++;
+            this.vy = -390;
+            this.renderXOff = 36;
             this.phaseShift = true;
             this.phaseTimer = 0.18;
-            this.stance = 'blink';
-            this.vy = 0;
-            this.renderXOff = 36;
-            if (snd) snd.playBlink();
-
-            // 生成残影
-            this.afterimages = [
-              { x: 32, y: this.y, alpha: 0.8, col: '#06b6d4' },
-              { x: 20, y: this.y, alpha: 0.6, col: '#ec4899' },
-              { x: 8,  y: this.y, alpha: 0.4, col: '#38bdf8' }
-            ];
-
-            if (fx) fx.burst(54, this.y - 14, 10, ['#ec4899', '#38bdf8', '#ffffff']);
+            this.stance = 'jump';
+            if (snd) snd.playExplode(false);
+            if (fx) {
+              fx.burst(target.x + target.w / 2, target.y + target.h / 2, 14, ['#00ffff', '#ffffff', '#ff0055']);
+              fx.float(target.x, target.y - 12, 'SLASH RESET!', '#00ffff');
+            }
+          } else {
+            this.slashTarget = { x: px + 60, y: py };
+            if (this.blinkCharges > 0 && !this.phaseShift) {
+              this.blinkCharges--;
+              this.phaseShift = true;
+              this.phaseTimer = 0.18;
+              this.stance = 'blink';
+              this.vy = 0;
+              this.renderXOff = 36;
+              if (snd) snd.playBlink();
+              this.afterimages = [
+                { x: 32, y: this.y, alpha: 0.8, col: '#00ffff' },
+                { x: 20, y: this.y, alpha: 0.6, col: '#ff0055' },
+                { x: 8,  y: this.y, alpha: 0.4, col: '#38bdf8' }
+              ];
+              if (fx) fx.burst(54, this.y - 14, 10, ['#00ffff', '#ff0055', '#ffffff']);
+            }
           }
         }
       },
@@ -3746,10 +3812,20 @@
           if (this.comboTimer <= 0) this.combo = 0;
         }
 
+        if (this.slashActive) {
+          this.slashTimer -= dt;
+          if (this.slashTimer <= 0) this.slashActive = false;
+        }
+        if (this.shockwaveActive) {
+          this.shockwaveTimer -= dt;
+          this.shockwaveR += 140 * dt;
+          if (this.shockwaveTimer <= 0) this.shockwaveActive = false;
+        }
+
         // 闪现充能
         if (this.blinkCharges < 3 && (this.stance === 'run' || this.stance === 'slide')) {
           this.blinkRecharge += dt;
-          if (this.blinkRecharge >= 4.5) {
+          if (this.blinkRecharge >= 4.0) {
             this.blinkCharges++;
             this.blinkRecharge = 0;
           }
@@ -3771,16 +3847,22 @@
           if (this.stanceTimer <= 0) this.stance = 'run';
         }
 
-        // 重力物理
+        // 重力物理 (贴墙下滑时减速 60%)
         const prevY = this.y;
         if (!this.phaseShift && this.stance !== 'run' && this.stance !== 'slide') {
-          this.vy += 1150 * dt;
+          if (this.isWallSliding) {
+            if (this.vy > 90) this.vy = 90;
+            else this.vy += (1150 * 0.35) * dt;
+          } else {
+            this.vy += 1150 * dt;
+          }
           this.y += this.vy * dt;
         }
 
         // 大楼位移与着陆
         let onGround = false;
         let groundY = 999;
+        let wallTouched = false;
         let maxRight = 0;
         let lastY = 220;
 
@@ -3788,7 +3870,8 @@
           b.x -= dx;
           if (b.x + b.w > maxRight) { maxRight = b.x + b.w; lastY = b.y; }
 
-          if (!b.fallen && b.x <= 58 && (b.x + b.w) >= 46) {
+          // A. 楼顶着陆
+          if (!b.fallen && b.x <= 62 && (b.x + b.w) >= 50) {
             if (prevY <= b.y + 5 && this.y >= b.y - 2) {
               onGround = true;
               groundY = b.y;
@@ -3796,11 +3879,30 @@
                 b.crumble += dt;
                 if (b.crumble >= 0.35) {
                   b.fallen = true;
-                  if (fx) fx.burst(b.x + b.w / 2, b.y, 10, ['#38bdf8', '#ffffff']);
+                  if (fx) fx.burst(b.x + b.w / 2, b.y, 10, ['#00ffff', '#ffffff']);
                 }
               }
             }
           }
+
+          // B. 侧面撞击大楼 -> 贴墙下滑 (Wall Slide)
+          if (!onGround && (this.stance === 'jump' || this.stance === 'double_jump' || this.stance === 'fall' || this.stance === 'wall_slide')) {
+            const playerRight = 48 + 18;
+            if (b.x <= playerRight + 3 && b.x >= playerRight - 6) {
+              if (this.y > b.y + 6 && this.y < b.y + 120) {
+                wallTouched = true;
+              }
+            }
+          }
+        }
+
+        // 贴墙下滑状态
+        if (wallTouched && !onGround) {
+          this.isWallSliding = true;
+          this.stance = 'wall_slide';
+          if (this.vy > 90) this.vy = 90;
+        } else {
+          this.isWallSliding = false;
         }
 
         // 回收大楼
@@ -3850,16 +3952,41 @@
 
         if (onGround) {
           if (this.stance === 'dive') {
+            this.shockwaveActive = true;
+            this.shockwaveTimer = 0.25;
+            this.shockwaveX = 48 + 9;
+            this.shockwaveY = groundY;
+            this.shockwaveR = 10;
             if (snd) snd.playExplode(false);
-            if (fx) fx.burst(52, groundY, 8, ['#ec4899', '#f43f5e']);
+            if (fx) fx.burst(52, groundY, 12, ['#00ffff', '#ffffff']);
+            // 俯冲震荡波砸碎周围地面陷阱
+            for (const h of this.hazards) {
+              if (h.active && Math.abs(h.y - groundY) < 15 && Math.abs(h.x - (48 + 9)) < 65) {
+                h.active = false;
+                this.score += 100;
+              }
+            }
           }
           this.y = groundY;
           this.vy = 0;
           this.airJumps = 1;
           if (this.stance !== 'slide') this.stance = 'run';
+          if (this.jumpBuffer > 0) {
+            this.stance = 'jump';
+            this.vy = -440;
+            this.airJumps = 1;
+            this.jumpBuffer = 0;
+            if (snd) snd.playJump();
+          }
         } else {
-          if (this.stance === 'run' || this.stance === 'slide') this.stance = 'fall';
+          if (this.stance === 'run' || this.stance === 'slide') {
+            this.stance = 'fall';
+            this.coyoteTimer = 0.12;
+          }
         }
+
+        if (this.coyoteTimer > 0) this.coyoteTimer -= dt;
+        if (this.jumpBuffer > 0) this.jumpBuffer -= dt;
 
         // 掉落深渊
         if (this.y > 330) {
@@ -3869,7 +3996,7 @@
         }
 
         // 障碍检测
-        const px = 44 + this.renderXOff;
+        const px = 48 + this.renderXOff;
         const pw = 18;
         const ph = (this.stance === 'slide') ? 14 : 30;
         const py = this.y - ph;
@@ -3889,15 +4016,16 @@
               this.stance = 'jump';
               this.airJumps = 1;
               if (snd) snd.playMissile();
-              if (fx) fx.burst(h.x + 10, h.y, 6, ['#06b6d4', '#67e8f9']);
+              if (fx) fx.burst(h.x + 10, h.y, 8, ['#00ffff', '#ffffff']);
             } else if (h.type === 'drone') {
               if (this.phaseShift) {
                 h.active = false;
-                this.score += 150 * (1 + this.combo);
+                this.score += 200 * (1 + this.combo);
                 this.combo++;
-                this.comboTimer = 2.5;
+                this.comboTimer = 3.0;
+                this.airJumps = 1;
                 if (snd) snd.playExplode(false);
-                if (fx) fx.burst(h.x + 8, h.y + 7, 12, ['#f43f5e', '#ffffff']);
+                if (fx) fx.burst(h.x + 8, h.y + 7, 12, ['#00ffff', '#ffffff']);
               } else if (this.invuln <= 0) {
                 this.takeDamage(snd, fx);
               }
@@ -3928,7 +4056,7 @@
               this.score += 50 * (1 + this.combo);
               this.combo++;
               this.comboTimer = 2.5;
-              if (fx) fx.float(it.x, iy, '+50', '#06b6d4');
+              if (fx) fx.float(it.x, iy, '+50', '#00ffff');
             } else if (it.type === 'battery') {
               this.blinkCharges = 3;
               this.score += 100;
@@ -3936,7 +4064,7 @@
             } else if (it.type === 'shield') {
               this.shield = true;
               this.score += 150;
-              if (fx) fx.float(it.x, iy, 'SHIELD', '#38bdf8');
+              if (fx) fx.float(it.x, iy, 'SHIELD', '#00ffff');
             }
           }
         }
@@ -3963,13 +4091,13 @@
           this.shield = false;
           this.invuln = 1.2;
           if (snd) snd.playLaser();
-          if (fx) fx.burst(52, this.y - 15, 8, ['#38bdf8', '#ffffff']);
+          if (fx) fx.burst(52, this.y - 15, 8, ['#00ffff', '#ffffff']);
         } else {
           this.hp--;
           this.combo = 0;
           this.invuln = 1.5;
           if (snd) snd.playLaser();
-          if (fx) fx.burst(52, this.y - 15, 10, ['#f43f5e', '#ef4444']);
+          if (fx) fx.burst(52, this.y - 15, 10, ['#ff0055', '#ef4444']);
           if (this.hp <= 0) {
             this.dead = true;
             if (snd) snd.playExplode(true);
@@ -4006,77 +4134,114 @@
           ctx.fillStyle = '#f43f5e'; ctx.fillRect(sx + 44, 130, 3, 22);
         }
 
-        // 4. 前景建筑屋顶
+        // 4. 前景建筑屋顶 (超高对比冷黑墙体 + 纯白与电光青高亮边缘)
         for (const b of this.buildings) {
           if (b.x + b.w < 0 || b.x >= 240) continue;
           if (b.glass && b.fallen) {
-            ctx.fillStyle = '#14101e';
+            ctx.fillStyle = '#0f172a';
             ctx.fillRect(b.x, b.y + 12, b.w, 320 - b.y);
             continue;
           }
 
-          ctx.fillStyle = b.glass ? '#1e293b' : '#221b32';
-          ctx.fillRect(b.x, b.y + 3, b.w, 320 - b.y);
+          ctx.fillStyle = b.glass ? '#111827' : '#0b0f19';
+          ctx.fillRect(b.x, b.y + 4, b.w, 320 - b.y);
 
-          // 砖纹
+          // 结构轮廓
           if (!b.glass) {
-            ctx.fillStyle = '#181224';
-            for (let ly = b.y + 10; ly < 320; ly += 12) {
-              ctx.fillRect(b.x, ly, b.w, 1);
+            ctx.fillStyle = '#030712'; ctx.fillRect(b.x, b.y + 4, 3, 320 - b.y);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(b.x + b.w - 3, b.y + 4, 3, 320 - b.y);
+            ctx.fillStyle = '#070b14';
+            for (let ly = b.y + 12; ly < 320; ly += 14) {
+              ctx.fillRect(b.x + 3, ly, b.w - 6, 1);
             }
           }
 
-          // 青色霓虹边缘
+          // 璀璨屋顶边缘 (白+青)
           if (b.glass) {
-            ctx.fillStyle = (b.crumble > 0) ? '#f43f5e' : '#38bdf8';
-            ctx.fillRect(b.x, b.y, b.w, 4);
-            ctx.fillStyle = '#e0f2fe';
-            ctx.fillRect(b.x, b.y + 1, b.w, 2);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x, b.y, b.w, 2);
+            ctx.fillStyle = (b.crumble > 0) ? '#ff0055' : '#ec4899';
+            ctx.fillRect(b.x, b.y + 2, b.w, 3);
           } else {
-            ctx.fillStyle = '#22d3ee'; ctx.fillRect(b.x, b.y, b.w, 2);
-            ctx.fillStyle = '#0891b2'; ctx.fillRect(b.x, b.y + 2, b.w, 2);
-            ctx.fillStyle = '#164e63'; ctx.fillRect(b.x, b.y + 4, b.w, 1);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x, b.y, b.w, 1);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(b.x, b.y + 1, b.w, 2);
+            ctx.fillStyle = '#0891b2'; ctx.fillRect(b.x, b.y + 3, b.w, 1);
           }
         }
 
-        // 5. 陷阱
+        // 5. 俯冲震荡波
+        if (this.shockwaveActive && this.shockwaveTimer > 0) {
+          ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(this.shockwaveX, this.shockwaveY, this.shockwaveR, 4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        // 6. 陷阱与无人机
         for (const h of this.hazards) {
           if (!h.active || h.x + h.w < 0 || h.x > 240) continue;
           if (h.type === 'laser_low' || h.type === 'laser_high') {
-            ctx.fillStyle = '#f43f5e'; ctx.fillRect(h.x, h.y + 2, h.w, 3);
-            ctx.fillStyle = '#ffe4e6'; ctx.fillRect(h.x + 1, h.y + 3, h.w - 2, 1);
-            ctx.fillStyle = '#475569'; ctx.fillRect(h.x - 2, h.y, 3, h.h); ctx.fillRect(h.x + h.w - 1, h.y, 3, h.h);
+            ctx.fillStyle = '#ff0055'; ctx.fillRect(h.x, h.y + 1, h.w, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(h.x, h.y + 2, h.w, 2);
+            ctx.fillStyle = '#64748b'; ctx.fillRect(h.x - 2, h.y, 3, h.h); ctx.fillRect(h.x + h.w - 1, h.y, 3, h.h);
           } else if (h.type === 'laser_wall') {
             ctx.fillStyle = '#be123c'; ctx.fillRect(h.x, h.y, h.w, h.h);
-            ctx.fillStyle = '#f43f5e'; ctx.fillRect(h.x + 2, h.y, h.w - 4, h.h);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(h.x + 3, h.y, 2, h.h);
+            ctx.fillStyle = '#ff0055'; ctx.fillRect(h.x + 1, h.y, h.w - 2, h.h);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(h.x + 2, h.y, 2, h.h);
           } else if (h.type === 'drone') {
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(h.x + 2, h.y + 2, h.w - 4, h.h - 4);
-            ctx.fillStyle = '#ef4444'; ctx.fillRect(h.x + h.w / 2 - 2, h.y + h.h / 2 - 2, 4, 4);
-            ctx.fillStyle = '#06b6d4'; ctx.fillRect(h.x - 3, h.y + 1, 4, 2); ctx.fillRect(h.x + h.w - 1, h.y + 1, 4, 2);
+            ctx.fillStyle = '#020617'; ctx.fillRect(h.x, h.y, h.w, h.h);
+            ctx.fillStyle = '#facc15'; ctx.fillRect(h.x + 2, h.y + 2, h.w - 4, h.h - 4);
+            ctx.fillStyle = '#ff0000'; ctx.fillRect(h.x + h.w / 2 - 2, h.y + h.h / 2 - 2, 4, 4);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(h.x - 3, h.y + 1, 4, 2); ctx.fillRect(h.x + h.w - 1, h.y + 1, 4, 2);
+
+            // 影刃锁定菱形框
+            const px = 48 + this.renderXOff;
+            if (h.x >= px - 10 && h.x <= px + 75) {
+              ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 1;
+              ctx.strokeRect(h.x - 2, h.y - 2, h.w + 4, h.h + 4);
+            }
           } else if (h.type === 'vent') {
             ctx.fillStyle = '#334155'; ctx.fillRect(h.x, h.y, h.w, h.h);
-            ctx.fillStyle = '#06b6d4'; ctx.fillRect(h.x + 3, h.y + 1, h.w - 6, h.h - 2);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(h.x + 2, h.y + 1, h.w - 4, h.h - 2);
+            if (this.tick % 2 === 0) {
+              ctx.fillStyle = '#ffffff'; ctx.fillRect(h.x + 5, h.y - 10, 2, 10);
+            }
           }
         }
 
-        // 6. 道具
+        // 7. 道具
         for (const it of this.items) {
           if (!it.active || it.x < -10 || it.x > 250) continue;
           const iy = it.y + Math.sin(it.bob || 0) * 3;
           if (it.type === 'gem') {
-            ctx.fillStyle = '#06b6d4'; ctx.fillRect(it.x - 3, iy - 4, 6, 8);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(it.x - 3, iy - 4, 6, 8);
             ctx.fillStyle = '#ffffff'; ctx.fillRect(it.x - 1, iy - 2, 2, 4);
           } else if (it.type === 'battery') {
             ctx.fillStyle = '#10b981'; ctx.fillRect(it.x - 4, iy - 4, 8, 8);
-            ctx.fillStyle = '#34d399'; ctx.fillRect(it.x - 2, iy - 2, 4, 4);
+            ctx.fillStyle = '#6ee7b7'; ctx.fillRect(it.x - 2, iy - 2, 4, 4);
           } else if (it.type === 'shield') {
-            ctx.fillStyle = '#38bdf8'; ctx.fillRect(it.x - 5, iy - 5, 10, 10);
-            ctx.fillStyle = '#bae6fd'; ctx.fillRect(it.x - 3, iy - 3, 6, 6);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(it.x - 5, iy - 5, 10, 10);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(it.x - 3, iy - 3, 6, 6);
           }
         }
 
-        // 7. 残影
+        // 8. 影刃斩击弧光
+        if (this.slashActive) {
+          ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(this.slashStart.x, this.slashStart.y);
+          ctx.lineTo(this.slashTarget.x, this.slashTarget.y);
+          ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(this.slashTarget.x - 8, this.slashTarget.y - 1, 16, 2);
+          ctx.fillRect(this.slashTarget.x - 1, this.slashTarget.y - 8, 2, 16);
+        }
+
+        // 9. 残影
         for (const img of this.afterimages) {
           if (img.alpha > 0.1) {
             ctx.fillStyle = img.col;
@@ -4086,53 +4251,74 @@
           }
         }
 
-        // 8. 角色主角
+        // 10. 玩家主角 (顶级高反差亮银纯白战甲 + 黑色骨骼 + 电光青目镜)
         const hideBlink = (this.invuln > 0 && Math.floor(this.tick / 3) % 2 === 0);
         if (!hideBlink) {
-          const px = 44 + this.renderXOff;
+          const px = 48 + this.renderXOff;
           const ph = (this.stance === 'slide') ? 14 : 30;
           const py = this.y - ph;
 
           if (this.stance === 'slide') {
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(px, py + 4, 26, 10);
-            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px + 18, py + 3, 7, 5);
-            ctx.fillStyle = '#f8fafc'; ctx.fillRect(px - 2, py + 6, 5, 6);
+            ctx.fillStyle = '#020617'; ctx.fillRect(px - 1, py + 3, 28, 12);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2, py + 5, 22, 8);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 18, py + 4, 8, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 20, py + 5, 4, 2);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px - 2, py + 7, 4, 5);
+          } else if (this.stance === 'wall_slide') {
+            ctx.fillStyle = '#020617'; ctx.fillRect(px - 1, py, 16, 26);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 1, py + 2, 12, 18);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 6, py + 3, 6, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 8, py + 4, 3, 2);
+            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px + 3, py + 20, 8, 5);
+
+            // 火花
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 16, py + 14, 3, 3);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 17, py + 9, 2, 4);
           } else {
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 3, py + 10, 12, 14);
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 2, py + 1, 14, 10);
-            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px + 7, py + 4, 9, 4);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 9, py + 5, 5, 2);
+            // 纯黑外轮廓
+            ctx.fillStyle = '#020617'; ctx.fillRect(px - 1, py, 18, 28);
+            // 亮银战甲
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2, py + 8, 12, 13);
+            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px + 4, py + 10, 8, 9);
+            // 头盔
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2, py + 1, 12, 9);
+            ctx.fillStyle = '#090d16'; ctx.fillRect(px + 5, py + 3, 8, 5);
+            // 电光青目镜
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 6, py + 3, 8, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 8, py + 4, 4, 2);
 
             const leg = (Math.floor(this.tick / 3) % 2 === 0) ? 2 : -2;
-            ctx.fillStyle = '#1e293b'; ctx.fillRect(px + 3 + leg, py + 22, 5, 5);
-            ctx.fillStyle = '#1e293b'; ctx.fillRect(px + 9 - leg, py + 22, 5, 5);
-            ctx.fillStyle = '#f8fafc'; ctx.fillRect(px + 3 + leg, py + 26, 6, 4);
-            ctx.fillStyle = '#f8fafc'; ctx.fillRect(px + 9 - leg, py + 26, 6, 4);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 2 + leg, py + 20, 5, 5);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 8 - leg, py + 20, 5, 5);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2 + leg, py + 24, 6, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 8 - leg, py + 24, 6, 4);
           }
 
           if (this.shield) {
-            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2;
-            ctx.strokeRect(px - 4, py - 4, 26, ph + 8);
+            ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2;
+            ctx.strokeRect(px - 3, py - 3, 24, ph + 6);
           }
         }
 
-        // 9. 飘逸围巾
-        ctx.fillStyle = '#f43f5e';
+        // 11. 飘逸流光绯红围巾
         for (let i = 0; i < this.scarf.length; i++) {
-          const sw = Math.max(2, 5 - i);
-          ctx.fillRect(this.scarf[i].x, this.scarf[i].y, sw, 3);
+          const sw = Math.max(3, 6 - i);
+          ctx.fillStyle = '#ff0055';
+          ctx.fillRect(this.scarf[i].x, this.scarf[i].y - 1, sw, 4);
+          ctx.fillStyle = '#ff5588';
+          ctx.fillRect(this.scarf[i].x + 1, this.scarf[i].y, sw - 2, 2);
         }
 
-        // 10. HUD
+        // 12. HUD
         ctx.fillStyle = 'rgba(26, 16, 47, 0.85)';
         ctx.fillRect(0, 0, 240, 32);
         ctx.fillStyle = '#f8fafc'; ctx.font = '11px monospace';
         ctx.fillText(`${this.dist}m  ${this.score}`, 8, 14);
 
-        ctx.fillStyle = '#38bdf8';
+        ctx.fillStyle = '#00ffff';
         ctx.fillText(`⚡${this.blinkCharges}`, 110, 14);
 
-        ctx.fillStyle = '#f43f5e';
+        ctx.fillStyle = '#ff0055';
         let hpStr = '';
         for (let i = 0; i < this.maxHp; i++) hpStr += (i < this.hp) ? '♥' : '♡';
         if (this.shield) hpStr += ' [S]';
@@ -4144,7 +4330,7 @@
         }
 
         ctx.fillStyle = '#94a3b8'; ctx.font = '9px monospace';
-        ctx.fillText('UP:JUMP/2ND  DN:SLIDE/DIVE  OK:PHANTOM BLINK', 6, 312);
+        ctx.fillText('UP:JUMP/KICK  DN:SLIDE/DIVE  OK:BLADE SLASH', 6, 312);
 
         if (this.dead) drawOver(ctx, 'SIGNAL LOST', this.score);
       }

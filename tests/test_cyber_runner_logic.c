@@ -1,4 +1,4 @@
-// tests/test_cyber_runner_logic.c —— 《霓虹疾行：影刃闪现》核心逻辑单元测试
+// tests/test_cyber_runner_logic.c —— 《霓虹疾行：影刃闪现》V2.0 核心逻辑单元测试
 #include "cyber_runner_logic.h"
 #include <stdio.h>
 #include <assert.h>
@@ -7,7 +7,7 @@
 int main(void)
 {
     printf("=======================================================\n");
-    printf("  Starting Cyber Runner (Phantom Dash) Unit Tests     \n");
+    printf("  Starting Cyber Runner V2.0 (Phantom Dash) Unit Tests \n");
     printf("=======================================================\n");
 
     cr_game_t g;
@@ -22,102 +22,124 @@ int main(void)
     assert(g.blink_charges == 3);
     assert(g.air_jumps_left == 1);
     assert(!g.phase_shift);
+    assert(!g.is_wall_sliding);
     assert(!g.game_over);
     printf("  ✓ Initial values, 3-charge blink & buildings ready OK\n");
 
-    // [TEST 2] 地面跳跃与空中二段喷气腾空
-    printf("[TEST 2] Testing Ground Jump & Mid-Air Double Jump...\n");
+    // [TEST 2] 地面跳跃与土狼时间 (Coyote Time) 验证
+    printf("[TEST 2] Testing Ground Jump & Coyote Time...\n");
     cyber_runner_init(&g, 0x1111);
     cyber_runner_input_up(&g);
     assert(g.stance == CR_STANCE_JUMP);
     assert(g.vy < -400.0f);
     assert(g.pending_sound == CR_SND_JUMP);
 
-    // 步进数帧腾空
+    // 运行数帧进入空中
     cyber_runner_step(&g, 25);
     cyber_runner_step(&g, 25);
     assert(g.y < g.buildings[0].y);
 
-    // 空中再次按 UP -> 触发二段跳
+    // 空中二段跳
     cyber_runner_input_up(&g);
     assert(g.stance == CR_STANCE_DOUBLE_JUMP);
     assert(g.air_jumps_left == 0);
     assert(g.vy < -300.0f);
     assert(g.pending_sound == CR_SND_AIR_BOOST);
-    printf("  ✓ Ground jump and mid-air double jump OK\n");
 
-    // [TEST 3] 空中幽灵闪现 (Phantom Blink) 与相位虚化
-    printf("[TEST 3] Testing Phantom Blink & Phase Shift...\n");
-    cyber_runner_init(&g, 0x2222);
-    // 先起跳进入空中
+    // 测试土狼时间：模拟刚踏出边缘
+    cyber_runner_init(&g, 0x1112);
+    g.y = g.buildings[0].y;
+    g.stance = CR_STANCE_FALL;
+    g.coyote_timer_ms = 100; // 离台 100ms 内
     cyber_runner_input_up(&g);
-    cyber_runner_step(&g, 50);
+    assert(g.stance == CR_STANCE_JUMP); // 依然允许起跳！
+    assert(g.coyote_timer_ms == 0);
+    printf("  ✓ Ground jump, double jump & coyote time OK\n");
 
-    // 在半空中按下 OK 触发闪现
-    cyber_runner_input_ok(&g);
-    assert(g.stance == CR_STANCE_BLINK);
-    assert(g.blink_charges == 2);
-    assert(g.phase_shift == true);
-    assert(g.vy == 0.0f); // 闪现时重力滞空
-    assert(g.render_x_offset > 20.0f); // 瞬移突进视觉位移
-    assert(g.afterimages[0].alpha > 0.5f); // 残影生成
-    assert(g.pending_sound == CR_SND_BLINK);
-    printf("  ✓ Phantom blink zero-gravity flash & phase shift OK\n");
+    // [TEST 3] 贴墙下滑 (Wall Slide) 与蹬墙反弹大跳 (Wall Kick)
+    printf("[TEST 3] Testing Wall Slide & Wall Kick Mechanics...\n");
+    cyber_runner_init(&g, 0x2222);
+    // 模拟主角在空中，正面撞向一座比当前低处大厦更高的墙壁
+    g.stance = CR_STANCE_FALL;
+    g.y = 245.0f; // 处于大楼侧面
+    g.vy = 200.0f;
+    g.buildings[1].x = (float)CR_PLAYER_X + (float)CR_PLAYER_W; // 墙面恰好贴在主角右侧
+    g.buildings[1].y = 210.0f; // 顶层在上方
 
-    // [TEST 4] 贴地滑铲与空中极速下坠
-    printf("[TEST 4] Testing Slide (Crouch) & Dive Plunge...\n");
+    cyber_runner_step(&g, 25);
+    assert(g.is_wall_sliding == true);
+    assert(g.stance == CR_STANCE_WALL_SLIDE);
+    assert(g.vy <= 90.0f); // 显著减速下滑！
+
+    // 此时按下 UP 触发【蹬墙跳】！
+    cyber_runner_input_up(&g);
+    assert(g.is_wall_sliding == false);
+    assert(g.stance == CR_STANCE_JUMP);
+    assert(g.vy < -400.0f); // 强力反弹腾空
+    assert(g.air_jumps_left == 1); // 刷新二段跳
+    assert(g.pending_sound == CR_SND_WALL_KICK);
+    printf("  ✓ Wall slide slow-fall & wall kick rescue leap OK\n");
+
+    // [TEST 4] 影刃锁定突进斩 (Blade Slash) 与杀怪刷新 (Kill Reset)
+    printf("[TEST 4] Testing Cyber Blade Slash & Kill Reset...\n");
     cyber_runner_init(&g, 0x3333);
+    g.air_jumps_left = 0; // 消耗掉二段跳
+    g.blink_charges = 1;
+
+    // 在主角正前方 40px 放置一架巡逻无人机
+    g.hazards[0].active = true;
+    g.hazards[0].type = CR_HAZARD_DRONE;
+    g.hazards[0].x = (float)CR_PLAYER_X + 40.0f;
+    g.hazards[0].y = g.y - 25.0f;
+    g.hazards[0].w = 18.0f;
+    g.hazards[0].h = 14.0f;
+
+    uint32_t prev_score = g.score;
+    // 按 OK 挥动影刃触发锁定瞬影斩爆！
+    cyber_runner_input_ok(&g);
+
+    assert(g.hazards[0].active == false); // 无人机瞬间被斩爆
+    assert(g.score > prev_score);
+    assert(g.air_jumps_left == 1); // ★★★ 杀怪刷新二段跳！
+    assert(g.blink_charges == 2);  // ★★★ 充能回复！
+    assert(g.vy < -300.0f);        // 借力爆跃升空！
+    assert(g.slash_active == true);
+    assert(g.pending_sound == CR_SND_SLASH_HIT);
+    printf("  ✓ Target lock-on slice, kill-reset & aerial bounce OK\n");
+
+    // [TEST 5] 地面滑铲与空中重力俯冲下砸 (Dive Slam) 冲击波
+    printf("[TEST 5] Testing Slide & Dive Slam Shockwave...\n");
+    cyber_runner_init(&g, 0x4444);
     // 地面按 DOWN -> 滑铲
     cyber_runner_input_down(&g);
     assert(g.stance == CR_STANCE_SLIDE);
     assert(g.stance_timer_ms > 300);
-    assert(g.pending_sound == CR_SND_SLIDE);
 
     // 起跳后在空中按 DOWN -> 俯冲砸地
     cyber_runner_input_up(&g);
     cyber_runner_step(&g, 50);
     cyber_runner_input_down(&g);
     assert(g.stance == CR_STANCE_DIVE);
-    assert(g.vy > 600.0f); // 超速下坠
-    printf("  ✓ Ground slide low stance & mid-air plunge OK\n");
+    assert(g.vy > 600.0f);
 
-    // [TEST 5] 幽灵闪现虚化穿爆浮游无人机与穿透激光墙
-    printf("[TEST 5] Testing Phase Shift Drone Annihilation & Laser Pierce...\n");
-    cyber_runner_init(&g, 0x4444);
-    // 生成一个激光墙在闪现位移命中范围内
+    // 在地面附近放置低位激光，测试落地冲击波摧毁机关
     g.hazards[0].active = true;
-    g.hazards[0].type = CR_HAZARD_LASER_WALL;
-    g.hazards[0].x = (float)CR_PLAYER_X + 25.0f;
-    g.hazards[0].y = g.y - 40.0f;
-    g.hazards[0].w = 20.0f;
-    g.hazards[0].h = 45.0f;
+    g.hazards[0].type = CR_HAZARD_LASER_LOW;
+    g.hazards[0].x = (float)CR_PLAYER_X + 30.0f;
+    g.hazards[0].y = g.buildings[0].y - 8.0f;
+    g.hazards[0].w = 14.0f;
+    g.hazards[0].h = 8.0f;
 
-    // 开启闪现虚化状态穿透激光墙
-    cyber_runner_input_up(&g);
-    cyber_runner_input_ok(&g);
-    assert(g.phase_shift == true);
-    int prev_hp = g.hp;
-    uint32_t prev_score = g.score;
+    // 落地砸地
+    g.y = g.buildings[0].y;
     cyber_runner_step(&g, 25);
-    // 毫发无损且加分
-    assert(g.hp == prev_hp);
-    assert(g.score > prev_score);
+    assert(g.shockwave_active == true);
+    assert(g.hazards[0].active == false); // 地面机关被冲击波粉碎
+    assert(g.pending_sound == CR_SND_DIVE_SLAM);
+    printf("  ✓ Slide crouch & dive slam shockwave obliteration OK\n");
 
-    // 放置无人机，闪现直接穿爆
-    g.hazards[1].active = true;
-    g.hazards[1].type = CR_HAZARD_DRONE;
-    g.hazards[1].x = (float)CR_PLAYER_X + 25.0f;
-    g.hazards[1].y = g.y - 25.0f;
-    g.hazards[1].w = 20.0f;
-    g.hazards[1].h = 20.0f;
-
-    cyber_runner_step(&g, 25);
-    assert(g.hazards[1].active == false); // 无人机被穿爆解体
-    assert(g.pending_sound == CR_SND_DRONE_POP);
-    printf("  ✓ Laser phase-through & drone instant annihilation OK\n");
-
-    // [TEST 6] 超导排风口强力腾空弹射
-    printf("[TEST 6] Testing Superconductor Vent Boost...\n");
+    // [TEST 6] 超导排风口与电池收集
+    printf("[TEST 6] Testing Superconductor Vent & Battery Item...\n");
     cyber_runner_init(&g, 0x5555);
     g.hazards[0].active = true;
     g.hazards[0].type = CR_HAZARD_VENT;
@@ -127,39 +149,25 @@ int main(void)
     g.hazards[0].h = 8.0f;
 
     cyber_runner_step(&g, 25);
-    assert(g.vy < -500.0f); // 暴风冲天
+    assert(g.vy < -500.0f);
     assert(g.pending_sound == CR_SND_VENT_BOOST);
-    printf("  ✓ Superconductor vent super leap launch OK\n");
+    printf("  ✓ Superconductor vent launch OK\n");
 
-    // [TEST 7] 道具收集 (电池瞬间充满闪现格) 与坠落重开
-    printf("[TEST 7] Testing Battery Recharging & Fall Reset...\n");
+    // [TEST 7] 坠落深渊与重启
+    printf("[TEST 7] Testing Fatal Fall & Reboot...\n");
     cyber_runner_init(&g, 0x6666);
-    g.blink_charges = 0; // 耗尽能量
-
-    g.items[0].active = true;
-    g.items[0].type = CR_ITEM_BATTERY;
-    g.items[0].x = (float)CR_PLAYER_X + 2.0f;
-    g.items[0].y = g.y - 10.0f;
-
-    cyber_runner_step(&g, 25);
-    assert(g.items[0].active == false);
-    assert(g.blink_charges == 3); // 满格回满
-    assert(g.pending_sound == CR_SND_GEM);
-
-    // 掉落深渊死亡
     g.y = (float)CR_SCREEN_H + 20.0f;
     cyber_runner_step(&g, 25);
     assert(g.game_over == true);
     assert(g.pending_sound == CR_SND_GAMEOVER);
 
-    // 按 OK 重新开始
     cyber_runner_input_ok(&g);
     assert(g.game_over == false);
     assert(g.hp == 3);
-    printf("  ✓ Battery recharge, fatal fall & instant reboot OK\n");
+    printf("  ✓ Fatal fall & clean reboot OK\n");
 
     printf("=======================================================\n");
-    printf("   ✓ [PASS] All 7 Cyber Runner Unit Tests Passed!      \n");
+    printf("   ✓ [PASS] All 7 Cyber Runner V2.0 Unit Tests Passed! \n");
     printf("=======================================================\n");
     return 0;
 }

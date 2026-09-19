@@ -499,6 +499,7 @@
 <script src="../simulator/games-engine.js"></script>
 <script>
 const PLAY_URL = {
+  pawssprint: '../simulator/paws-sprint.html',
   thunderracer: '../simulator/hub.html?game=thunderracer',
   thunder: '../simulator/thunder.html',
   battlecity: '../simulator/hub.html?game=battlecity',
@@ -518,13 +519,14 @@ const PLAY_URL = {
 };
 const CATS = [
   { id: 'all', label: '全部' },
+  { id: 'chill', label: '轻松治愈' },
   { id: 'race', label: '竞速' },
   { id: 'shoot', label: '射击' },
   { id: 'action', label: '动作' },
-  { id: 'party', label: '派对' },
-  { id: 'chill', label: '轻松' }
+  { id: 'party', label: '派对' }
 ];
 const CABINETS = [
+  { id: 'pawssprint', marquee: 'PAWS SPRINT', short: '短腿爪爪', cat: 'chill', accent: '#831843', glow: '#f472b6', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Crect width='240' height='320' fill='%2365a30d'/%3E%3Crect x='20' width='200' height='320' fill='%23fef3c7'/%3E%3Ccircle cx='120' cy='150' r='50' fill='%23f59e0b'/%3E%3Cpolygon points='80,120 90,80 110,120' fill='%23b45309'/%3E%3Cpolygon points='130,120 150,80 160,120' fill='%23b45309'/%3E%3Ccircle cx='110' cy='160' r='18' fill='%23ffffff'/%3E%3Ccircle cx='130' cy='160' r='18' fill='%23ffffff'/%3E%3Ccircle cx='120' cy='125' r='8' fill='%23ffffff'/%3E%3Ctext x='120' y='250' font-family='sans-serif' font-size='20' font-weight='bold' text-anchor='middle' fill='%23be185d'%3EPAWS SPRINT%3C/text%3E%3C/svg%3E" },
   { id: 'cyberrunner', marquee: 'RUNNER', short: '影刃闪现', cat: 'action', accent: '#1a102f', glow: '#38bdf8' },
   { id: 'gearcavalry', marquee: 'CAVALRY', short: '齿轮骑兵', cat: 'action', accent: '#78350f', glow: '#fbbf24' },
   { id: 'thunderracer', marquee: 'RACER', short: '雷霆飞车', cat: 'race', accent: '#9b1c1c', glow: '#ff6b6b' },
@@ -601,7 +603,7 @@ function renderFeatured() {
   const cab = pickFeatured();
   const meta = metaOf(cab.id);
   const last = store.get('aa_last', '');
-  document.getElementById('feat-img').src = 'assets/attract-' + cab.id + '.jpg';
+  document.getElementById('feat-img').src = cab.img || ('assets/attract-' + cab.id + '.jpg');
   document.getElementById('feat-img').alt = cab.short;
   document.getElementById('feat-badge').textContent = last === cab.id ? 'CONTINUE' : 'TONIGHT';
   document.getElementById('feat-title').textContent = cab.short;
@@ -626,13 +628,14 @@ function renderCabs() {
   if (selected >= vis.length) selected = Math.max(0, vis.length - 1);
   document.getElementById('cabs').innerHTML = vis.map((cab, i) => {
     const hs = store.hs(cab.id);
+    const imgSrc = cab.img || ('assets/attract-' + cab.id + '.jpg');
     return (
       '<a class="cab' + (i === selected ? ' is-on' : '') + '" data-id="' + cab.id + '" data-cat="' + cab.cat + '" data-i="' + i + '"' +
       ' style="--c:' + cab.accent + ';--g:' + cab.glow + '" href="' + hrefOf(cab.id) + '">' +
         '<div class="cab-body">' +
           '<div class="cab-marquee">' + cab.marquee + '</div>' +
           '<div class="cab-bezel"><div class="cab-screen">' +
-            '<img src="assets/attract-' + cab.id + '.jpg" alt="' + cab.short + '">' +
+            '<img src="' + imgSrc + '" alt="' + cab.short + '">' +
             '<div class="cab-scan"></div><div class="cab-glass"></div>' +
             '<div class="cab-insert">INSERT COIN</div>' +
           '</div></div>' +

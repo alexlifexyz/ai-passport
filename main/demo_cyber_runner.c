@@ -113,6 +113,53 @@ static void cyber_runner_audio_task(void *arg)
                         bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
                     }
                 }
+            } else if (snd == CR_SND_WALL_KICK) {
+                // 蹬墙反弹跳金属铮鸣 (450Hz -> 900Hz 快速升频, 25ms)
+                const int total = 400;
+                float phase = 0.0f;
+                for (int i = 0; i < total; i++) {
+                    float t = (float)i / (float)total;
+                    float freq = 450.0f + t * 450.0f;
+                    phase += freq / 16000.0f;
+                    if (phase >= 1.0f) phase -= 1.0f;
+                    float amp = (1.0f - t) * 7500.0f;
+                    buf[i % 256] = (phase < 0.5f) ? (int16_t)amp : -(int16_t)amp;
+                    if ((i % 256) == 255 || i == total - 1) {
+                        bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
+                    }
+                }
+            } else if (snd == CR_SND_SLASH_HIT) {
+                // 影刃斩爆目标 (爽脆金属切削+双频炸裂, 40ms)
+                const int total = 640;
+                float phase = 0.0f;
+                for (int i = 0; i < total; i++) {
+                    float t = (float)i / (float)total;
+                    float freq = 1200.0f - t * 800.0f;
+                    phase += freq / 16000.0f;
+                    if (phase >= 1.0f) phase -= 1.0f;
+                    int noise = (rand() % 4000) - 2000;
+                    float amp = (1.0f - t * 0.8f) * 8500.0f;
+                    buf[i % 256] = (int16_t)(((phase < 0.4f) ? amp : -amp) + noise);
+                    if ((i % 256) == 255 || i == total - 1) {
+                        bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
+                    }
+                }
+            } else if (snd == CR_SND_DIVE_SLAM) {
+                // 俯冲砸地震地轰鸣 (低频低通爆震, 45ms)
+                const int total = 720;
+                float phase = 0.0f;
+                for (int i = 0; i < total; i++) {
+                    float t = (float)i / (float)total;
+                    float freq = 180.0f - t * 100.0f;
+                    phase += freq / 16000.0f;
+                    if (phase >= 1.0f) phase -= 1.0f;
+                    int noise = (rand() % 4500) - 2250;
+                    float amp = (1.0f - t) * 8000.0f;
+                    buf[i % 256] = (int16_t)(((phase < 0.5f) ? amp : -amp) + noise);
+                    if ((i % 256) == 255 || i == total - 1) {
+                        bsp_audio_write(buf, ((i % 256) + 1) * sizeof(int16_t));
+                    }
+                }
             } else if (snd == CR_SND_DRONE_POP) {
                 // 闪现穿爆无人机炸裂音 (高低频爆裂, 35ms)
                 const int total = 560;
@@ -220,15 +267,10 @@ static void on_draw_playfield(lv_event_t *e)
     lv_layer_t *layer = lv_event_get_layer(e);
 
     // 1. 晚霞赛博天际线渐变 (黄昏紫橙色调，精确复刻参考图氛围)
-    // 深靛紫 (Y: 0 ~ 45)
     draw_box(layer, 0, 0, SCREEN_W, 45, 0x1A102F);
-    // 紫红晚霞 (Y: 45 ~ 85)
     draw_box(layer, 0, 45, SCREEN_W, 40, 0x3E1948);
-    // 绛红暖霞 (Y: 85 ~ 125)
     draw_box(layer, 0, 85, SCREEN_W, 40, 0x701A58);
-    // 霞光金橙 (Y: 125 ~ 165)
     draw_box(layer, 0, 125, SCREEN_W, 40, 0xA83250);
-    // 近地黄昏暖金 (Y: 165 ~ 210)
     draw_box(layer, 0, 165, SCREEN_W, 45, 0xD9534F);
 
     // 2. 远景摩天大楼剪影 (极低速视差，错落大厦轮廓与零星发光窗户)
@@ -256,7 +298,7 @@ static void on_draw_playfield(lv_event_t *e)
         draw_box(layer, sx + 44, 130, 3, 22, 0xF43F5E);
     }
 
-    // 4. 前景建筑屋顶平台 (实体与砖石纹理)
+    // 4. 前景建筑屋顶平台 (高反差清晰勾勒：纯白边缘 + 霓虹电光青 + 深色实心墙体)
     for (int i = 0; i < CR_MAX_BUILDINGS; i++) {
         cr_building_t *b = &s_game.buildings[i];
         if (!b->active) continue;
@@ -270,43 +312,57 @@ static void on_draw_playfield(lv_event_t *e)
 
         if (b->is_glass && b->crumbled) {
             // 已坍塌天窗不绘制表面实体，只留断壁
-            draw_box(layer, bx, by + 12, bw, bh - 12, 0x14101E);
+            draw_box(layer, bx, by + 12, bw, bh - 12, 0x0F172A);
             continue;
         }
 
-        // 大楼主体砖墙 (深紫暗砖色)
-        uint32_t body_col = b->is_glass ? 0x1E293B : 0x221B32;
-        draw_box(layer, bx, by + 3, bw, bh - 3, body_col);
+        // 大楼主体砖墙 (纯正冷黑海军蓝，彻底与天空分离)
+        uint32_t body_col = b->is_glass ? 0x111827 : 0x0B0F19;
+        draw_box(layer, bx, by + 4, bw, bh - 4, body_col);
 
-        // 砖石横竖纹理 (营造像素砖墙质感)
+        // 砖石横竖纹理与结构阴影
         if (!b->is_glass) {
-            for (int ly = by + 10; ly < SCREEN_H; ly += 12) {
-                draw_box(layer, bx, ly, bw, 1, 0x181224);
+            draw_box(layer, bx, by + 4, 3, bh - 4, 0x030712);
+            draw_box(layer, bx + bw - 3, by + 4, 3, bh - 4, 0x1E293B);
+
+            for (int ly = by + 12; ly < SCREEN_H; ly += 14) {
+                draw_box(layer, bx + 3, ly, bw - 6, 1, 0x070B14);
             }
             // 窗户光点
             int seed = (int)b->win_seed;
-            for (int wy = by + 16; wy < SCREEN_H - 20; wy += 22) {
-                int wx1 = bx + 15 + ((seed >> 2) % 20);
-                int wx2 = bx + bw - 30;
-                if (wx1 + 8 < bx + bw) draw_box(layer, wx1, wy, 8, 12, 0x2E2544);
-                if (wx2 > bx + 20)     draw_box(layer, wx2, wy, 8, 12, 0x38BDF8);
+            for (int wy = by + 18; wy < SCREEN_H - 20; wy += 22) {
+                int wx1 = bx + 14 + ((seed >> 2) % 18);
+                int wx2 = bx + bw - 26;
+                if (wx1 + 8 < bx + bw) draw_box(layer, wx1, wy, 8, 12, 0x1E293B);
+                if (wx2 > bx + 18)     draw_box(layer, wx2, wy, 8, 12, 0x38BDF8);
             }
         }
 
-        // 屋顶发光边缘 (青色荧光边框，标志性赛博朋克特征)
+        // 屋顶发光边缘 (4px 超高对比霓虹边：纯白 + 电光青，无论何种屏幕均能一眼分辨落脚点)
         if (b->is_glass) {
-            uint32_t glass_edge = (b->crumble_timer_ms > 0) ? 0xF43F5E : 0x38BDF8;
-            draw_box(layer, bx, by, bw, 4, glass_edge);
-            draw_box(layer, bx, by + 1, bw, 2, 0xE0F2FE);
+            // 易碎天窗：警示白顶 + 烈焰玫红
+            uint32_t glass_edge = (b->crumble_timer_ms > 0) ? 0xFF0055 : 0xEC4899;
+            draw_box(layer, bx, by, bw, 2, 0xFFFFFF);
+            draw_box(layer, bx, by + 2, bw, 3, glass_edge);
+            draw_box(layer, bx, by + 5, bw, 1, 0x831843);
         } else {
-            // 顶级青色霓虹高光 (2层线)
-            draw_box(layer, bx, by, bw, 2, 0x22D3EE);
-            draw_box(layer, bx, by + 2, bw, 2, 0x0891B2);
-            draw_box(layer, bx, by + 4, bw, 1, 0x164E63);
+            // 经典屋顶：纯白高光线 (1px) + 璀璨电光青 (2px) + 深青底线 (1px)
+            draw_box(layer, bx, by, bw, 1, 0xFFFFFF);
+            draw_box(layer, bx, by + 1, bw, 2, 0x00FFFF);
+            draw_box(layer, bx, by + 3, bw, 1, 0x0891B2);
         }
     }
 
-    // 5. 陷阱与机关渲染
+    // 5. 俯冲震荡波渲染 (Shockwave on Ground)
+    if (s_game.shockwave_active && s_game.shockwave_timer_ms > 0) {
+        int swx = (int)s_game.shockwave_x;
+        int swy = (int)s_game.shockwave_y;
+        int swr = (int)s_game.shockwave_radius;
+        draw_box(layer, swx - swr, swy - 3, swr * 2, 5, 0x00FFFF);
+        draw_box(layer, swx - swr + 2, swy - 2, (swr - 2) * 2, 3, 0xFFFFFF);
+    }
+
+    // 6. 陷阱与机关渲染
     for (int i = 0; i < CR_MAX_HAZARDS; i++) {
         cr_hazard_t *h = &s_game.hazards[i];
         if (!h->active) continue;
@@ -319,40 +375,50 @@ static void on_draw_playfield(lv_event_t *e)
         if (hx + hw < 0 || hx >= SCREEN_W) continue;
 
         if (h->type == CR_HAZARD_LASER_LOW || h->type == CR_HAZARD_LASER_HIGH) {
-            // 脉冲激光束 (鲜红高光 + 左右极柱)
-            draw_box(layer, hx, hy + 2, hw, 3, 0xF43F5E);
-            draw_box(layer, hx + 1, hy + 3, hw - 2, 1, 0xFFE4E6);
-            draw_box(layer, hx - 2, hy, 3, hh, 0x475569);
-            draw_box(layer, hx + hw - 1, hy, 3, hh, 0x475569);
+            // 脉冲激光束 (白色高能芯 + 艳红外焰 + 左右金属发射极)
+            draw_box(layer, hx, hy + 1, hw, 4, 0xFF0055);
+            draw_box(layer, hx, hy + 2, hw, 2, 0xFFFFFF);
+            draw_box(layer, hx - 2, hy, 3, hh, 0x64748B);
+            draw_box(layer, hx + hw - 1, hy, 3, hh, 0x64748B);
         } else if (h->type == CR_HAZARD_LASER_WALL) {
-            // 全高激光光墙 (必须空中闪现虚化穿透)
+            // 全高阻断激光墙 (纯白能量芯 + 烈红高光)
             draw_box(layer, hx, hy, hw, hh, 0xBE123C);
-            draw_box(layer, hx + 2, hy, hw - 4, hh, 0xF43F5E);
-            draw_box(layer, hx + 3, hy, 2, hh, 0xFFFFFF);
+            draw_box(layer, hx + 1, hy, hw - 2, hh, 0xFF0055);
+            draw_box(layer, hx + 2, hy, 2, hh, 0xFFFFFF);
             // 上下发射极
-            draw_box(layer, hx - 2, hy, hw + 4, 4, 0x0F172A);
-            draw_box(layer, hx - 2, hy + hh - 4, hw + 4, 4, 0x0F172A);
+            draw_box(layer, hx - 2, hy, hw + 4, 4, 0x020617);
+            draw_box(layer, hx - 2, hy + hh - 4, hw + 4, 4, 0x020617);
         } else if (h->type == CR_HAZARD_DRONE) {
-            // 浮游侦察无人机
-            draw_box(layer, hx + 2, hy + 2, hw - 4, hh - 4, 0x0F172A);
-            // 闪烁红色警报眼
-            draw_box(layer, hx + hw/2 - 2, hy + hh/2 - 2, 4, 4, 0xEF4444);
+            // 浮游侦察无人机 (亮黄警示机壳 + 闪烁红眼 + 旋转青翼)
+            draw_box(layer, hx, hy, hw, hh, 0x020617); // 黑色外框
+            draw_box(layer, hx + 2, hy + 2, hw - 4, hh - 4, 0xFACC15);
+            // 闪烁红色侦测眼
+            draw_box(layer, hx + hw/2 - 2, hy + hh/2 - 2, 4, 4, 0xFF0000);
+            draw_box(layer, hx + hw/2 - 1, hy + hh/2 - 1, 2, 2, 0xFFFFFF);
             // 两侧发光旋翼
-            draw_box(layer, hx - 3, hy + 1, 4, 2, 0x06B6D4);
-            draw_box(layer, hx + hw - 1, hy + 1, 4, 2, 0x06B6D4);
+            draw_box(layer, hx - 3, hy + 1, 4, 2, 0x00FFFF);
+            draw_box(layer, hx + hw - 1, hy + 1, 4, 2, 0x00FFFF);
+
+            // ★ 影刃锁定指示框 (进入 75px 斩杀范围高亮菱形标记)
+            if (hx >= CR_PLAYER_X - 10 && hx <= CR_PLAYER_X + 75) {
+                draw_box(layer, hx - 2, hy - 2, hw + 4, 1, 0x00FFFF);
+                draw_box(layer, hx - 2, hy + hh + 1, hw + 4, 1, 0x00FFFF);
+                draw_box(layer, hx - 2, hy - 2, 1, hh + 4, 0x00FFFF);
+                draw_box(layer, hx + hw + 1, hy - 2, 1, hh + 4, 0x00FFFF);
+            }
         } else if (h->type == CR_HAZARD_VENT) {
             // 超导排风口
             draw_box(layer, hx, hy, hw, hh, 0x334155);
-            draw_box(layer, hx + 3, hy + 1, hw - 6, hh - 2, 0x06B6D4);
-            // 向上喷气条纹
+            draw_box(layer, hx + 2, hy + 1, hw - 4, hh - 2, 0x00FFFF);
+            // 向上喷气气流
             if (s_game.tick_count % 2 == 0) {
-                draw_box(layer, hx + 6, hy - 8, 2, 8, 0x67E8F9);
-                draw_box(layer, hx + hw - 8, hy - 12, 2, 12, 0x67E8F9);
+                draw_box(layer, hx + 5, hy - 10, 2, 10, 0xFFFFFF);
+                draw_box(layer, hx + hw - 7, hy - 14, 2, 14, 0x67E8F9);
             }
         }
     }
 
-    // 6. 收集道具渲染
+    // 7. 收集道具渲染
     for (int i = 0; i < CR_MAX_ITEMS; i++) {
         cr_item_t *it = &s_game.items[i];
         if (!it->active) continue;
@@ -362,21 +428,43 @@ static void on_draw_playfield(lv_event_t *e)
         if (ix < -10 || ix > SCREEN_W + 10) continue;
 
         if (it->type == CR_ITEM_DATA_GEM) {
-            // 菱形数据晶体
-            draw_box(layer, ix - 3, iy - 4, 6, 8, 0x06B6D4);
+            // 菱形数据晶体 (璀璨电光青 + 白核心)
+            draw_box(layer, ix - 3, iy - 4, 6, 8, 0x00FFFF);
             draw_box(layer, ix - 1, iy - 2, 2, 4, 0xFFFFFF);
         } else if (it->type == CR_ITEM_BATTERY) {
-            // 能量电池
+            // 能量电池 (翡翠绿 + 荧光充能条)
             draw_box(layer, ix - 4, iy - 4, 8, 8, 0x10B981);
-            draw_box(layer, ix - 2, iy - 2, 4, 4, 0x34D399);
+            draw_box(layer, ix - 2, iy - 2, 4, 4, 0x6EE7B7);
         } else if (it->type == CR_ITEM_SHIELD) {
             // 磁暴护盾球
-            draw_box(layer, ix - 5, iy - 5, 10, 10, 0x38BDF8);
-            draw_box(layer, ix - 3, iy - 3, 6, 6, 0xBAE6FD);
+            draw_box(layer, ix - 5, iy - 5, 10, 10, 0x00FFFF);
+            draw_box(layer, ix - 3, iy - 3, 6, 6, 0xFFFFFF);
         }
     }
 
-    // 7. 幽灵闪现残影 (Afterimages)
+    // 8. 影刃瞬影飞斩轨迹 (Blade Slash Line)
+    if (s_game.slash_active) {
+        int sx = (int)s_game.slash_start_x;
+        int sy = (int)s_game.slash_start_y;
+        int tx = (int)s_game.slash_target_x;
+        int ty = (int)s_game.slash_target_y;
+
+        int steps = 6;
+        for (int s = 0; s <= steps; s++) {
+            float t = (float)s / (float)steps;
+            int cx = (int)(sx + (tx - sx) * t);
+            int cy = (int)(sy + (ty - sy) * t);
+            draw_box(layer, cx - 2, cy - 2, 5, 5, 0x00FFFF);
+            draw_box(layer, cx - 1, cy - 1, 3, 3, 0xFFFFFF);
+        }
+        // 斩击爆发十字星
+        draw_box(layer, tx - 8, ty - 1, 17, 3, 0xFFFFFF);
+        draw_box(layer, tx - 1, ty - 8, 3, 17, 0xFFFFFF);
+        draw_box(layer, tx - 12, ty, 25, 1, 0x00FFFF);
+        draw_box(layer, tx, ty - 12, 1, 25, 0x00FFFF);
+    }
+
+    // 9. 幽灵闪现残影 (Afterimages)
     for (int i = 0; i < CR_MAX_AFTERIMAGES; i++) {
         cr_afterimage_t *img = &s_game.afterimages[i];
         if (img->alpha > 0.1f) {
@@ -386,7 +474,7 @@ static void on_draw_playfield(lv_event_t *e)
         }
     }
 
-    // 8. 玩家主角 (Cyber Courier 信使)
+    // 10. 玩家主角 (Cyber Courier 信使) —— 高对比亮银战甲设计
     bool blink_hide = (s_game.invuln_timer_ms > 0 && (s_game.tick_count % 3 == 0));
     if (!blink_hide) {
         int px = (int)((float)CR_PLAYER_X + s_game.render_x_offset);
@@ -394,65 +482,91 @@ static void on_draw_playfield(lv_event_t *e)
         int py = (int)(s_game.y - (float)ph);
 
         if (s_game.stance == CR_STANCE_SLIDE) {
-            // 低姿态滑铲姿势
-            draw_box(layer, px, py + 4, 26, 10, 0x0F172A);
-            // 头部与前伸青色目镜
-            draw_box(layer, px + 18, py + 3, 7, 5, 0x38BDF8);
-            // 后部白靴
-            draw_box(layer, px - 2, py + 6, 5, 6, 0xF8FAFC);
+            // 低姿态滑铲姿势 (银白装甲 + 电光青目镜)
+            draw_box(layer, px - 1, py + 3, 28, 12, 0x020617); // 黑色勾边
+            draw_box(layer, px + 2, py + 5, 22, 8, 0xFFFFFF);  // 纯白战甲
+            draw_box(layer, px + 18, py + 4, 8, 4, 0x00FFFF); // 前伸青色目镜
+            draw_box(layer, px + 20, py + 5, 4, 2, 0xFFFFFF);
+            draw_box(layer, px - 2, py + 7, 4, 5, 0x38BDF8);  // 喷气口
+        } else if (s_game.stance == CR_STANCE_WALL_SLIDE) {
+            // 贴墙下滑姿态 (单手撑墙，身体紧贴墙壁)
+            draw_box(layer, px - 1, py, 16, 26, 0x020617);
+            draw_box(layer, px + 1, py + 2, 12, 18, 0xFFFFFF); // 纯白身躯
+            draw_box(layer, px + 6, py + 3, 6, 4, 0x00FFFF);   // 侧视目镜
+            draw_box(layer, px + 8, py + 4, 3, 2, 0xFFFFFF);
+            draw_box(layer, px + 3, py + 20, 8, 5, 0xE2E8F0);  // 悬挂腿部
+
+            // 蹬墙摩擦火花激射 (白色与电光青火花)
+            int spk_x = px + CR_PLAYER_W - 2;
+            draw_box(layer, spk_x, py + 14, 3, 3, 0xFFFFFF);
+            draw_box(layer, spk_x + 1, py + 9, 2, 4, 0x00FFFF);
+            draw_box(layer, spk_x - 1, py + 5, 3, 2, 0x38BDF8);
+            draw_box(layer, spk_x, py + 20, 2, 3, 0xFDE047);
         } else {
-            // 奔跑 / 跳跃姿势 (复刻参考图)
-            // 躯干 (深蓝纳米作战服)
-            draw_box(layer, px + 3, py + 10, 12, 14, 0x0F172A);
-            // 头部战术头盔
-            draw_box(layer, px + 2, py + 1, 14, 10, 0x0F172A);
-            // 高亮发光青色面罩目镜 (Cyan Visor)
-            draw_box(layer, px + 7, py + 4, 9, 4, 0x38BDF8);
-            draw_box(layer, px + 9, py + 5, 5, 2, 0xFFFFFF);
-            // 双腿与白色运动战靴
+            // 奔跑 / 跳跃姿势 (高对比度纯白机械战甲 + 黑色骨骼底衬 + 电光青目镜)
+            // 1. 全身黑色外轮廓 (确保与背景完全剥离)
+            draw_box(layer, px - 1, py, 18, 28, 0x020617);
+
+            // 2. 亮银白机械战甲 (Torso & Armor Plates)
+            draw_box(layer, px + 2, py + 8, 12, 13, 0xFFFFFF);
+            draw_box(layer, px + 4, py + 10, 8, 9, 0xE2E8F0);
+
+            // 3. 头部头盔 (纯白头盔外壳)
+            draw_box(layer, px + 2, py + 1, 12, 9, 0xFFFFFF);
+            draw_box(layer, px + 5, py + 3, 8, 5, 0x090D16);
+
+            // 4. 超高亮电光青面罩目镜 (Cyan Visor) + 纯白核心
+            draw_box(layer, px + 6, py + 3, 8, 4, 0x00FFFF);
+            draw_box(layer, px + 8, py + 4, 4, 2, 0xFFFFFF);
+
+            // 5. 双腿与高亮战靴
             if (s_game.stance == CR_STANCE_RUN) {
                 int run_frame = (s_game.tick_count / 3) % 4;
                 if (run_frame == 0 || run_frame == 2) {
-                    draw_box(layer, px + 2, py + 22, 6, 8, 0x1E293B);
-                    draw_box(layer, px + 10, py + 20, 6, 10, 0x1E293B);
-                    draw_box(layer, px + 2, py + 27, 7, 3, 0xF8FAFC);
-                    draw_box(layer, px + 10, py + 27, 7, 3, 0xF8FAFC);
+                    draw_box(layer, px + 1, py + 20, 5, 7, 0x0F172A);
+                    draw_box(layer, px + 9, py + 19, 5, 8, 0x0F172A);
+                    draw_box(layer, px + 1, py + 24, 6, 4, 0xFFFFFF);
+                    draw_box(layer, px + 9, py + 24, 6, 4, 0xFFFFFF);
                 } else {
-                    draw_box(layer, px + 5, py + 20, 6, 10, 0x1E293B);
-                    draw_box(layer, px + 9, py + 22, 6, 8, 0x1E293B);
-                    draw_box(layer, px + 5, py + 27, 7, 3, 0xF8FAFC);
-                    draw_box(layer, px + 9, py + 27, 7, 3, 0xF8FAFC);
+                    draw_box(layer, px + 4, py + 19, 5, 8, 0x0F172A);
+                    draw_box(layer, px + 8, py + 20, 5, 7, 0x0F172A);
+                    draw_box(layer, px + 4, py + 24, 6, 4, 0xFFFFFF);
+                    draw_box(layer, px + 8, py + 24, 6, 4, 0xFFFFFF);
                 }
             } else {
-                // 跳跃收腿姿势
-                draw_box(layer, px + 2, py + 21, 6, 7, 0x1E293B);
-                draw_box(layer, px + 10, py + 19, 6, 8, 0x1E293B);
-                draw_box(layer, px + 2, py + 25, 7, 4, 0xF8FAFC);
-                draw_box(layer, px + 10, py + 24, 7, 4, 0xF8FAFC);
+                // 空中腾跃姿势 (收腿蓄力，鞋底青色离子微光)
+                draw_box(layer, px + 2, py + 19, 5, 6, 0x0F172A);
+                draw_box(layer, px + 9, py + 17, 5, 7, 0x0F172A);
+                draw_box(layer, px + 2, py + 23, 6, 4, 0xFFFFFF);
+                draw_box(layer, px + 9, py + 22, 6, 4, 0xFFFFFF);
+                // 离子喷口
+                draw_box(layer, px + 3, py + 27, 4, 2, 0x00FFFF);
+                draw_box(layer, px + 10, py + 26, 4, 2, 0x00FFFF);
             }
         }
 
         // 磁暴护盾外圈
         if (s_game.has_shield) {
-            draw_box(layer, px - 3, py - 3, CR_PLAYER_W + 6, 2, 0x38BDF8);
-            draw_box(layer, px - 3, py + ph + 1, CR_PLAYER_W + 6, 2, 0x38BDF8);
-            draw_box(layer, px - 3, py - 3, 2, ph + 6, 0x38BDF8);
-            draw_box(layer, px + CR_PLAYER_W + 1, py - 3, 2, ph + 6, 0x38BDF8);
+            draw_box(layer, px - 3, py - 3, CR_PLAYER_W + 6, 2, 0x00FFFF);
+            draw_box(layer, px - 3, py + ph + 1, CR_PLAYER_W + 6, 2, 0x00FFFF);
+            draw_box(layer, px - 3, py - 3, 2, ph + 6, 0x00FFFF);
+            draw_box(layer, px + CR_PLAYER_W + 1, py - 3, 2, ph + 6, 0x00FFFF);
         }
     }
 
-    // 9. 飘逸流光红围巾 (Trailing Scarf)
-    // 渲染 5 个由物理拉动的质点
-    uint32_t scarf_col = 0xF43F5E;
+    // 11. 宽幅流光绯红围巾 (Vivid Fluorescent Scarf) —— 强烈视觉引导信标
+    uint32_t scarf_col = 0xFF0055;
+    uint32_t scarf_core = 0xFF5588;
     for (int i = 0; i < CR_MAX_SCARF_NODES; i++) {
         int nx = (int)s_game.scarf[i].x;
         int ny = (int)s_game.scarf[i].y;
-        int sw = (i == 0) ? 5 : (5 - i * 1);
-        if (sw < 2) sw = 2;
-        draw_box(layer, nx, ny, sw, 3, scarf_col);
+        int sw = (i == 0) ? 6 : (6 - i * 1);
+        if (sw < 3) sw = 3;
+        draw_box(layer, nx, ny - 1, sw, 4, scarf_col);
+        draw_box(layer, nx + 1, ny, sw - 2, 2, scarf_core);
     }
 
-    // 10. 粒子绘制
+    // 12. 粒子微粒绘制
     for (int i = 0; i < CR_MAX_PARTICLES; i++) {
         cr_particle_t *p = &s_game.particles[i];
         if (!p->active) continue;
