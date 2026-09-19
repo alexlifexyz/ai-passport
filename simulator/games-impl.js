@@ -4106,69 +4106,99 @@
       },
 
       render(ctx) {
-        // 1. 晚霞赛博天际线渐变
-        ctx.fillStyle = '#1a102f'; ctx.fillRect(0, 0, 240, 45);
-        ctx.fillStyle = '#3e1948'; ctx.fillRect(0, 45, 240, 40);
-        ctx.fillStyle = '#701a58'; ctx.fillRect(0, 85, 240, 40);
-        ctx.fillStyle = '#a83250'; ctx.fillRect(0, 125, 240, 40);
-        ctx.fillStyle = '#d9534f'; ctx.fillRect(0, 165, 240, 45);
+        // 1. 赛博黄昏天际线全屏垂直渐变 (精确还原 attract-cyberrunner.jpg 晚霞与金色霞光)
+        ctx.fillStyle = '#160826'; ctx.fillRect(0, 0, 240, 35);
+        ctx.fillStyle = '#2a0d3d'; ctx.fillRect(0, 35, 240, 35);
+        ctx.fillStyle = '#48114e'; ctx.fillRect(0, 70, 240, 35);
+        ctx.fillStyle = '#761756'; ctx.fillRect(0, 105, 240, 35);
+        ctx.fillStyle = '#aa2b4a'; ctx.fillRect(0, 140, 240, 30);
+        ctx.fillStyle = '#d84d2e'; ctx.fillRect(0, 170, 240, 25);
+        // 璀璨金色落日地平线霞光 (195~240) —— 正好处于大厦屋顶奔跑纵深区间，形成极具冲击力的背光剪影对比！
+        ctx.fillStyle = '#ee7928'; ctx.fillRect(0, 195, 240, 25);
+        ctx.fillStyle = '#f6a330'; ctx.fillRect(0, 220, 240, 20);
+        // 大厦峡谷深处暖色暮霭 (240~320) —— 彻底消除纯黑/断层，建筑物间隙透出深邃都市霞光
+        ctx.fillStyle = '#881e48'; ctx.fillRect(0, 240, 240, 40);
+        ctx.fillStyle = '#3e0c32'; ctx.fillRect(0, 280, 240, 40);
 
-        // 2. 远景摩天大楼剪影
+        // 2. 晚霞像素积云
         const farOff = Math.floor(this.bgFar);
-        for (let bx = -60; bx < 300; bx += 70) {
-          const sx = bx - (farOff % 70);
-          ctx.fillStyle = '#221236';
-          ctx.fillRect(sx, 50, 42, 140);
-          ctx.fillStyle = '#fde047'; ctx.fillRect(sx + 8, 68, 5, 4);
-          ctx.fillStyle = '#38bdf8'; ctx.fillRect(sx + 22, 76, 5, 4);
-          ctx.fillStyle = '#ec4899'; ctx.fillRect(sx + 14, 95, 5, 4);
+        const cloudOff = Math.floor(farOff / 2) % 320;
+        for (let cx = -80; cx < 320; cx += 110) {
+          const x = cx - cloudOff;
+          ctx.fillStyle = '#320e40';
+          ctx.fillRect(x + 6, 58, 48, 12);
+          ctx.fillRect(x + 16, 52, 32, 6);
+          ctx.fillStyle = '#8a1f5e'; ctx.fillRect(x + 2, 68, 54, 3);
+          ctx.fillStyle = '#ba3468'; ctx.fillRect(x + 12, 71, 36, 2);
         }
 
-        // 3. 中景大厦与霓虹招牌
+        // 3. 远景摩天大楼剪影 (深靛黑剪影刺入金色霞光，带有天线与闪烁信标)
+        for (let bx = -60; bx < 300; bx += 64) {
+          const sx = bx - (farOff % 64);
+          ctx.fillStyle = '#1b0e2e';
+          ctx.fillRect(sx, 60, 38, 155);
+          ctx.fillRect(sx + 2, 48, 2, 12); // 天线
+          if (Math.floor(this.tick / 10) % 2 === 0) {
+            ctx.fillStyle = '#ff0055'; ctx.fillRect(sx + 1, 46, 4, 2);
+          }
+          ctx.fillStyle = '#fde047'; ctx.fillRect(sx + 6, 82, 4, 3);
+          ctx.fillStyle = '#00ffff'; ctx.fillRect(sx + 20, 90, 4, 3);
+          ctx.fillStyle = '#fde047'; ctx.fillRect(sx + 12, 112, 4, 3);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(sx + 26, 134, 4, 3);
+          ctx.fillStyle = '#ff2a6d'; ctx.fillRect(sx + 8, 156, 4, 3);
+        }
+
+        // 4. 中景大厦与霓虹招牌
         const midOff = Math.floor(this.bgMid);
-        for (let bx = -80; bx < 320; bx += 90) {
-          const sx = bx - (midOff % 90);
-          ctx.fillStyle = '#160b24';
-          ctx.fillRect(sx, 100, 52, 160);
-          ctx.fillStyle = '#06b6d4'; ctx.fillRect(sx + 4, 115, 3, 28);
-          ctx.fillStyle = '#f43f5e'; ctx.fillRect(sx + 44, 130, 3, 22);
+        for (let bx = -80; bx < 320; bx += 88) {
+          const sx = bx - (midOff % 88);
+          ctx.fillStyle = '#140b22';
+          ctx.fillRect(sx, 110, 48, 150);
+          ctx.fillStyle = '#00f5ff'; ctx.fillRect(sx + 4, 124, 3, 28);
+          ctx.fillStyle = '#ff0066'; ctx.fillRect(sx + 40, 138, 3, 22);
         }
 
-        // 4. 前景建筑屋顶 (超高对比冷黑墙体 + 纯白与电光青高亮边缘)
+        // 5. 前景建筑屋顶 (深紫夜蓝砖墙 + 经典错落砖缝 + 纯白与电光青平台发光边)
         for (const b of this.buildings) {
           if (b.x + b.w < 0 || b.x >= 240) continue;
           if (b.glass && b.fallen) {
-            ctx.fillStyle = '#0f172a';
+            ctx.fillStyle = '#0e0b1a';
             ctx.fillRect(b.x, b.y + 12, b.w, 320 - b.y);
             continue;
           }
 
-          ctx.fillStyle = b.glass ? '#111827' : '#0b0f19';
+          ctx.fillStyle = b.glass ? '#121724' : '#1a1634';
           ctx.fillRect(b.x, b.y + 4, b.w, 320 - b.y);
 
-          // 结构轮廓
+          // 砖石肌理
           if (!b.glass) {
-            ctx.fillStyle = '#030712'; ctx.fillRect(b.x, b.y + 4, 3, 320 - b.y);
-            ctx.fillStyle = '#1e293b'; ctx.fillRect(b.x + b.w - 3, b.y + 4, 3, 320 - b.y);
-            ctx.fillStyle = '#070b14';
-            for (let ly = b.y + 12; ly < 320; ly += 14) {
-              ctx.fillRect(b.x + 3, ly, b.w - 6, 1);
+            ctx.fillStyle = '#0e0b1c'; ctx.fillRect(b.x, b.y + 4, 2, 320 - b.y);
+            ctx.fillStyle = '#2a244e'; ctx.fillRect(b.x + b.w - 2, b.y + 4, 2, 320 - b.y);
+            ctx.fillStyle = '#0f0c20';
+            for (let ly = b.y + 12; ly < 320; ly += 11) {
+              ctx.fillRect(b.x + 2, ly, b.w - 4, 1);
+            }
+            // 错落微光砖
+            ctx.fillStyle = '#272248';
+            for (let r = 0; r < 3; r++) {
+              ctx.fillRect(b.x + 12 + r * 28, b.y + 16 + r * 18, 10, 6);
             }
           }
 
-          // 璀璨屋顶边缘 (白+青)
+          // 屋顶发光边缘 (1px 白 + 2px 青 + 1px 深青)
           if (b.glass) {
             ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x, b.y, b.w, 2);
-            ctx.fillStyle = (b.crumble > 0) ? '#ff0055' : '#ec4899';
+            ctx.fillStyle = (b.crumble > 0) ? '#ff0055' : '#ff2a6d';
             ctx.fillRect(b.x, b.y + 2, b.w, 3);
+            ctx.fillStyle = '#880033'; ctx.fillRect(b.x, b.y + 5, b.w, 1);
           } else {
             ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x, b.y, b.w, 1);
             ctx.fillStyle = '#00ffff'; ctx.fillRect(b.x, b.y + 1, b.w, 2);
-            ctx.fillStyle = '#0891b2'; ctx.fillRect(b.x, b.y + 3, b.w, 1);
+            ctx.fillStyle = '#007799'; ctx.fillRect(b.x, b.y + 3, b.w, 1);
           }
         }
 
-        // 5. 俯冲震荡波
+        // 6. 俯冲震荡波
         if (this.shockwaveActive && this.shockwaveTimer > 0) {
           ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3;
           ctx.beginPath();
@@ -4178,7 +4208,7 @@
           ctx.stroke();
         }
 
-        // 6. 陷阱与无人机
+        // 7. 陷阱与无人机
         for (const h of this.hazards) {
           if (!h.active || h.x + h.w < 0 || h.x > 240) continue;
           if (h.type === 'laser_low' || h.type === 'laser_high') {
@@ -4210,7 +4240,7 @@
           }
         }
 
-        // 7. 道具
+        // 8. 道具
         for (const it of this.items) {
           if (!it.active || it.x < -10 || it.x > 250) continue;
           const iy = it.y + Math.sin(it.bob || 0) * 3;
@@ -4226,7 +4256,7 @@
           }
         }
 
-        // 8. 影刃斩击弧光
+        // 9. 影刃斩击弧光
         if (this.slashActive) {
           ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 4;
           ctx.beginPath();
@@ -4241,7 +4271,7 @@
           ctx.fillRect(this.slashTarget.x - 1, this.slashTarget.y - 8, 2, 16);
         }
 
-        // 9. 残影
+        // 10. 残影
         for (const img of this.afterimages) {
           if (img.alpha > 0.1) {
             ctx.fillStyle = img.col;
@@ -4251,47 +4281,102 @@
           }
         }
 
-        // 10. 玩家主角 (顶级高反差亮银纯白战甲 + 黑色骨骼 + 电光青目镜)
+        // 11. 玩家主角 (Cyber Courier 信使 —— 灵动午夜蓝战衣 + 纯白战靴 + 璀璨电光青目镜)
         const hideBlink = (this.invuln > 0 && Math.floor(this.tick / 3) % 2 === 0);
         if (!hideBlink) {
           const px = 48 + this.renderXOff;
           const ph = (this.stance === 'slide') ? 14 : 30;
           const py = this.y - ph;
 
+          const COL_SUIT_DARK  = '#14112e';
+          const COL_SUIT_MID   = '#282454';
+          const COL_SUIT_LIGHT = '#484382';
+          const COL_VISOR_CYAN = '#00ffff';
+          const COL_VISOR_WHT  = '#ffffff';
+          const COL_BOOT_WHT   = '#ffffff';
+          const COL_BOOT_SOLE  = '#0f172a';
+
           if (this.stance === 'slide') {
-            ctx.fillStyle = '#020617'; ctx.fillRect(px - 1, py + 3, 28, 12);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2, py + 5, 22, 8);
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 18, py + 4, 8, 4);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 20, py + 5, 4, 2);
-            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px - 2, py + 7, 4, 5);
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 15, py + 2, 8, 8);
+            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 18, py + 4, 6, 3);
+            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 20, py + 4, 3, 2);
+            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 5, py + 4, 12, 7);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 7, py + 5, 8, 3);
+            ctx.fillStyle = COL_BOOT_WHT; ctx.fillRect(px - 2, py + 6, 7, 5);
+            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px - 2, py + 10, 7, 2);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px - 4, py + 7, 3, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 6, py + 12, 5, 2);
           } else if (this.stance === 'wall_slide') {
-            ctx.fillStyle = '#020617'; ctx.fillRect(px - 1, py, 16, 26);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 1, py + 2, 12, 18);
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 6, py + 3, 6, 4);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 8, py + 4, 3, 2);
-            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px + 3, py + 20, 8, 5);
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 4, py + 1, 9, 8);
+            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 8, py + 3, 6, 3);
+            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 10, py + 3, 3, 2);
+            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 2, py + 9, 10, 10);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 4, py + 10, 6, 6);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 11, py + 9, 5, 4);
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 4, py + 19, 6, 5);
+            ctx.fillStyle = COL_BOOT_WHT; ctx.fillRect(px + 8, py + 22, 6, 5);
+            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 12, py + 22, 2, 5);
 
-            // 火花
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 16, py + 14, 3, 3);
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 17, py + 9, 2, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 17, py + 15, 3, 3);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 18, py + 10, 2, 4);
+            ctx.fillStyle = '#fde047'; ctx.fillRect(px + 17, py + 22, 2, 3);
+          } else if (this.stance === 'run') {
+            const runFrame = Math.floor(this.tick / 3) % 4;
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 3, py + 1, 10, 9);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 5, py + 1, 6, 2);
+            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 8, py + 4, 7, 3);
+            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 10, py + 4, 3, 2);
+
+            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 4, py + 10, 9, 9);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 6, py + 11, 5, 5);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 4, py + 18, 9, 2);
+            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 8, py + 18, 2, 1);
+
+            if (runFrame === 0) {
+              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 8, py + 19, 4, 5);
+              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 9, py + 23, 6, 5);
+              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 9, py + 27, 6, 2);
+
+              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 2, py + 19, 4, 4);
+              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px,     py + 22, 5, 4);
+              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px,     py + 25, 5, 2);
+            } else if (runFrame === 1 || runFrame === 3) {
+              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 4, py + 19, 5, 5);
+              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 5, py + 24, 7, 4);
+              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 5, py + 27, 7, 2);
+            } else {
+              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 1, py + 19, 4, 5);
+              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px - 1, py + 23, 5, 4);
+              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px - 1, py + 26, 5, 2);
+
+              ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 7, py + 19, 4, 4);
+              ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 8, py + 22, 6, 5);
+              ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 8, py + 26, 6, 2);
+            }
           } else {
-            // 纯黑外轮廓
-            ctx.fillStyle = '#020617'; ctx.fillRect(px - 1, py, 18, 28);
-            // 亮银战甲
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2, py + 8, 12, 13);
-            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(px + 4, py + 10, 8, 9);
-            // 头盔
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2, py + 1, 12, 9);
-            ctx.fillStyle = '#090d16'; ctx.fillRect(px + 5, py + 3, 8, 5);
-            // 电光青目镜
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 6, py + 3, 8, 4);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 8, py + 4, 4, 2);
+            // 空中飞跃姿势
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 3, py + 1, 10, 9);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 5, py + 1, 6, 2);
+            ctx.fillStyle = COL_VISOR_CYAN; ctx.fillRect(px + 8, py + 4, 7, 3);
+            ctx.fillStyle = COL_VISOR_WHT; ctx.fillRect(px + 10, py + 4, 3, 2);
 
-            const leg = (Math.floor(this.tick / 3) % 2 === 0) ? 2 : -2;
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 2 + leg, py + 20, 5, 5);
-            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 8 - leg, py + 20, 5, 5);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 2 + leg, py + 24, 6, 4);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 8 - leg, py + 24, 6, 4);
+            ctx.fillStyle = COL_SUIT_MID; ctx.fillRect(px + 4, py + 10, 9, 9);
+            ctx.fillStyle = COL_SUIT_LIGHT; ctx.fillRect(px + 6, py + 11, 5, 5);
+
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 8, py + 18, 4, 4);
+            ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 9, py + 21, 6, 5);
+            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 9, py + 25, 6, 2);
+
+            ctx.fillStyle = COL_SUIT_DARK; ctx.fillRect(px + 1, py + 18, 4, 5);
+            ctx.fillStyle = COL_BOOT_WHT;  ctx.fillRect(px + 1, py + 22, 5, 4);
+            ctx.fillStyle = COL_BOOT_SOLE; ctx.fillRect(px + 1, py + 25, 5, 2);
+
+            if (this.stance === 'double_jump' || this.stance === 'dive') {
+              ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 10, py + 27, 4, 3);
+              ctx.fillStyle = '#00ffff'; ctx.fillRect(px + 2, py + 27, 4, 3);
+              ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 11, py + 28, 2, 2);
+              ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 3, py + 28, 2, 2);
+            }
           }
 
           if (this.shield) {
@@ -4300,12 +4385,12 @@
           }
         }
 
-        // 11. 飘逸流光绯红围巾
+        // 12. 飘逸流光绯红围巾 (高亮发光玫红)
         for (let i = 0; i < this.scarf.length; i++) {
           const sw = Math.max(3, 6 - i);
-          ctx.fillStyle = '#ff0055';
+          ctx.fillStyle = '#ff1760';
           ctx.fillRect(this.scarf[i].x, this.scarf[i].y - 1, sw, 4);
-          ctx.fillStyle = '#ff5588';
+          ctx.fillStyle = '#ffa8c4';
           ctx.fillRect(this.scarf[i].x + 1, this.scarf[i].y, sw - 2, 2);
         }
 
