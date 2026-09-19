@@ -287,6 +287,9 @@ void cyber_runner_input_ok(cr_game_t *g)
     float px = (float)CR_PLAYER_X + g->render_x_offset;
     float py = g->y - (float)CR_PLAYER_H;
 
+    g->slash_start_x = px;
+    g->slash_start_y = py + 15.0f;
+
     // 寻找前方 75px 内的可斩击目标 (无人机或全高激光)
     int target_idx = -1;
     float min_dist = 999.0f;
@@ -309,6 +312,9 @@ void cyber_runner_input_ok(cr_game_t *g)
         // === 命中目标！触发【影刃锁定瞬影斩爆 (Target Slice)】===
         cr_hazard_t *target = &g->hazards[target_idx];
         target->active = false; // 目标直接斩裂消灭！
+
+        g->slash_target_x = target->x + target->w * 0.5f;
+        g->slash_target_y = target->y + target->h * 0.5f;
 
         g->score += 200 * (1 + g->combo_count);
         g->combo_count++;
@@ -335,6 +341,9 @@ void cyber_runner_input_ok(cr_game_t *g)
         }
     } else {
         // 空挥 / 幽灵闪现瞬移
+        g->slash_target_x = px + 60.0f;
+        g->slash_target_y = py + 15.0f;
+
         if (g->blink_charges > 0 && !g->phase_shift) {
             g->blink_charges--;
             g->phase_shift = true;
@@ -421,6 +430,14 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
     } else {
         g->slash_timer_ms = 0;
         g->slash_active = false;
+    }
+
+    if (g->shockwave_timer_ms > dt_ms) {
+        g->shockwave_timer_ms -= dt_ms;
+        g->shockwave_radius += 160.0f * dt;
+    } else {
+        g->shockwave_timer_ms = 0;
+        g->shockwave_active = false;
     }
 
     // 闪现充能自动缓慢回复 (地面跑动时每 4s 回满一格)
@@ -549,8 +566,10 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
             // 俯冲砸地冲击波！
             g->pending_sound = CR_SND_DIVE_SLAM;
             g->shockwave_active = true;
-            g->shockwave_radius = 50.0f;
+            g->shockwave_timer_ms = 220;
+            g->shockwave_radius = 16.0f;
             g->shockwave_x = (float)CR_PLAYER_X + 8.0f;
+            g->shockwave_y = current_roof_y;
 
             for (int p = 0; p < 8; p++) {
                 cyber_runner_emit_particle(g, CR_PART_SPARK, CR_PLAYER_X + 8, current_roof_y,

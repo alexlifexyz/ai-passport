@@ -167,10 +167,16 @@ typedef struct {
     uint32_t jump_buffer_ms;     // 跳跃缓冲 (落地前 100ms 预按自动起跳)
     bool is_wall_sliding;        // 是否处于贴墙下滑状态
     float wall_slide_y;          // 贴墙基准
-    bool slash_active;           // 影刃斩击弧光显示帧 (40ms)
+    bool slash_active;           // 影刃斩击弧光显示帧
     uint32_t slash_timer_ms;
+    float slash_start_x;
+    float slash_start_y;
+    float slash_target_x;
+    float slash_target_y;
     bool shockwave_active;       // 俯冲砸地冲击波
+    uint32_t shockwave_timer_ms;
     float shockwave_x;
+    float shockwave_y;
     float shockwave_radius;
 
     // 围巾与残影
