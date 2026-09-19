@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI Passport - 《短腿爪爪运动会：萌宠滑稽冲刺》</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(circle at center, #2b1f3d 0%, #120c1f 100%);
+    color: #fdf2f8;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .nav-tabs a {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.1s;
+  }
+  .nav-tabs a:active { transform: scale(0.95); }
+  .tab-hub { background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.2); }
+  .tab-active {
+    background: linear-gradient(90deg, #f472b6, #fb923c);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(244, 114, 182, 0.6);
+    border: 1px solid #f472b6;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: #f472b6;
+    text-shadow: 0 0 16px rgba(244, 114, 182, 0.5), 0 0 4px #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .header p {
+    font-size: 12px;
+    color: #fcd34d;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* 模拟 AI Passport 透明外壳 */
+  .device-shell {
+    position: relative;
+    width: 324px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 100%);
+    border: 2px solid rgba(255,255,255,0.28);
+    border-radius: 28px;
+    padding: 20px 18px 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .device-brand {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 6px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #f472b6;
+    border-bottom: 1px dashed rgba(244, 114, 182, 0.3);
+    margin-bottom: 10px;
+  }
+  .device-brand .accent { color: #38bdf8; }
+
+  /* 240 x 320 物理屏幕比例 */
+  .screen-bezel {
+    width: 256px;
+    height: 336px;
+    background: #000;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.9), 0 0 20px rgba(244,114,182,0.3);
+    border: 2px solid #3b2d54;
+  }
+
+  #gameCanvas {
+    width: 240px;
+    height: 320px;
+    background: #70b77e;
+    border-radius: 6px;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* 物理 3 按键区 */
+  .controls-panel {
+    margin-top: 16px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .hw-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .btn-circle {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #3d2f57, #211933);
+    border: 2px solid rgba(255,255,255,0.25);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    color: #fff;
+    transition: transform 0.06s, background 0.06s, color 0.06s;
+  }
+  .btn-circle:active, .btn-circle.active {
+    transform: translateY(3px) scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    background: #f472b6;
+    color: #1e102e;
+  }
+  .hw-btn:nth-child(3) .btn-circle:active, .hw-btn:nth-child(3) .btn-circle.active {
+    background: #fb923c;
+    color: #fff;
+  }
+  .btn-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #fbcfe8;
+    letter-spacing: 0.5px;
+  }
+  .key-hint {
+    font-size: 9px;
+    color: #a78bfa;
+  }
+
+  .instructions {
+    margin-top: 14px;
+    max-width: 420px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: #e2e8f0;
+    line-height: 1.6;
+    text-align: center;
+  }
+  .instructions strong { color: #f472b6; }
+  .instructions kbd {
+    background: #4c1d95;
+    color: #fdf2f8;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #7c3aed;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="nav-tabs">
+  <a href="../arcade/" class="tab-hub">◀ 街机大厅</a>
+  <a href="hub.html" class="tab-hub">🌟 柜机中心 (Hub)</a>
+  <a href="paws-sprint.html" class="tab-active">🐾 短腿爪爪运动会</a>
+  <a href="thunder.html" class="tab-hub">⚡ 雷霆战机</a>
+  <a href="flysaber.html" class="tab-hub">🪰 果蝇光剑</a>
+</div>
+
+<div class="header">
+  <h1><span>🐾</span> 短腿爪爪运动会 (PAWS SPRINT)</h1>
+  <p>★ 柯基·柴犬·海豹·企鹅 · 零压力爆笑冲刺 · 扑向大抱枕 ★</p>
+</div>
+
+<div class="device-shell">
+  <div class="device-brand">
+    <span>AI PASSPORT<span class="accent">//</span>240x320</span>
+    <span>PAWS SPRINT V1.0</span>
+  </div>
+
+  <div class="screen-bezel">
+    <canvas id="gameCanvas" width="240" height="320"></canvas>
+  </div>
+
+  <!-- 3 实体物理按键模拟 -->
+  <div class="controls-panel">
+    <div class="hw-btn" id="btn-up">
+      <div class="btn-circle">◀</div>
+      <span class="btn-label">UP (左道/切人)</span>
+      <span class="key-hint"><kbd>←</kbd> 或 <kbd>↑</kbd></span>
+    </div>
+    <div class="hw-btn" id="btn-down">
+      <div class="btn-circle">▶</div>
+      <span class="btn-label">DOWN (右道/切人)</span>
+      <span class="key-hint"><kbd>→</kbd> 或 <kbd>↓</kbd></span>
+    </div>
+    <div class="hw-btn" id="btn-ok">
+      <div class="btn-circle">★</div>
+      <span class="btn-label">OK (跳跃/抱枕扑)</span>
+      <span class="key-hint"><kbd>空格</kbd> 或 <kbd>Enter</kbd></span>
+    </div>
+  </div>
+</div>
+
+<div class="instructions">
+  <strong>【AI Passport 三键规则】</strong>：<br>
+  选人时按 <strong>UP / DOWN</strong> 挑选萌宠，按 <strong>OK</strong> 开始；<br>
+  比赛中按 <strong>UP / DOWN</strong> 左右变道，按 <strong>OK</strong> 跳跃避障；<br>
+  踩香蕉皮会 360° 滑稽滑跪！终点按 <strong>OK</strong> 飞扑进蓬松大抱枕！
+</div>
+
+<script>
+// ==========================================
+// 声音合成器 (Pure Web Audio API, 零外部素材)
+// ==========================================
+class SoundSynth {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+  }
+  init() {
+    if (!this.ctx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        this.ctx = new AudioContext();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+  // 小肉垫吧唧踩地声
+  pata() {
+    if (this.muted || !this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const t = this.ctx.currentTime;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220 + Math.random() * 40, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.05);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.05);
+  }
+  // Q弹跳跃 (Boing!)
+  jump() {
+    if (this.muted || !this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const t = this.ctx.currentTime;
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(540, t + 0.16);
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.18);
+  }
+  // 踩香蕉皮滑行 (Whoop-Whoop!)
+  slip() {
+    if (this.muted || !this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const t = this.ctx.currentTime;
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, t);
+    osc.frequency.linearRampToValueAtTime(200, t + 0.25);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.28);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.28);
+  }
+  // 捡到骨头 (清脆叮咚)
+  bone() {
+    if (this.muted || !this.ctx) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    const note = notes[Math.floor(Math.random() * notes.length)];
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const t = this.ctx.currentTime;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(note, t);
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  }
+  // 扑向蓬松大抱枕 (沉闷松软 POOF + 和弦胜利)
+  cushionDive() {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    // 噗嗤蓬松噪音
+    const bufferSize = this.ctx.sampleRate * 0.4;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(400, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.5, t);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(t);
+
+    // 伴随胜利琶音
+    [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+      g.gain.setValueAtTime(0, t);
+      g.gain.setValueAtTime(0.2, t + idx * 0.08);
+      g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.08 + 0.4);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(t + idx * 0.08);
+      osc.stop(t + idx * 0.08 + 0.4);
+    });
+  }
+}
+
+const audio = new SoundSynth();
+
+// ==========================================
+// 角色配置与治愈寄语
+// ==========================================
+const CHARACTERS = [
+  {
+    id: 'corgi',
+    name: '柯基·球球',
+    sub: '摇摆蜜桃臀 · 短腿第一名',
+    color: '#f59e0b',
+    bellyColor: '#ffffff',
+    tag: '活力小太阳'
+  },
+  {
+    id: 'shiba',
+    name: '柴犬·阿柴',
+    sub: '飞机耳微笑 · 贴地滑行王',
+    color: '#d97706',
+    bellyColor: '#fef3c7',
+    tag: '治愈微笑'
+  },
+  {
+    id: 'seal',
+    name: '海豹·糯米',
+    sub: 'Q弹大白福 · DuangDuang弹跳',
+    color: '#e2e8f0',
+    bellyColor: '#f8fafc',
+    tag: '软萌雪米团'
+  },
+  {
+    id: 'penguin',
+    name: '企鹅·波波',
+    sub: '肚皮滑行家 · 呆萌小保龄球',
+    color: '#1e293b',
+    bellyColor: '#ffffff',
+    tag: '极地小绅士'
+  }
+];
+
+const HEALING_QUOTES = [
+  "今天也辛苦啦！跑不动的时候，随时可以像小狗一样扑倒在抱枕里哦。",
+  "不用争第一名，你奔跑着的小短腿已经是全宇宙最可爱的了！",
+  "累了就躺平吹吹风，这里永远有毛茸茸的小动物在等你想你。",
+  "就算踩到香蕉皮转了个圈，也是一支好看的快乐圆舞曲呀~",
+  "深呼吸一下！把烦恼丢在赛道上，把柔软的拥抱带回家吧。"
+];
+
+// ==========================================
+// 游戏主逻辑 (240x320 竖屏画布)
+// ==========================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const LANES_X = [48, 120, 192]; // 三条跑道中心坐标
+const TOTAL_DIST = 500; // 目标距离 500米
+
+let state = 'TITLE'; // TITLE, PLAYING, DIVE, RESULT
+let charIndex = 0;
+
+// 玩家状态
+let player = {
+  lane: 1, // 0: 左, 1: 中, 2: 右
+  x: 120,
+  targetX: 120,
+  y: 250,
+  jumpZ: 0, // 跳跃高度
+  jumpV: 0,
+  isJumping: false,
+  isSliding: false,
+  slipTimer: 0, // 踩香蕉皮旋转计时
+  spinAngle: 0,
+  squashY: 1, // Q弹挤压形变
+  squashX: 1,
+  runFrame: 0,
+  speed: 160,
+  distance: 0,
+  bones: 0,
+  slips: 0
+};
+
+// 赛道物体与背景粒子
+let obstacles = [];
+let pickups = [];
+let roadPawTimer = 0;
+let roadPaws = []; // 跑道上的小爪印
+let feathers = []; // 终点炸裂的彩色羽毛
+let resultQuote = '';
+
+// 障碍物类型: banana(香蕉皮), roomba(扫地机), mud(泥坑)
+function spawnObstacle() {
+  const lane = Math.floor(Math.random() * 3);
+  const types = ['banana', 'banana', 'roomba', 'mud'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  obstacles.push({
+    lane: lane,
+    x: LANES_X[lane],
+    y: -30,
+    type: type,
+    active: true
+  });
+}
+
+function spawnPickup() {
+  const lane = Math.floor(Math.random() * 3);
+  pickups.push({
+    lane: lane,
+    x: LANES_X[lane],
+    y: -30,
+    type: Math.random() < 0.25 ? 'heart' : 'bone',
+    active: true
+  });
+}
+
+// ==========================================
+// 输入响应与事件绑定
+// ==========================================
+function onActionUp() {
+  audio.init();
+  if (state === 'TITLE') {
+    charIndex = (charIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
+    audio.jump();
+  } else if (state === 'PLAYING') {
+    if (player.lane > 0) {
+      player.lane--;
+      player.targetX = LANES_X[player.lane];
+      triggerSquash();
+      audio.pata();
+    }
+  } else if (state === 'RESULT') {
+    resetToTitle();
+  }
+}
+
+function onActionDown() {
+  audio.init();
+  if (state === 'TITLE') {
+    charIndex = (charIndex + 1) % CHARACTERS.length;
+    audio.jump();
+  } else if (state === 'PLAYING') {
+    if (player.lane < 2) {
+      player.lane++;
+      player.targetX = LANES_X[player.lane];
+      triggerSquash();
+      audio.pata();
+    }
+  } else if (state === 'RESULT') {
+    resetToTitle();
+  }
+}
+
+function onActionOk() {
+  audio.init();
+  if (state === 'TITLE') {
+    startGame();
+  } else if (state === 'PLAYING') {
+    // 跳跃
+    if (!player.isJumping && player.slipTimer <= 0) {
+      player.isJumping = true;
+      player.jumpV = 8.5;
+      triggerStretch();
+      audio.jump();
+    }
+  } else if (state === 'DIVE') {
+    // 快速跳过慢镜头
+  } else if (state === 'RESULT') {
+    startGame();
+  }
+}
+
+function triggerSquash() {
+  player.squashX = 1.35;
+  player.squashY = 0.75;
+}
+function triggerStretch() {
+  player.squashX = 0.8;
+  player.squashY = 1.35;
+}
+
+function startGame() {
+  state = 'PLAYING';
+  player.lane = 1;
+  player.x = LANES_X[1];
+  player.targetX = LANES_X[1];
+  player.y = 250;
+  player.jumpZ = 0;
+  player.jumpV = 0;
+  player.isJumping = false;
+  player.slipTimer = 0;
+  player.spinAngle = 0;
+  player.speed = 180;
+  player.distance = 0;
+  player.bones = 0;
+  player.slips = 0;
+
+  obstacles = [];
+  pickups = [];
+  roadPaws = [];
+  feathers = [];
+
+  audio.jump();
+}
+
+function resetToTitle() {
+  state = 'TITLE';
+  audio.pata();
+}
+
+// 绑定虚拟按键与触摸
+const btnUp = document.getElementById('btn-up');
+const btnDown = document.getElementById('btn-down');
+const btnOk = document.getElementById('btn-ok');
+
+function bindBtn(elem, action) {
+  elem.addEventListener('mousedown', (e) => { e.preventDefault(); action(); elem.querySelector('.btn-circle').classList.add('active'); });
+  elem.addEventListener('mouseup', () => elem.querySelector('.btn-circle').classList.remove('active'));
+  elem.addEventListener('mouseleave', () => elem.querySelector('.btn-circle').classList.remove('active'));
+  elem.addEventListener('touchstart', (e) => { e.preventDefault(); action(); elem.querySelector('.btn-circle').classList.add('active'); });
+  elem.addEventListener('touchend', () => elem.querySelector('.btn-circle').classList.remove('active'));
+}
+
+bindBtn(btnUp, onActionUp);
+bindBtn(btnDown, onActionDown);
+bindBtn(btnOk, onActionOk);
+
+// 键盘按键映射
+window.addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'ArrowLeft', 'KeyW', 'KeyA'].includes(e.code)) {
+    e.preventDefault();
+    btnUp.querySelector('.btn-circle').classList.add('active');
+    onActionUp();
+  } else if (['ArrowDown', 'ArrowRight', 'KeyS', 'KeyD'].includes(e.code)) {
+    e.preventDefault();
+    btnDown.querySelector('.btn-circle').classList.add('active');
+    onActionDown();
+  } else if (['Space', 'Enter', 'KeyJ', 'KeyZ'].includes(e.code)) {
+    e.preventDefault();
+    btnOk.querySelector('.btn-circle').classList.add('active');
+    onActionOk();
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  btnUp.querySelector('.btn-circle').classList.remove('active');
+  btnDown.querySelector('.btn-circle').classList.remove('active');
+  btnOk.querySelector('.btn-circle').classList.remove('active');
+});
+
+// 画布触摸左右滑动支持
+let touchStartX = 0;
+let touchStartY = 0;
+canvas.addEventListener('touchstart', (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  audio.init();
+}, { passive: true });
+
+canvas.addEventListener('touchend', (e) => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > 30) {
+    if (dx < 0) onActionUp(); // 左滑
+    else onActionDown();      // 右滑
+  } else if (dy < -30) {
+    onActionOk(); // 上滑跳跃
+  } else {
+    onActionOk(); // 轻点
+  }
+}, { passive: true });
+
+// ==========================================
+// 游戏更新与渲染主循环
+// ==========================================
+let lastTime = performance.now();
+let spawnTimer = 0;
+let pickupTimer = 0;
+
+function update(dt) {
+  // Q弹平滑恢复
+  player.squashX += (1 - player.squashX) * 0.15;
+  player.squashY += (1 - player.squashY) * 0.15;
+
+  if (state === 'PLAYING') {
+    player.runFrame += dt * 10;
+
+    // 变道插值
+    player.x += (player.targetX - player.x) * 0.28;
+
+    // 跳跃重力
+    if (player.isJumping) {
+      player.jumpZ += player.jumpV;
+      player.jumpV -= 0.45; // 重力
+      if (player.jumpZ <= 0) {
+        player.jumpZ = 0;
+        player.jumpV = 0;
+        player.isJumping = false;
+        triggerSquash();
+        audio.pata();
+      }
+    }
+
+    // 踩香蕉皮陀螺滑行
+    if (player.slipTimer > 0) {
+      player.slipTimer -= dt;
+      player.spinAngle += dt * 15;
+      player.speed = 100; // 减速
+    } else {
+      player.spinAngle = 0;
+      player.speed = Math.min(240, 160 + player.distance * 0.12);
+    }
+
+    // 里程推进
+    const step = player.speed * dt;
+    player.distance += step * 0.08;
+
+    // 跑道梅花爪印生成
+    roadPawTimer += dt;
+    if (roadPawTimer > 0.18) {
+      roadPawTimer = 0;
+      audio.pata();
+      roadPaws.push({
+        x: player.x + (Math.random() * 8 - 4),
+        y: player.y + 12,
+        life: 1.0
+      });
+    }
+
+    // 爪印向下滚动
+    for (let i = roadPaws.length - 1; i >= 0; i--) {
+      roadPaws[i].y += step;
+      roadPaws[i].life -= dt * 0.8;
+      if (roadPaws[i].y > 330 || roadPaws[i].life <= 0) roadPaws.splice(i, 1);
+    }
+
+    // 生成障碍与收集物
+    spawnTimer += dt;
+    if (spawnTimer > 1.2 && player.distance < TOTAL_DIST - 40) {
+      spawnTimer = 0;
+      spawnObstacle();
+    }
+
+    pickupTimer += dt;
+    if (pickupTimer > 0.8 && player.distance < TOTAL_DIST - 30) {
+      pickupTimer = 0;
+      spawnPickup();
+    }
+
+    // 更新障碍物
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      o.y += step;
+      // 碰撞检测
+      if (o.active && Math.abs(o.y - player.y) < 18 && Math.abs(o.x - player.x) < 22) {
+        if (!player.isJumping) {
+          // 踩中障碍！
+          o.active = false;
+          if (o.type === 'banana') {
+            player.slipTimer = 0.9;
+            player.slips++;
+            audio.slip();
+            triggerSquash();
+          } else if (o.type === 'roomba') {
+            player.lane = (player.lane === 1) ? (Math.random() < 0.5 ? 0 : 2) : 1;
+            player.targetX = LANES_X[player.lane];
+            player.slipTimer = 0.5;
+            player.slips++;
+            audio.slip();
+          } else if (o.type === 'mud') {
+            player.slipTimer = 0.4;
+            audio.pata();
+          }
+        }
+      }
+      if (o.y > 340) obstacles.splice(i, 1);
+    }
+
+    // 更新收集品
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i];
+      p.y += step;
+      if (p.active && Math.abs(p.y - player.y) < 22 && Math.abs(p.x - player.x) < 22) {
+        p.active = false;
+        audio.bone();
+        if (p.type === 'bone') {
+          player.bones += 1;
+        } else {
+          player.bones += 3;
+          triggerStretch();
+        }
+      }
+      if (p.y > 340) pickups.splice(i, 1);
+    }
+
+    // 终点检测：扑向大抱枕！
+    if (player.distance >= TOTAL_DIST) {
+      state = 'DIVE';
+      diveTimer = 0;
+      audio.cushionDive();
+      // 炸裂羽毛
+      for (let i = 0; i < 60; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 40 + Math.random() * 120;
+        feathers.push({
+          x: 120,
+          y: 160,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd - 30,
+          rot: Math.random() * Math.PI,
+          vRot: (Math.random() - 0.5) * 6,
+          color: ['#ffffff', '#fbcfe8', '#fef08a', '#e0e7ff'][Math.floor(Math.random() * 4)],
+          size: 6 + Math.random() * 8,
+          life: 1.0
+        });
+      }
+      resultQuote = HEALING_QUOTES[Math.floor(Math.random() * HEALING_QUOTES.length)];
+    }
+  } else if (state === 'DIVE') {
+    diveTimer += dt;
+    // 更新羽毛飘落
+    for (let i = feathers.length - 1; i >= 0; i--) {
+      const f = feathers[i];
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.vy += 40 * dt; // 重力
+      f.rot += f.vRot * dt;
+      f.life -= dt * 0.4;
+      if (f.life <= 0) feathers.splice(i, 1);
+    }
+    if (diveTimer > 2.4) {
+      state = 'RESULT';
+    }
+  }
+}
+
+let diveTimer = 0;
+
+// ==========================================
+// 绘制系统 (Pixel & Vector Canvas)
+// ==========================================
+function render() {
+  ctx.clearRect(0, 0, 240, 320);
+
+  // 1. 绘制草地跑道背景
+  drawTrack();
+
+  if (state === 'TITLE') {
+    drawTitleScreen();
+  } else if (state === 'PLAYING') {
+    drawGameplay();
+  } else if (state === 'DIVE') {
+    drawDiveScreen();
+  } else if (state === 'RESULT') {
+    drawResultScreen();
+  }
+}
+
+// 绘制三轨跑道
+let roadOffset = 0;
+function drawTrack() {
+  roadOffset = (roadOffset + player.speed * 0.016) % 32;
+
+  // 跑道底色 (柔软草地与彩色软胶赛道)
+  ctx.fillStyle = '#65a30d'; // 柔和青草绿
+  ctx.fillRect(0, 0, 240, 320);
+
+  // 赛道主体
+  ctx.fillStyle = '#fef3c7'; // 暖杏黄塑胶跑道
+  ctx.fillRect(20, 0, 200, 320);
+
+  // 两侧红白软护栏
+  for (let y = -32 + roadOffset; y < 320; y += 32) {
+    ctx.fillStyle = (Math.floor((y - roadOffset) / 32) % 2 === 0) ? '#f43f5e' : '#ffffff';
+    ctx.fillRect(14, y, 6, 32);
+    ctx.fillRect(220, y, 6, 32);
+  }
+
+  // 跑道分界虚线
+  ctx.strokeStyle = '#fcd34d';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 16]);
+  ctx.lineDashOffset = -roadOffset;
+
+  ctx.beginPath();
+  ctx.moveTo(84, 0);
+  ctx.lineTo(84, 320);
+  ctx.moveTo(156, 0);
+  ctx.lineTo(156, 320);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 绘制路面小梅花脚印
+  for (const p of roadPaws) {
+    ctx.fillStyle = `rgba(217, 119, 6, ${p.life * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x - 3, p.y - 3, 1.2, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y - 4, 1.2, 0, Math.PI * 2);
+    ctx.arc(p.x + 3, p.y - 3, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// 绘制游戏进行中
+function drawGameplay() {
+  // 绘制障碍物
+  for (const o of obstacles) {
+    if (!o.active) continue;
+    if (o.type === 'banana') {
+      // 可爱香蕉皮
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#facc15';
+      ctx.stroke();
+      ctx.fillStyle = '#ca8a04';
+      ctx.fillRect(-2, -3, 4, 3);
+      ctx.restore();
+    } else if (o.type === 'roomba') {
+      // 呆萌扫地机
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (o.type === 'mud') {
+      // 泥巴小水坑
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.ellipse(o.x, o.y, 14, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 绘制收集品 (骨头 / 爱心)
+  for (const p of pickups) {
+    if (!p.active) continue;
+    const bob = Math.sin(performance.now() * 0.008 + p.x) * 3;
+    if (p.type === 'bone') {
+      ctx.save();
+      ctx.translate(p.x, p.y + bob);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-6, -2, 12, 4);
+      ctx.beginPath();
+      ctx.arc(-6, -3, 2.5, 0, Math.PI * 2);
+      ctx.arc(-6, 3, 2.5, 0, Math.PI * 2);
+      ctx.arc(6, -3, 2.5, 0, Math.PI * 2);
+      ctx.arc(6, 3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.translate(p.x, p.y + bob);
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(-3, -2, 4, Math.PI, 0);
+      ctx.arc(3, -2, 4, Math.PI, 0);
+      ctx.lineTo(0, 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 绘制前方即将出现的大抱枕 (460m 之后)
+  if (player.distance > TOTAL_DIST - 40) {
+    const cushionY = (TOTAL_DIST - player.distance) * 6; // 从上方滑落进屏幕
+    drawBigCushion(120, cushionY);
+  }
+
+  // 绘制玩家小动物
+  drawAnimal(player.x, player.y - player.jumpZ, CHARACTERS[charIndex], player.squashX, player.squashY, player.spinAngle);
+
+  // 顶部 HUD (米数进度条 + 骨头分数)
+  drawHUD();
+}
+
+// 绘制 Q 弹动物
+function drawAnimal(x, y, char, sx = 1, sy = 1, angle = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(sx, sy);
+
+  const bob = Math.sin(player.runFrame) * 2;
+  const buttWiggle = Math.sin(player.runFrame * 1.2) * 3;
+
+  if (char.id === 'corgi') {
+    // 柯基: 大耳朵 + 摇摆蜜桃臀
+    // 阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 蜜桃圆屁屁
+    ctx.fillStyle = char.color;
+    ctx.beginPath();
+    ctx.arc(buttWiggle, -2 + bob, 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 屁屁爱心白色绒毛
+    ctx.fillStyle = char.bellyColor;
+    ctx.beginPath();
+    ctx.arc(buttWiggle - 3, 0 + bob, 5, 0, Math.PI * 2);
+    ctx.arc(buttWiggle + 3, 0 + bob, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 小揪揪尾巴
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(buttWiggle, -12 + bob, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 标志性三角形大耳朵
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.moveTo(-11, -10 + bob);
+    ctx.lineTo(-6, -24 + bob);
+    ctx.lineTo(-2, -10 + bob);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(2, -10 + bob);
+    ctx.lineTo(6, -24 + bob);
+    ctx.lineTo(11, -10 + bob);
+    ctx.fill();
+
+    // 小短腿踏步
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-10, 7 + Math.sin(player.runFrame) * 3, 5, 5);
+    ctx.fillRect(5, 7 - Math.sin(player.runFrame) * 3, 5, 5);
+
+  } else if (char.id === 'shiba') {
+    // 柴犬: 卷尾巴 + 眯眯眼飞机耳
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 13, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 身体
+    ctx.fillStyle = char.color;
+    ctx.beginPath();
+    ctx.arc(0, -2 + bob, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 卷卷尾巴
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.arc(buttWiggle, -12 + bob, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 飞机耳
+    ctx.fillStyle = char.color;
+    ctx.beginPath();
+    ctx.moveTo(-12, -8 + bob);
+    ctx.lineTo(-18, -14 + bob);
+    ctx.lineTo(-6, -12 + bob);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(12, -8 + bob);
+    ctx.lineTo(18, -14 + bob);
+    ctx.lineTo(6, -12 + bob);
+    ctx.fill();
+
+    // 爪子
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-8, 6 + Math.sin(player.runFrame) * 3, 5, 4);
+    ctx.fillRect(3, 6 - Math.sin(player.runFrame) * 3, 5, 4);
+
+  } else if (char.id === 'seal') {
+    // 海豹: 雪白大团子，DuangDuang 弹跳
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 16, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 圆滚滚身体
+    ctx.fillStyle = char.color;
+    ctx.beginPath();
+    ctx.ellipse(0, -2 + bob, 14, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 呆萌小尾鳍
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.ellipse(buttWiggle, -12 + bob, 6, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 左右小鳍手
+    ctx.beginPath();
+    ctx.ellipse(-14, 0 + bob, 4, 3, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(14, 0 + bob, 4, 3, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else if (char.id === 'penguin') {
+    // 企鹅: 黑色礼服 + 肚皮滑行
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, 9, 13, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 黑色身体
+    ctx.fillStyle = char.color;
+    ctx.beginPath();
+    ctx.arc(0, -3 + bob, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 白色肚皮
+    ctx.fillStyle = char.bellyColor;
+    ctx.beginPath();
+    ctx.arc(0, -1 + bob, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 橘色小脚丫
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(-7, 7 + Math.sin(player.runFrame) * 2, 4, 3);
+    ctx.fillRect(3, 7 - Math.sin(player.runFrame) * 2, 4, 3);
+
+    // 小翅膀
+    ctx.fillStyle = char.color;
+    ctx.beginPath();
+    ctx.ellipse(-12, -4 + bob, 4, 7, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(12, -4 + bob, 4, 7, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// 绘制巨型柔软大抱枕
+function drawBigCushion(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // 抱枕阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, 30, 80, 24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 蓬松粉白大抱枕体
+  ctx.fillStyle = '#fce7f3';
+  ctx.beginPath();
+  ctx.roundRect(-75, -25, 150, 55, [25]);
+  ctx.fill();
+
+  // 抱枕立体光泽与缝线
+  ctx.strokeStyle = '#f472b6';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // 中间可爱的爱心印花
+  ctx.fillStyle = '#fb7185';
+  ctx.beginPath();
+  ctx.arc(-8, -4, 8, Math.PI, 0);
+  ctx.arc(8, -4, 8, Math.PI, 0);
+  ctx.lineTo(0, 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // "FINISH CUSHION!" 提示
+  ctx.fillStyle = '#be185d';
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('★ SUPER SOFT CUSHION ★', 0, -32);
+
+  ctx.restore();
+}
+
+// 绘制 HUD
+function drawHUD() {
+  // 顶部半透明横条
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+  ctx.fillRect(10, 8, 220, 26);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.strokeRect(10.5, 8.5, 219, 25);
+
+  // 里程进度条
+  const pct = Math.min(1, player.distance / TOTAL_DIST);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(16, 15, 110, 12);
+  ctx.fillStyle = '#f472b6';
+  ctx.fillRect(16, 15, 110 * pct, 12);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${Math.floor(player.distance)}m / ${TOTAL_DIST}m`, 20, 24);
+
+  // 骨头分数
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillText(`🦴 ${player.bones}`, 220, 24);
+}
+
+// 绘制选人/开始界面
+function drawTitleScreen() {
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+  ctx.fillRect(0, 0, 240, 320);
+
+  // 标题
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f472b6';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('PAWS SPRINT', 120, 48);
+
+  ctx.fillStyle = '#fcd34d';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('短腿爪爪运动会', 120, 66);
+
+  // 角色展示卡片
+  const char = CHARACTERS[charIndex];
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = '#f472b6';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(30, 88, 180, 140, [16]);
+  ctx.fill();
+  ctx.stroke();
+
+  // 角色形象大展示
+  drawAnimal(120, 145, char, 1.8, 1.8);
+
+  // 角色名字与特点
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText(char.name, 120, 186);
+
+  ctx.fillStyle = '#fbcfe8';
+  ctx.font = '10px monospace';
+  ctx.fillText(char.sub, 120, 204);
+
+  // 左右切换提示
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText('◀', 46, 150);
+  ctx.fillText('▶', 194, 150);
+
+  // 底部开始按钮提示
+  const blink = Math.sin(performance.now() * 0.006) > 0;
+  if (blink) {
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('【按 OK 键开始比赛】', 120, 268);
+  }
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '9px monospace';
+  ctx.fillText('UP/DOWN 挑选 · OK 确认', 120, 286);
+}
+
+// 绘制慢动作扑向大抱枕
+function drawDiveScreen() {
+  // 画面慢动作拉近
+  drawBigCushion(120, 170);
+
+  // 玩家在空中飞扑
+  const progress = Math.min(1, diveTimer / 1.5);
+  const diveY = 80 + progress * 90;
+  const diveScale = 1.6 + (1 - progress) * 0.4;
+  drawAnimal(120, diveY, CHARACTERS[charIndex], diveScale, diveScale, Math.PI * 0.1);
+
+  // 满屏飘飞的彩色羽毛
+  for (const f of feathers) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.rot);
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, f.size, f.size * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 大大的文字
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#f472b6';
+  ctx.shadowBlur = 10;
+  ctx.fillText('POOOOF!! 扑倒在抱枕里啦!', 120, 50);
+  ctx.shadowBlur = 0;
+}
+
+// 绘制结算与今日寄语
+function drawResultScreen() {
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.fillRect(0, 0, 240, 320);
+
+  // 顶部徽章
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f472b6';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('🎉 完美扑倒通关！', 120, 42);
+
+  // 成绩统计卡片
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.strokeStyle = 'rgba(244,114,182,0.4)';
+  ctx.strokeRect(20, 58, 200, 66);
+  ctx.fillRect(20, 58, 200, 66);
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`选手: ${CHARACTERS[charIndex].name}`, 32, 78);
+  ctx.fillText(`收集骨头: 🦴 ${player.bones} 块`, 32, 96);
+  ctx.fillText(`滑稽平地摔: 🍌 ${player.slips} 次`, 32, 114);
+
+  // 治愈寄语卡片
+  ctx.fillStyle = '#fdf2f8';
+  ctx.strokeStyle = '#f472b6';
+  ctx.beginPath();
+  ctx.roundRect(20, 136, 200, 116, [12]);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#be185d';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('💌【今日爪爪治愈签】', 120, 156);
+
+  // 自动换行绘制治愈寄语
+  ctx.fillStyle = '#475569';
+  ctx.font = '10px monospace';
+  wrapText(ctx, resultQuote, 120, 178, 176, 16);
+
+  // 底部重来提示
+  const blink = Math.sin(performance.now() * 0.006) > 0;
+  if (blink) {
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText('【按 OK 键再抱一次】', 120, 282);
+  }
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '9px monospace';
+  ctx.fillText('UP/DOWN 换人 · OK 重玩', 120, 298);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split('');
+  let line = '';
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n];
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      ctx.fillText(line, x, y);
+      line = words[n];
+      y += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, x, y);
+}
+
+// 驱动主循环
+function loop(now) {
+  const dt = Math.min(0.1, (now - lastTime) / 1000);
+  lastTime = now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

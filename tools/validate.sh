@@ -96,6 +96,10 @@ run_static_checks() {
         tests/test_cyber_runner_logic.c main/cyber_runner_logic.c \
         -o "${test_dir}/test_cyber_runner_logic"
     "${test_dir}/test_cyber_runner_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_pawssprint_logic.c main/pawssprint_logic.c \
+        -lm -o "${test_dir}/test_pawssprint_logic"
+    "${test_dir}/test_pawssprint_logic"
     python3 tests/test_verify_firmware.py
     rm -rf "${test_dir}"
     echo "Host tests: PASS"

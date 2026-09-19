@@ -26,6 +26,8 @@ idf_component_register(
          "geartrooper_logic.c"
          "demo_cyber_runner.c"
          "cyber_runner_logic.c"
+         "demo_pawssprint.c"
+         "pawssprint_logic.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )

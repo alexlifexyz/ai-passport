@@ -19,6 +19,7 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { "Paws Sprint", demo_pawssprint_enter, demo_pawssprint_exit, demo_pawssprint_key },
     { "Runner",    demo_cyber_runner_enter, demo_cyber_runner_exit, demo_cyber_runner_key },
     { "Cavalry",   demo_geartrooper_enter,  demo_geartrooper_exit,  demo_geartrooper_key  },
     { "Neon Pop",  demo_match3_enter,       demo_match3_exit,       demo_match3_key       },
@@ -37,7 +38,7 @@ static lv_obj_t *s_menu_scr;
 static lv_obj_t *s_cards[DEMO_COUNT];
 static lv_obj_t *s_rows[DEMO_COUNT];
 static lv_obj_t *s_mascot;
-static int  s_sel = 0;             // 当前选中项 (默认停在第一项 Runner)
+static int  s_sel = 0;             // 当前选中项 (默认停在第一项 Paws Sprint)
 static int  s_active = -1;         // 当前所在演示页;-1 = 在菜单
 
 static void menu_refresh(void) {
@@ -54,14 +55,18 @@ static void menu_refresh(void) {
 static void menu_build(void) {
     s_menu_scr = ui_pixel_screen_create("ARCADE");
 
-    int card_h = (DEMO_COUNT > 7) ? 26 : ((DEMO_COUNT > 5) ? 30 : 34);
-    int step_y = (DEMO_COUNT > 7) ? 31 : ((DEMO_COUNT > 5) ? 36 : 42);
-    int start_y = (DEMO_COUNT > 7) ? 36 : ((DEMO_COUNT > 5) ? 42 : 46);
+    int card_h = (DEMO_COUNT > 8) ? 23 : ((DEMO_COUNT > 7) ? 26 : ((DEMO_COUNT > 5) ? 30 : 34));
+    int step_y = (DEMO_COUNT > 8) ? 27 : ((DEMO_COUNT > 7) ? 31 : ((DEMO_COUNT > 5) ? 36 : 42));
+    int start_y = (DEMO_COUNT > 8) ? 34 : ((DEMO_COUNT > 7) ? 36 : ((DEMO_COUNT > 5) ? 42 : 46));
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
         int x = 16;
         int y = start_y + (int)i * step_y;
         s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 208, card_h, UI_PAPER);
+        if (DEMO_COUNT > 8) {
+            lv_obj_set_style_pad_top(s_cards[i], 1, 0);
+            lv_obj_set_style_pad_bottom(s_cards[i], 1, 0);
+        }
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);

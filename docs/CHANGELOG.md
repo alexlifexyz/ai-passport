@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- Added Paws Sprint: Fluffy Runner, a zero-frustration healing pet obstacle runner designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features 4 selectable fluffy companions (Corgi, Shiba, Seal, Penguin), 3-lane smooth switching, jump physics, zero-penalty comic banana peel 360° pirouette spins, Roomba bumps, bone and heart pickups, a 500m cushion dive with feather explosion, healing fortune cards, 40 FPS zero-malloc vector rendering, 16kHz pet sound effect synthesis, and 100% host unit test coverage.
+
 - Added Cyber Courier: Phantom Dash, a high-mobility cyberpunk infinite rooftop action runner designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features multi-tier rooftop abyss generation, mid-air Phantom Blink with zero-gravity phase-shift invulnerability and afterimages, double jump jet boost, ground slide under low obstacles, dive slam, pulse laser grids, security drone annihilation, fragile glass skylights, superconductor boost vents, and trailing dynamic neon scarf physics. Delivered with 40 FPS zero-malloc vector rendering, 16kHz cyberpunk synth audio, 100% host unit test coverage, and an Alex Arcade browser cabinet.
 
 - Added Gear Cavalry: Steam Overdrive, a fast-paced steampunk horizontal action runner for the 3-button (UP/DOWN/OK) AI Passport handheld. Features rotating ground gear physics, 3-button multi-action state machine (Jump, Plunge, Slide, and Lance Thrust), 100 PSI steam pressure overdrive invincible charge, zero-malloc entity/particle pools, 40 FPS immediate-mode vector graphics, 16kHz retro steampunk audio synthesis, and an Alex Arcade browser cabinet.
