@@ -266,66 +266,28 @@ static void on_draw_playfield(lv_event_t *e)
 {
     lv_layer_t *layer = lv_event_get_layer(e);
 
-    // 1. 赛博黄昏天际线全屏垂直渐变 (精确还原 attract-cyberrunner.jpg 赛博晚霞与夕阳霞光)
-    // 顶部深夜星空靛紫 (Y: 0 ~ 70)
-    draw_box(layer, 0, 0,   SCREEN_W, 35, 0x160826);
-    draw_box(layer, 0, 35,  SCREEN_W, 35, 0x2A0D3D);
-    // 中高空晚霞绛紫与玫瑰玫红 (Y: 70 ~ 140)
-    draw_box(layer, 0, 70,  SCREEN_W, 35, 0x48114E);
-    draw_box(layer, 0, 105, SCREEN_W, 35, 0x761756);
-    // 中空暖霞绯红与金橙 (Y: 140 ~ 195)
-    draw_box(layer, 0, 140, SCREEN_W, 30, 0xAA2B4A);
-    draw_box(layer, 0, 170, SCREEN_W, 25, 0xD84D2E);
-    // 璀璨金色落日地平线霞光 (Y: 195 ~ 240) —— 正好处于大厦屋顶奔跑纵深区间，形成极具冲击力的背光剪影对比！
-    draw_box(layer, 0, 195, SCREEN_W, 25, 0xEE7928);
-    draw_box(layer, 0, 220, SCREEN_W, 20, 0xF6A330);
-    // 大厦峡谷深处暖色暮霭 (Y: 240 ~ 320) —— 彻底消除纯黑/断层，建筑物间隙透出深邃都市霞光
-    draw_box(layer, 0, 240, SCREEN_W, 40, 0x881E48);
-    draw_box(layer, 0, 280, SCREEN_W, 40, 0x3E0C32);
+    // 1. 极简暗夜深空背景 (纯粹、深邃、完全退居幕后，绝不争抢视觉焦点)
+    draw_box(layer, 0, 0, SCREEN_W, SCREEN_H, 0x0A0712);
 
-    // 2. 晚霞像素积云 (带有玫瑰粉霞光边缘与暗紫云影)
+    // 2. 远景极暗大厦剪影 (极简深暗轮廓，仅提供微弱视差纵深，无任何刺眼发光点)
     int far_off = (int)s_game.bg_far_scroll_px;
-    int cloud_off = (far_off / 2) % (SCREEN_W + 80);
-    for (int cx = -80; cx < SCREEN_W + 80; cx += 110) {
-        int x = cx - cloud_off;
-        draw_box(layer, x + 6, 58, 48, 12, 0x320E40);
-        draw_box(layer, x + 16, 52, 32, 6, 0x320E40);
-        draw_box(layer, x + 2, 68, 54, 3, 0x8A1F5E);
-        draw_box(layer, x + 12, 71, 36, 2, 0xBA3468);
-    }
-
-    // 3. 远景摩天大楼剪影 (深靛黑剪影耸入金色霞光，带有天线与闪烁信标)
     for (int bx = -60; bx < SCREEN_W + 60; bx += 64) {
         int sx = bx - (far_off % 64);
         int bw = 38;
-        int bh = 155;
-        int by = 60;
-        // 大厦剪影主体 (深靛冷夜紫)
-        draw_box(layer, sx, by, bw, bh, 0x1B0E2E);
-        // 楼顶通信尖塔天线
-        draw_box(layer, sx + 2, by - 12, 2, 12, 0x1B0E2E);
-        if ((s_game.tick_count / 10) % 2 == 0) {
-            draw_box(layer, sx + 1, by - 14, 4, 2, 0xFF0055); // 红色防撞航标灯
-        }
-        // 剪影散落发光窗户 (暖金、电光青与霓虹粉，营造生动大都会)
-        draw_box(layer, sx + 6,  by + 22, 4, 3, 0xFDE047);
-        draw_box(layer, sx + 20, by + 30, 4, 3, 0x00FFFF);
-        draw_box(layer, sx + 12, by + 52, 4, 3, 0xFDE047);
-        draw_box(layer, sx + 26, by + 74, 4, 3, 0x38BDF8);
-        draw_box(layer, sx + 8,  by + 96, 4, 3, 0xFF2A6D);
+        int bh = 160;
+        int by = 80;
+        draw_box(layer, sx, by, bw, bh, 0x0E0B18);
+        draw_box(layer, sx + 2, by - 8, 2, 8, 0x0E0B18);
     }
 
-    // 4. 中景大厦与天际全息广告牌 (中速视差)
+    // 3. 中景暗调大厦 (低对比深暗剪影)
     int mid_off = (int)s_game.bg_mid_scroll_px;
     for (int bx = -80; bx < SCREEN_W + 80; bx += 88) {
         int sx = bx - (mid_off % 88);
-        draw_box(layer, sx, 110, 48, 150, 0x140B22);
-        // 垂直全息霓虹广告灯条
-        draw_box(layer, sx + 4, 124, 3, 28, 0x00F5FF);
-        draw_box(layer, sx + 40, 138, 3, 22, 0xFF0066);
+        draw_box(layer, sx, 130, 48, 140, 0x0C0916);
     }
 
-    // 5. 前景建筑屋顶平台 (深紫夜蓝砖墙 + 经典错落砖缝 + 超高对比度纯白电光青平台发光边)
+    // 4. 前景建筑屋顶平台 (沉稳纯净深黑平台 + 极简清晰的平台边缘)
     for (int i = 0; i < CR_MAX_BUILDINGS; i++) {
         cr_building_t *b = &s_game.buildings[i];
         if (!b->active) continue;
@@ -338,51 +300,22 @@ static void on_draw_playfield(lv_event_t *e)
         if (bx + bw < 0 || bx >= SCREEN_W) continue;
 
         if (b->is_glass && b->crumbled) {
-            // 已坍塌天窗不绘制表面实体，只留残破断壁
-            draw_box(layer, bx, by + 12, bw, bh - 12, 0x0E0B1A);
+            draw_box(layer, bx, by + 4, bw, bh - 4, 0x06040A);
             continue;
         }
 
-        // 大楼主体砖墙 (深靛夜蓝基底 0x1A1634，完美还原 attract-cyberrunner.jpg 的砖石质感)
-        uint32_t body_col = b->is_glass ? 0x121724 : 0x1A1634;
-        draw_box(layer, bx, by + 4, bw, bh - 4, body_col);
+        // 大楼主体 (深邃纯净暗色，完全不抢镜)
+        uint32_t body_col = b->is_glass ? 0x0E0B16 : 0x120F1E;
+        draw_box(layer, bx, by + 2, bw, bh - 2, body_col);
 
-        // 砖石横向缝隙与纵向错落砖纹
-        if (!b->is_glass) {
-            // 左右侧边光影修饰 (左深阴影 0x0E0B1C，右微光 0x2A244E)
-            draw_box(layer, bx, by + 4, 2, bh - 4, 0x0E0B1C);
-            draw_box(layer, bx + bw - 2, by + 4, 2, bh - 4, 0x2A244E);
-
-            // 经典水平砖缝 (每隔 11 像素一条暗黑砂浆线)
-            for (int ly = by + 12; ly < SCREEN_H; ly += 11) {
-                draw_box(layer, bx + 2, ly, bw - 4, 1, 0x0F0C20);
-            }
-            // 错落砖面微光高光块 (复刻参考图的细腻砖块肌理)
-            int seed = (int)b->win_seed;
-            for (int r = 0; r < 4; r++) {
-                int py_blk = by + 16 + r * 22;
-                if (py_blk + 8 < SCREEN_H) {
-                    int px1 = bx + 8 + ((seed >> (r * 3)) % (bw > 40 ? bw - 30 : 5));
-                    int px2 = bx + bw - 18 - ((seed >> (r * 2 + 1)) % 15);
-                    if (px1 + 10 < bx + bw) draw_box(layer, px1, py_blk, 10, 6, 0x272248);
-                    if (px2 > bx + 15)     draw_box(layer, px2, py_blk + 11, 10, 6, 0x272248);
-                }
-            }
-        }
-
-        // 屋顶平台发光边缘 (4px 超高识别度霓虹边缘：纯白高光线 + 电光青晶体 + 深青过渡)
-        // 这一圈边缘在任何复杂背景与光照下，均能以最高优先级标示落脚点
+        // 屋顶平台边缘 (清晰功能性边缘，一眼看清落点即可，不晃眼)
         if (b->is_glass) {
-            // 易碎天窗：白色预警边 + 烈焰霓虹玫红
-            uint32_t glass_edge = (b->crumble_timer_ms > 0) ? 0xFF0055 : 0xFF2A6D;
-            draw_box(layer, bx, by, bw, 2, 0xFFFFFF);
-            draw_box(layer, bx, by + 2, bw, 3, glass_edge);
-            draw_box(layer, bx, by + 5, bw, 1, 0x880033);
+            uint32_t glass_edge = (b->crumble_timer_ms > 0) ? 0xEF4444 : 0xDB2777;
+            draw_box(layer, bx, by, bw, 2, glass_edge);
         } else {
-            // 经典屋顶：1px 纯白顶高光 + 2px 极光电光青 + 1px 深青底边
-            draw_box(layer, bx, by, bw, 1, 0xFFFFFF);
-            draw_box(layer, bx, by + 1, bw, 2, 0x00FFFF);
-            draw_box(layer, bx, by + 3, bw, 1, 0x007799);
+            // 经典屋顶：1px 细白高光线 + 1px 青色边缘线，功能明确、干净利落
+            draw_box(layer, bx, by, bw, 1, 0xE2E8F0);
+            draw_box(layer, bx, by + 1, bw, 1, 0x0891B2);
         }
     }
 
@@ -516,9 +449,9 @@ static void on_draw_playfield(lv_event_t *e)
         int py = (int)(s_game.y - (float)ph);
 
         // 统一配色常量
-        const uint32_t COL_SUIT_DARK  = 0x14112E; // 午夜深靛潜行服底色
-        const uint32_t COL_SUIT_MID   = 0x282454; // 装甲主体蓝紫
-        const uint32_t COL_SUIT_LIGHT = 0x484382; // 肩背与关节高光
+        const uint32_t COL_SUIT_DARK  = 0x1E1B38; // 沉稳深靛潜行服底色 (清晰区别于背景暗空)
+        const uint32_t COL_SUIT_MID   = 0x353068; // 装甲主体蓝紫
+        const uint32_t COL_SUIT_LIGHT = 0x524C96; // 肩背与关节高光
         const uint32_t COL_VISOR_CYAN = 0x00FFFF; // 电光青面罩目镜
         const uint32_t COL_VISOR_WHT  = 0xFFFFFF; // 目镜反光白芯
         const uint32_t COL_BOOT_WHT   = 0xFFFFFF; // 纯白高帮运动跑鞋

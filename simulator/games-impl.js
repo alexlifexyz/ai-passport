@@ -4106,95 +4106,45 @@
       },
 
       render(ctx) {
-        // 1. 赛博黄昏天际线全屏垂直渐变 (精确还原 attract-cyberrunner.jpg 晚霞与金色霞光)
-        ctx.fillStyle = '#160826'; ctx.fillRect(0, 0, 240, 35);
-        ctx.fillStyle = '#2a0d3d'; ctx.fillRect(0, 35, 240, 35);
-        ctx.fillStyle = '#48114e'; ctx.fillRect(0, 70, 240, 35);
-        ctx.fillStyle = '#761756'; ctx.fillRect(0, 105, 240, 35);
-        ctx.fillStyle = '#aa2b4a'; ctx.fillRect(0, 140, 240, 30);
-        ctx.fillStyle = '#d84d2e'; ctx.fillRect(0, 170, 240, 25);
-        // 璀璨金色落日地平线霞光 (195~240) —— 正好处于大厦屋顶奔跑纵深区间，形成极具冲击力的背光剪影对比！
-        ctx.fillStyle = '#ee7928'; ctx.fillRect(0, 195, 240, 25);
-        ctx.fillStyle = '#f6a330'; ctx.fillRect(0, 220, 240, 20);
-        // 大厦峡谷深处暖色暮霭 (240~320) —— 彻底消除纯黑/断层，建筑物间隙透出深邃都市霞光
-        ctx.fillStyle = '#881e48'; ctx.fillRect(0, 240, 240, 40);
-        ctx.fillStyle = '#3e0c32'; ctx.fillRect(0, 280, 240, 40);
+        // 1. 极简暗夜深空背景 (纯粹、深邃、完全退居幕后，绝不争抢视觉焦点)
+        ctx.fillStyle = '#0a0712'; ctx.fillRect(0, 0, 240, 320);
 
-        // 2. 晚霞像素积云
+        // 2. 远景极暗大厦剪影 (极简深暗轮廓，仅提供微弱视差纵深，无任何刺眼发光点)
         const farOff = Math.floor(this.bgFar);
-        const cloudOff = Math.floor(farOff / 2) % 320;
-        for (let cx = -80; cx < 320; cx += 110) {
-          const x = cx - cloudOff;
-          ctx.fillStyle = '#320e40';
-          ctx.fillRect(x + 6, 58, 48, 12);
-          ctx.fillRect(x + 16, 52, 32, 6);
-          ctx.fillStyle = '#8a1f5e'; ctx.fillRect(x + 2, 68, 54, 3);
-          ctx.fillStyle = '#ba3468'; ctx.fillRect(x + 12, 71, 36, 2);
-        }
-
-        // 3. 远景摩天大楼剪影 (深靛黑剪影刺入金色霞光，带有天线与闪烁信标)
         for (let bx = -60; bx < 300; bx += 64) {
           const sx = bx - (farOff % 64);
-          ctx.fillStyle = '#1b0e2e';
-          ctx.fillRect(sx, 60, 38, 155);
-          ctx.fillRect(sx + 2, 48, 2, 12); // 天线
-          if (Math.floor(this.tick / 10) % 2 === 0) {
-            ctx.fillStyle = '#ff0055'; ctx.fillRect(sx + 1, 46, 4, 2);
-          }
-          ctx.fillStyle = '#fde047'; ctx.fillRect(sx + 6, 82, 4, 3);
-          ctx.fillStyle = '#00ffff'; ctx.fillRect(sx + 20, 90, 4, 3);
-          ctx.fillStyle = '#fde047'; ctx.fillRect(sx + 12, 112, 4, 3);
-          ctx.fillStyle = '#38bdf8'; ctx.fillRect(sx + 26, 134, 4, 3);
-          ctx.fillStyle = '#ff2a6d'; ctx.fillRect(sx + 8, 156, 4, 3);
+          ctx.fillStyle = '#0e0b18';
+          ctx.fillRect(sx, 80, 38, 160);
+          ctx.fillRect(sx + 2, 72, 2, 8);
         }
 
-        // 4. 中景大厦与霓虹招牌
+        // 3. 中景暗调大厦 (低对比深暗剪影)
         const midOff = Math.floor(this.bgMid);
         for (let bx = -80; bx < 320; bx += 88) {
           const sx = bx - (midOff % 88);
-          ctx.fillStyle = '#140b22';
-          ctx.fillRect(sx, 110, 48, 150);
-          ctx.fillStyle = '#00f5ff'; ctx.fillRect(sx + 4, 124, 3, 28);
-          ctx.fillStyle = '#ff0066'; ctx.fillRect(sx + 40, 138, 3, 22);
+          ctx.fillStyle = '#0c0916';
+          ctx.fillRect(sx, 130, 48, 140);
         }
 
-        // 5. 前景建筑屋顶 (深紫夜蓝砖墙 + 经典错落砖缝 + 纯白与电光青平台发光边)
+        // 4. 前景建筑屋顶平台 (沉稳纯净深黑平台 + 极简清晰的平台边缘)
         for (const b of this.buildings) {
           if (b.x + b.w < 0 || b.x >= 240) continue;
           if (b.glass && b.fallen) {
-            ctx.fillStyle = '#0e0b1a';
-            ctx.fillRect(b.x, b.y + 12, b.w, 320 - b.y);
+            ctx.fillStyle = '#06040a';
+            ctx.fillRect(b.x, b.y + 4, b.w, 320 - b.y);
             continue;
           }
 
-          ctx.fillStyle = b.glass ? '#121724' : '#1a1634';
-          ctx.fillRect(b.x, b.y + 4, b.w, 320 - b.y);
+          ctx.fillStyle = b.glass ? '#0e0b16' : '#120f1e';
+          ctx.fillRect(b.x, b.y + 2, b.w, 320 - b.y);
 
-          // 砖石肌理
-          if (!b.glass) {
-            ctx.fillStyle = '#0e0b1c'; ctx.fillRect(b.x, b.y + 4, 2, 320 - b.y);
-            ctx.fillStyle = '#2a244e'; ctx.fillRect(b.x + b.w - 2, b.y + 4, 2, 320 - b.y);
-            ctx.fillStyle = '#0f0c20';
-            for (let ly = b.y + 12; ly < 320; ly += 11) {
-              ctx.fillRect(b.x + 2, ly, b.w - 4, 1);
-            }
-            // 错落微光砖
-            ctx.fillStyle = '#272248';
-            for (let r = 0; r < 3; r++) {
-              ctx.fillRect(b.x + 12 + r * 28, b.y + 16 + r * 18, 10, 6);
-            }
-          }
-
-          // 屋顶发光边缘 (1px 白 + 2px 青 + 1px 深青)
+          // 屋顶平台边缘 (清晰功能性边缘，一眼看清落点即可，不晃眼)
           if (b.glass) {
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x, b.y, b.w, 2);
-            ctx.fillStyle = (b.crumble > 0) ? '#ff0055' : '#ff2a6d';
-            ctx.fillRect(b.x, b.y + 2, b.w, 3);
-            ctx.fillStyle = '#880033'; ctx.fillRect(b.x, b.y + 5, b.w, 1);
+            ctx.fillStyle = (b.crumble > 0) ? '#ef4444' : '#db2777';
+            ctx.fillRect(b.x, b.y, b.w, 2);
           } else {
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x, b.y, b.w, 1);
-            ctx.fillStyle = '#00ffff'; ctx.fillRect(b.x, b.y + 1, b.w, 2);
-            ctx.fillStyle = '#007799'; ctx.fillRect(b.x, b.y + 3, b.w, 1);
+            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(b.x, b.y, b.w, 1);
+            ctx.fillStyle = '#0891b2'; ctx.fillRect(b.x, b.y + 1, b.w, 1);
           }
         }
 
@@ -4288,9 +4238,9 @@
           const ph = (this.stance === 'slide') ? 14 : 30;
           const py = this.y - ph;
 
-          const COL_SUIT_DARK  = '#14112e';
-          const COL_SUIT_MID   = '#282454';
-          const COL_SUIT_LIGHT = '#484382';
+          const COL_SUIT_DARK  = '#1e1b38';
+          const COL_SUIT_MID   = '#353068';
+          const COL_SUIT_LIGHT = '#524c96';
           const COL_VISOR_CYAN = '#00ffff';
           const COL_VISOR_WHT  = '#ffffff';
           const COL_BOOT_WHT   = '#ffffff';
