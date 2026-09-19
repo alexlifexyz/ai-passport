@@ -3623,6 +3623,531 @@
 
         if (this.dead) drawOver(ctx, 'CORE SHUTDOWN', this.score);
       }
+    },
+
+    // --- 15. 霓虹疾行：影刃闪现 (Cyber Courier: Phantom Dash) ---
+    cyberrunner: {
+      init() {
+        this.y = 230;
+        this.vy = 0;
+        this.renderXOff = 0;
+        this.stance = 'run'; // 'run', 'jump', 'double_jump', 'blink', 'slide', 'dive', 'fall'
+        this.stanceTimer = 0;
+        this.airJumps = 1;
+        this.blinkCharges = 3;
+        this.blinkRecharge = 0;
+        this.phaseShift = false;
+        this.phaseTimer = 0;
+
+        this.hp = 3;
+        this.maxHp = 3;
+        this.shield = false;
+        this.score = 0;
+        this.dist = 0;
+        this.combo = 0;
+        this.comboTimer = 0;
+        this.invuln = 0;
+        this.dead = false;
+
+        this.speed = 180;
+        this.bgFar = 0;
+        this.bgMid = 0;
+        this.tick = 0;
+
+        // 初始大楼
+        this.buildings = [
+          { x: 0, y: 230, w: 170, glass: false, crumble: 0, fallen: false },
+          { x: 190, y: 220, w: 150, glass: false, crumble: 0, fallen: false },
+          { x: 360, y: 240, w: 150, glass: false, crumble: 0, fallen: false },
+          { x: 530, y: 215, w: 160, glass: false, crumble: 0, fallen: false },
+          { x: 710, y: 230, w: 160, glass: false, crumble: 0, fallen: false }
+        ];
+
+        this.hazards = [];
+        this.items = [];
+        this.particles = [];
+        this.afterimages = [];
+
+        // 围巾质点
+        this.scarf = [];
+        for (let i = 0; i < 5; i++) {
+          this.scarf.push({ x: 44 - i * 6, y: 210 });
+        }
+      },
+
+      key(btn, down, snd, fx) {
+        if (!down) return;
+        if (this.dead) {
+          if (btn === 'ok' || btn === 'up') this.init();
+          return;
+        }
+
+        if (btn === 'up') {
+          if (this.stance === 'run' || this.stance === 'slide') {
+            this.stance = 'jump';
+            this.vy = -440;
+            this.airJumps = 1;
+            if (snd) snd.playJump();
+            if (fx) fx.burst(50, this.y, 6, ['#06b6d4', '#22d3ee']);
+          } else if (this.airJumps > 0) {
+            this.airJumps = 0;
+            this.stance = 'double_jump';
+            this.vy = -390;
+            if (snd) snd.playJump();
+            if (fx) fx.burst(52, this.y - 4, 8, ['#22d3ee', '#ec4899']);
+          }
+        } else if (btn === 'down') {
+          if (this.stance === 'run') {
+            this.stance = 'slide';
+            this.stanceTimer = 0.42;
+            if (snd) snd.playLaser();
+            if (fx) fx.burst(44, this.y, 6, ['#f59e0b', '#fbbf24']);
+          } else if (this.stance === 'jump' || this.stance === 'double_jump' || this.stance === 'blink' || this.stance === 'fall') {
+            this.stance = 'dive';
+            this.vy = 650;
+          }
+        } else if (btn === 'ok') {
+          if (this.blinkCharges > 0 && !this.phaseShift) {
+            this.blinkCharges--;
+            this.phaseShift = true;
+            this.phaseTimer = 0.18;
+            this.stance = 'blink';
+            this.vy = 0;
+            this.renderXOff = 36;
+            if (snd) snd.playBlink();
+
+            // 生成残影
+            this.afterimages = [
+              { x: 32, y: this.y, alpha: 0.8, col: '#06b6d4' },
+              { x: 20, y: this.y, alpha: 0.6, col: '#ec4899' },
+              { x: 8,  y: this.y, alpha: 0.4, col: '#38bdf8' }
+            ];
+
+            if (fx) fx.burst(54, this.y - 14, 10, ['#ec4899', '#38bdf8', '#ffffff']);
+          }
+        }
+      },
+
+      update(dt, snd, fx) {
+        if (this.dead) return;
+        this.tick++;
+
+        if (this.speed < 320) this.speed += 0.8 * dt;
+        const dx = this.speed * dt;
+        this.dist += Math.floor(dx * 0.12);
+        this.score += Math.floor(dx * 0.2);
+
+        this.bgFar = (this.bgFar + dx * 0.15) % 240;
+        this.bgMid = (this.bgMid + dx * 0.45) % 240;
+
+        if (this.invuln > 0) this.invuln -= dt;
+        if (this.comboTimer > 0) {
+          this.comboTimer -= dt;
+          if (this.comboTimer <= 0) this.combo = 0;
+        }
+
+        // 闪现充能
+        if (this.blinkCharges < 3 && (this.stance === 'run' || this.stance === 'slide')) {
+          this.blinkRecharge += dt;
+          if (this.blinkRecharge >= 4.5) {
+            this.blinkCharges++;
+            this.blinkRecharge = 0;
+          }
+        }
+
+        // 闪现相位
+        if (this.phaseShift) {
+          this.renderXOff *= 0.88;
+          this.phaseTimer -= dt;
+          if (this.phaseTimer <= 0) {
+            this.phaseShift = false;
+            if (this.stance === 'blink') this.stance = 'fall';
+          }
+        }
+
+        // 滑铲
+        if (this.stance === 'slide') {
+          this.stanceTimer -= dt;
+          if (this.stanceTimer <= 0) this.stance = 'run';
+        }
+
+        // 重力物理
+        const prevY = this.y;
+        if (!this.phaseShift && this.stance !== 'run' && this.stance !== 'slide') {
+          this.vy += 1150 * dt;
+          this.y += this.vy * dt;
+        }
+
+        // 大楼位移与着陆
+        let onGround = false;
+        let groundY = 999;
+        let maxRight = 0;
+        let lastY = 220;
+
+        for (const b of this.buildings) {
+          b.x -= dx;
+          if (b.x + b.w > maxRight) { maxRight = b.x + b.w; lastY = b.y; }
+
+          if (!b.fallen && b.x <= 58 && (b.x + b.w) >= 46) {
+            if (prevY <= b.y + 5 && this.y >= b.y - 2) {
+              onGround = true;
+              groundY = b.y;
+              if (b.glass) {
+                b.crumble += dt;
+                if (b.crumble >= 0.35) {
+                  b.fallen = true;
+                  if (fx) fx.burst(b.x + b.w / 2, b.y, 10, ['#38bdf8', '#ffffff']);
+                }
+              }
+            }
+          }
+        }
+
+        // 回收大楼
+        for (let i = 0; i < this.buildings.length; i++) {
+          const b = this.buildings[i];
+          if (b.x + b.w < -20) {
+            const gap = 36 + Math.floor(Math.random() * 36);
+            const w = 130 + Math.floor(Math.random() * 90);
+            const dy = (Math.random() * 70) - 35;
+            let targetY = lastY + dy;
+            if (targetY < 190) targetY = 190;
+            if (targetY > 255) targetY = 255;
+
+            b.x = maxRight + gap;
+            b.y = targetY;
+            b.w = w;
+            b.glass = (this.dist > 120 && Math.random() < 0.18);
+            b.crumble = 0;
+            b.fallen = false;
+            maxRight = b.x + b.w;
+            lastY = b.y;
+
+            // 障碍与道具生成
+            if (w >= 110 && !b.glass) {
+              const r = Math.random();
+              if (r < 0.4) {
+                const ht = Math.floor(Math.random() * 4);
+                if (ht === 0) {
+                  this.hazards.push({ type: 'laser_low', x: b.x + b.w * 0.55, y: b.y - 8, w: 12, h: 8, active: true });
+                } else if (ht === 1) {
+                  this.hazards.push({ type: 'laser_high', x: b.x + b.w * 0.5, y: b.y - 28, w: 14, h: 10, active: true });
+                } else if (ht === 2) {
+                  this.hazards.push({ type: 'laser_wall', x: b.x + b.w * 0.6, y: b.y - 48, w: 8, h: 48, active: true });
+                } else {
+                  this.hazards.push({ type: 'drone', x: b.x + b.w * 0.5, y: b.y - 36, w: 18, h: 14, bob: 0, active: true });
+                }
+              } else if (r < 0.65) {
+                this.hazards.push({ type: 'vent', x: b.x + b.w * 0.4, y: b.y - 6, w: 20, h: 6, active: true });
+              } else if (r < 0.85) {
+                const it = Math.random();
+                const type = it < 0.6 ? 'gem' : (it < 0.9 ? 'battery' : 'shield');
+                this.items.push({ type, x: b.x + b.w * 0.5, y: b.y - 20, bob: 0, active: true });
+              }
+            }
+          }
+        }
+
+        if (onGround) {
+          if (this.stance === 'dive') {
+            if (snd) snd.playExplode(false);
+            if (fx) fx.burst(52, groundY, 8, ['#ec4899', '#f43f5e']);
+          }
+          this.y = groundY;
+          this.vy = 0;
+          this.airJumps = 1;
+          if (this.stance !== 'slide') this.stance = 'run';
+        } else {
+          if (this.stance === 'run' || this.stance === 'slide') this.stance = 'fall';
+        }
+
+        // 掉落深渊
+        if (this.y > 330) {
+          this.dead = true;
+          if (snd) snd.playExplode(true);
+          return;
+        }
+
+        // 障碍检测
+        const px = 44 + this.renderXOff;
+        const pw = 18;
+        const ph = (this.stance === 'slide') ? 14 : 30;
+        const py = this.y - ph;
+
+        for (const h of this.hazards) {
+          if (!h.active) continue;
+          h.x -= dx;
+          if (h.type === 'drone') {
+            h.bob = (h.bob || 0) + dt * 3.5;
+            h.y += Math.sin(h.bob) * 0.8;
+          }
+          if (h.x + h.w < -20) { h.active = false; continue; }
+
+          if (px < h.x + h.w && px + pw > h.x && py < h.y + h.h && py + ph > h.y) {
+            if (h.type === 'vent') {
+              this.vy = -560;
+              this.stance = 'jump';
+              this.airJumps = 1;
+              if (snd) snd.playMissile();
+              if (fx) fx.burst(h.x + 10, h.y, 6, ['#06b6d4', '#67e8f9']);
+            } else if (h.type === 'drone') {
+              if (this.phaseShift) {
+                h.active = false;
+                this.score += 150 * (1 + this.combo);
+                this.combo++;
+                this.comboTimer = 2.5;
+                if (snd) snd.playExplode(false);
+                if (fx) fx.burst(h.x + 8, h.y + 7, 12, ['#f43f5e', '#ffffff']);
+              } else if (this.invuln <= 0) {
+                this.takeDamage(snd, fx);
+              }
+            } else if (h.type === 'laser_wall' || h.type === 'laser_low' || h.type === 'laser_high') {
+              if (this.phaseShift) {
+                this.score += 50;
+                this.combo++;
+                this.comboTimer = 2.0;
+              } else if (this.invuln <= 0) {
+                this.takeDamage(snd, fx);
+              }
+            }
+          }
+        }
+
+        // 道具拾取
+        for (const it of this.items) {
+          if (!it.active) continue;
+          it.x -= dx;
+          it.bob = (it.bob || 0) + dt * 4;
+          const iy = it.y + Math.sin(it.bob) * 3;
+          if (it.x < -20) { it.active = false; continue; }
+
+          if (px < it.x + 10 && px + pw > it.x - 6 && py < iy + 10 && py + ph > iy - 6) {
+            it.active = false;
+            if (snd) snd.playCoin();
+            if (it.type === 'gem') {
+              this.score += 50 * (1 + this.combo);
+              this.combo++;
+              this.comboTimer = 2.5;
+              if (fx) fx.float(it.x, iy, '+50', '#06b6d4');
+            } else if (it.type === 'battery') {
+              this.blinkCharges = 3;
+              this.score += 100;
+              if (fx) fx.float(it.x, iy, 'FULL ⚡', '#10b981');
+            } else if (it.type === 'shield') {
+              this.shield = true;
+              this.score += 150;
+              if (fx) fx.float(it.x, iy, 'SHIELD', '#38bdf8');
+            }
+          }
+        }
+
+        // 围巾物理
+        this.scarf[0].x = px + 4;
+        this.scarf[0].y = py + 7;
+        for (let i = 1; i < this.scarf.length; i++) {
+          const tx = this.scarf[i - 1].x - 5.5;
+          const wave = Math.sin(this.tick * 0.25 + i * 0.8) * 2.2;
+          const ty = this.scarf[i - 1].y + wave + (this.vy * 0.015);
+          this.scarf[i].x += (tx - this.scarf[i].x) * 0.65;
+          this.scarf[i].y += (ty - this.scarf[i].y) * 0.55;
+        }
+
+        // 残影衰减
+        for (const img of this.afterimages) {
+          if (img.alpha > 0) img.alpha -= dt * 4;
+        }
+      },
+
+      takeDamage(snd, fx) {
+        if (this.shield) {
+          this.shield = false;
+          this.invuln = 1.2;
+          if (snd) snd.playLaser();
+          if (fx) fx.burst(52, this.y - 15, 8, ['#38bdf8', '#ffffff']);
+        } else {
+          this.hp--;
+          this.combo = 0;
+          this.invuln = 1.5;
+          if (snd) snd.playLaser();
+          if (fx) fx.burst(52, this.y - 15, 10, ['#f43f5e', '#ef4444']);
+          if (this.hp <= 0) {
+            this.dead = true;
+            if (snd) snd.playExplode(true);
+          }
+        }
+      },
+
+      render(ctx) {
+        // 1. 晚霞赛博天际线渐变
+        ctx.fillStyle = '#1a102f'; ctx.fillRect(0, 0, 240, 45);
+        ctx.fillStyle = '#3e1948'; ctx.fillRect(0, 45, 240, 40);
+        ctx.fillStyle = '#701a58'; ctx.fillRect(0, 85, 240, 40);
+        ctx.fillStyle = '#a83250'; ctx.fillRect(0, 125, 240, 40);
+        ctx.fillStyle = '#d9534f'; ctx.fillRect(0, 165, 240, 45);
+
+        // 2. 远景摩天大楼剪影
+        const farOff = Math.floor(this.bgFar);
+        for (let bx = -60; bx < 300; bx += 70) {
+          const sx = bx - (farOff % 70);
+          ctx.fillStyle = '#221236';
+          ctx.fillRect(sx, 50, 42, 140);
+          ctx.fillStyle = '#fde047'; ctx.fillRect(sx + 8, 68, 5, 4);
+          ctx.fillStyle = '#38bdf8'; ctx.fillRect(sx + 22, 76, 5, 4);
+          ctx.fillStyle = '#ec4899'; ctx.fillRect(sx + 14, 95, 5, 4);
+        }
+
+        // 3. 中景大厦与霓虹招牌
+        const midOff = Math.floor(this.bgMid);
+        for (let bx = -80; bx < 320; bx += 90) {
+          const sx = bx - (midOff % 90);
+          ctx.fillStyle = '#160b24';
+          ctx.fillRect(sx, 100, 52, 160);
+          ctx.fillStyle = '#06b6d4'; ctx.fillRect(sx + 4, 115, 3, 28);
+          ctx.fillStyle = '#f43f5e'; ctx.fillRect(sx + 44, 130, 3, 22);
+        }
+
+        // 4. 前景建筑屋顶
+        for (const b of this.buildings) {
+          if (b.x + b.w < 0 || b.x >= 240) continue;
+          if (b.glass && b.fallen) {
+            ctx.fillStyle = '#14101e';
+            ctx.fillRect(b.x, b.y + 12, b.w, 320 - b.y);
+            continue;
+          }
+
+          ctx.fillStyle = b.glass ? '#1e293b' : '#221b32';
+          ctx.fillRect(b.x, b.y + 3, b.w, 320 - b.y);
+
+          // 砖纹
+          if (!b.glass) {
+            ctx.fillStyle = '#181224';
+            for (let ly = b.y + 10; ly < 320; ly += 12) {
+              ctx.fillRect(b.x, ly, b.w, 1);
+            }
+          }
+
+          // 青色霓虹边缘
+          if (b.glass) {
+            ctx.fillStyle = (b.crumble > 0) ? '#f43f5e' : '#38bdf8';
+            ctx.fillRect(b.x, b.y, b.w, 4);
+            ctx.fillStyle = '#e0f2fe';
+            ctx.fillRect(b.x, b.y + 1, b.w, 2);
+          } else {
+            ctx.fillStyle = '#22d3ee'; ctx.fillRect(b.x, b.y, b.w, 2);
+            ctx.fillStyle = '#0891b2'; ctx.fillRect(b.x, b.y + 2, b.w, 2);
+            ctx.fillStyle = '#164e63'; ctx.fillRect(b.x, b.y + 4, b.w, 1);
+          }
+        }
+
+        // 5. 陷阱
+        for (const h of this.hazards) {
+          if (!h.active || h.x + h.w < 0 || h.x > 240) continue;
+          if (h.type === 'laser_low' || h.type === 'laser_high') {
+            ctx.fillStyle = '#f43f5e'; ctx.fillRect(h.x, h.y + 2, h.w, 3);
+            ctx.fillStyle = '#ffe4e6'; ctx.fillRect(h.x + 1, h.y + 3, h.w - 2, 1);
+            ctx.fillStyle = '#475569'; ctx.fillRect(h.x - 2, h.y, 3, h.h); ctx.fillRect(h.x + h.w - 1, h.y, 3, h.h);
+          } else if (h.type === 'laser_wall') {
+            ctx.fillStyle = '#be123c'; ctx.fillRect(h.x, h.y, h.w, h.h);
+            ctx.fillStyle = '#f43f5e'; ctx.fillRect(h.x + 2, h.y, h.w - 4, h.h);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(h.x + 3, h.y, 2, h.h);
+          } else if (h.type === 'drone') {
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(h.x + 2, h.y + 2, h.w - 4, h.h - 4);
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(h.x + h.w / 2 - 2, h.y + h.h / 2 - 2, 4, 4);
+            ctx.fillStyle = '#06b6d4'; ctx.fillRect(h.x - 3, h.y + 1, 4, 2); ctx.fillRect(h.x + h.w - 1, h.y + 1, 4, 2);
+          } else if (h.type === 'vent') {
+            ctx.fillStyle = '#334155'; ctx.fillRect(h.x, h.y, h.w, h.h);
+            ctx.fillStyle = '#06b6d4'; ctx.fillRect(h.x + 3, h.y + 1, h.w - 6, h.h - 2);
+          }
+        }
+
+        // 6. 道具
+        for (const it of this.items) {
+          if (!it.active || it.x < -10 || it.x > 250) continue;
+          const iy = it.y + Math.sin(it.bob || 0) * 3;
+          if (it.type === 'gem') {
+            ctx.fillStyle = '#06b6d4'; ctx.fillRect(it.x - 3, iy - 4, 6, 8);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(it.x - 1, iy - 2, 2, 4);
+          } else if (it.type === 'battery') {
+            ctx.fillStyle = '#10b981'; ctx.fillRect(it.x - 4, iy - 4, 8, 8);
+            ctx.fillStyle = '#34d399'; ctx.fillRect(it.x - 2, iy - 2, 4, 4);
+          } else if (it.type === 'shield') {
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(it.x - 5, iy - 5, 10, 10);
+            ctx.fillStyle = '#bae6fd'; ctx.fillRect(it.x - 3, iy - 3, 6, 6);
+          }
+        }
+
+        // 7. 残影
+        for (const img of this.afterimages) {
+          if (img.alpha > 0.1) {
+            ctx.fillStyle = img.col;
+            ctx.globalAlpha = img.alpha;
+            ctx.fillRect(img.x, img.y - 30, 18, 30);
+            ctx.globalAlpha = 1.0;
+          }
+        }
+
+        // 8. 角色主角
+        const hideBlink = (this.invuln > 0 && Math.floor(this.tick / 3) % 2 === 0);
+        if (!hideBlink) {
+          const px = 44 + this.renderXOff;
+          const ph = (this.stance === 'slide') ? 14 : 30;
+          const py = this.y - ph;
+
+          if (this.stance === 'slide') {
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(px, py + 4, 26, 10);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px + 18, py + 3, 7, 5);
+            ctx.fillStyle = '#f8fafc'; ctx.fillRect(px - 2, py + 6, 5, 6);
+          } else {
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 3, py + 10, 12, 14);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(px + 2, py + 1, 14, 10);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(px + 7, py + 4, 9, 4);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 9, py + 5, 5, 2);
+
+            const leg = (Math.floor(this.tick / 3) % 2 === 0) ? 2 : -2;
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(px + 3 + leg, py + 22, 5, 5);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(px + 9 - leg, py + 22, 5, 5);
+            ctx.fillStyle = '#f8fafc'; ctx.fillRect(px + 3 + leg, py + 26, 6, 4);
+            ctx.fillStyle = '#f8fafc'; ctx.fillRect(px + 9 - leg, py + 26, 6, 4);
+          }
+
+          if (this.shield) {
+            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2;
+            ctx.strokeRect(px - 4, py - 4, 26, ph + 8);
+          }
+        }
+
+        // 9. 飘逸围巾
+        ctx.fillStyle = '#f43f5e';
+        for (let i = 0; i < this.scarf.length; i++) {
+          const sw = Math.max(2, 5 - i);
+          ctx.fillRect(this.scarf[i].x, this.scarf[i].y, sw, 3);
+        }
+
+        // 10. HUD
+        ctx.fillStyle = 'rgba(26, 16, 47, 0.85)';
+        ctx.fillRect(0, 0, 240, 32);
+        ctx.fillStyle = '#f8fafc'; ctx.font = '11px monospace';
+        ctx.fillText(`${this.dist}m  ${this.score}`, 8, 14);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(`⚡${this.blinkCharges}`, 110, 14);
+
+        ctx.fillStyle = '#f43f5e';
+        let hpStr = '';
+        for (let i = 0; i < this.maxHp; i++) hpStr += (i < this.hp) ? '♥' : '♡';
+        if (this.shield) hpStr += ' [S]';
+        ctx.fillText(hpStr, 180, 14);
+
+        if (this.combo > 1) {
+          ctx.fillStyle = '#fde047'; ctx.font = '10px monospace';
+          ctx.fillText(`x${this.combo} ECHO`, 180, 26);
+        }
+
+        ctx.fillStyle = '#94a3b8'; ctx.font = '9px monospace';
+        ctx.fillText('UP:JUMP/2ND  DN:SLIDE/DIVE  OK:PHANTOM BLINK', 6, 312);
+
+        if (this.dead) drawOver(ctx, 'SIGNAL LOST', this.score);
+      }
     }
   };
 

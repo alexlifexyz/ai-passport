@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- Added Cyber Courier: Phantom Dash, a high-mobility cyberpunk infinite rooftop action runner designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features multi-tier rooftop abyss generation, mid-air Phantom Blink with zero-gravity phase-shift invulnerability and afterimages, double jump jet boost, ground slide under low obstacles, dive slam, pulse laser grids, security drone annihilation, fragile glass skylights, superconductor boost vents, and trailing dynamic neon scarf physics. Delivered with 40 FPS zero-malloc vector rendering, 16kHz cyberpunk synth audio, 100% host unit test coverage, and an Alex Arcade browser cabinet.
+
 - Added Gear Cavalry: Steam Overdrive, a fast-paced steampunk horizontal action runner for the 3-button (UP/DOWN/OK) AI Passport handheld. Features rotating ground gear physics, 3-button multi-action state machine (Jump, Plunge, Slide, and Lance Thrust), 100 PSI steam pressure overdrive invincible charge, zero-malloc entity/particle pools, 40 FPS immediate-mode vector graphics, 16kHz retro steampunk audio synthesis, and an Alex Arcade browser cabinet.
 
 - Added Cyber Match-3: Neon Pop, a high-performance tile-matching arcade title designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features zero-malloc deterministic state machine, 2-step directional neighbor swap, line laser and rainbow core syntheses, cascading gravity refills, and automatic deadlock reshuffling. Delivered with 40 FPS zero-DRAM immediate-mode vector rendering, 16kHz 8-bit retro audio synthesis, complete host unit tests, and an Alex Arcade browser cabinet.

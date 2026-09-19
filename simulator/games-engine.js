@@ -65,6 +65,20 @@
       osc.start(t); osc.stop(t + 0.11);
     }
 
+    playBlink() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1200, t);
+      osc.frequency.exponentialRampToValueAtTime(280, t + 0.12);
+      g.gain.setValueAtTime(0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.12);
+    }
+
     playExplode(isBig = false) {
       if (this.muted) return; this.init(); if (!this.ctx) return;
       const t = this.ctx.currentTime;
@@ -548,6 +562,21 @@
       downHint: '俯身滑铲 (碾碎蜘蛛)',
       okHint: '骑枪突刺 / 满气开启过载',
       help: '• <strong>UP 键</strong>：地面按为【跃马跳跃】，空中按为【重骑枪下刺】！<br>• <strong>DOWN 键</strong>：贴地【俯身滑铲】，可高速钻过障碍并碾碎发条蜘蛛。<br>• <strong>OK 键</strong>：向前刺出螺旋骑枪；当蒸汽压力达到 100 PSI 时，按 OK 激活【蒸汽过载】无敌冲撞！'
+    },
+    {
+      id: 'cyberrunner',
+      title: '霓虹疾行：影刃闪现',
+      subtitle: 'CYBER COURIER: PHANTOM DASH',
+      icon: '🥷',
+      category: 'action',
+      badge: 'CYBERPUNK',
+      difficulty: 3,
+      tags: ['空中幽灵闪现', '二段喷气腾空', '贴地滑铲/急降', '激光无人机穿爆', '飘逸流光围巾'],
+      desc: '赛博朋克大厦屋顶超高机动跑酷！化身穿梭在黄昏天际线上的幽灵信使，二段起跳、贴地滑铲，在半空中按下 OK 触发幽灵闪现与相位虚化，无敌穿透全屏激光与巡逻无人机！',
+      upHint: '起跳 / 二段喷气跳',
+      downHint: '贴地滑铲 / 空中极速俯冲',
+      okHint: '空中幽灵闪现 (虚化穿透)',
+      help: '• <strong>UP 键</strong>：地面【起跳】，空中再次按下触发【二段喷气跳跃】。<br>• <strong>DOWN 键</strong>：地面【极速滑铲】钻过低位高架管道；空中按下【极速俯冲】砸地。<br>• <strong>OK 键</strong>：在半空中释放【幽灵闪现】！瞬间向前突进并处于无敌相位虚化状态，可直接穿透激光栅栏或穿爆无人机！<br>• 闪现消耗 ⚡ 充能槽（最多3格），地面奔跑自动回复或拾取电池充满。'
     }
   ];
 
