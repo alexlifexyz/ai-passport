@@ -3893,8 +3893,8 @@
           b.x -= dx;
           if (b.x + b.w > maxRight) { maxRight = b.x + b.w; lastY = b.y; }
 
-          // A. 楼顶着陆
-          if (!b.fallen && b.x <= 62 && (b.x + b.w) >= 50) {
+          // A. 楼顶着陆 (脚部碰撞盒范围：48+4=52 到 48+22=70)
+          if (!b.fallen && b.x <= 70 && (b.x + b.w) >= 52) {
             if (prevY <= b.y + 5 && this.y >= b.y - 2) {
               onGround = true;
               groundY = b.y;
@@ -3910,7 +3910,7 @@
 
           // B. 侧面撞击大楼 -> 贴墙下滑 (Wall Slide)
           if (!onGround && (this.stance === 'jump' || this.stance === 'double_jump' || this.stance === 'fall' || this.stance === 'wall_slide')) {
-            const playerRight = 48 + 18;
+            const playerRight = 48 + 26;
             if (b.x <= playerRight + 3 && b.x >= playerRight - 6) {
               if (this.y > b.y + 6 && this.y < b.y + 120) {
                 wallTouched = true;
@@ -4047,8 +4047,8 @@
 
         // 障碍检测
         const px = 48 + this.renderXOff;
-        const pw = 18;
-        const ph = (this.stance === 'slide') ? 14 : 30;
+        const pw = 26;
+        const ph = (this.stance === 'slide') ? 20 : 42;
         const py = this.y - ph;
 
         for (const h of this.hazards) {
@@ -4120,8 +4120,8 @@
         }
 
         // 围巾物理
-        this.scarf[0].x = px + 4;
-        this.scarf[0].y = py + 7;
+        this.scarf[0].x = px + 6;
+        this.scarf[0].y = py + 14;
         for (let i = 1; i < this.scarf.length; i++) {
           const tx = this.scarf[i - 1].x - 5.5;
           const wave = Math.sin(this.tick * 0.25 + i * 0.8) * 2.2;
@@ -4286,203 +4286,274 @@
           ctx.restore();
         }
 
-        // 10. 残影
+        // 10. 极速冲刺/闪现破空流光线 (Aero Speed Streaks) —— 彻底消除纯黄色大方块，呈现流线型音爆光轨！
         for (const img of this.afterimages) {
-          if (img.alpha > 0.1) {
-            ctx.fillStyle = img.col;
+          if (img.alpha > 0.15) {
+            const ax = Math.floor(img.x);
+            const ay = Math.floor(img.y - 42);
             ctx.globalAlpha = img.alpha;
-            ctx.fillRect(img.x, img.y - 30, 18, 30);
+            ctx.fillStyle = '#facc15'; ctx.fillRect(ax - 12, ay + 14, 18, 1);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(ax - 6,  ay + 24, 22, 1);
+            ctx.fillStyle = '#38bdf8'; ctx.fillRect(ax - 16, ay + 34, 16, 1);
             ctx.globalAlpha = 1.0;
           }
         }
 
         // 11. 玩家主角 —— 【阿童木 / 超级飞人】(Astro Boy Super Flyer)
-        // 标志性黑尖双角发型 + 阳光少年大眼睛 + 经典大红短裤 + 翠绿腰带 + 纯正大红火箭靴与火箭推进烈焰！
+        // 经典前后翘尖角大发型 + 阳光清澈大眼睛(带纯白大高光球) + 健美身躯 + 经典大红短裤 + 翠绿腰带黄金扣 + 高筒大红火箭靴与强力喷火长焰！
         const hideBlink = (this.invuln > 0 && Math.floor(this.tick / 3) % 2 === 0);
         if (!hideBlink) {
           const px = 48 + this.renderXOff;
-          const ph = (this.stance === 'slide') ? 14 : 30;
+          const ph = (this.stance === 'slide') ? 20 : 42;
           const py = this.y - ph;
 
-          const COL_HAIR_DARK   = '#0f172a';
-          const COL_HAIR_LIGHT  = '#334155';
-          const COL_SKIN_BASE   = '#fed7aa';
-          const COL_SKIN_SHADOW = '#fdba74';
-          const COL_EYE_PUPIL   = '#000000';
-          const COL_EYE_GLEAM   = '#ffffff';
-          const COL_BELT_GRN    = '#10b981';
-          const COL_BELT_GOLD   = '#facc15';
-          const COL_SHORTS_RED  = '#ef4444';
-          const COL_BOOT_RED    = '#dc2626';
-          const COL_BOOT_NOZZLE = '#475569';
-          const COL_FLAME_CORE  = '#ffffff';
-          const COL_FLAME_MID   = '#facc15';
-          const COL_FLAME_OUT   = '#f97316';
+          // 阿童木经典纯正配色
+          const COL_HAIR_DARK   = '#0f172a'; // 乌黑发色
+          const COL_HAIR_LIGHT  = '#334155'; // 发顶发丝高光
+          const COL_SKIN_BASE   = '#fed7aa'; // 阳光少年肤色
+          const COL_SKIN_SHADOW = '#fdba74'; // 面部/下颌修容阴影
+          const COL_EYE_PUPIL   = '#000000'; // 英雄大眼球/黑眼眶
+          const COL_EYE_GLEAM   = '#ffffff'; // 晶莹大高光圆点
+          const COL_BELT_GRN    = '#10b981'; // 翡翠绿腰带
+          const COL_BELT_GOLD   = '#facc15'; // 纯金腰带方扣
+          const COL_SHORTS_RED  = '#ef4444'; // 经典纯正大红短裤
+          const COL_BOOT_RED    = '#dc2626'; // 经典正红火箭靴
+          const COL_BOOT_TOP    = '#ffffff'; // 火箭靴白折边
+          const COL_BOOT_NOZZLE = '#475569'; // 靴底坚固金属喷气口
+          const COL_FLAME_CORE  = '#ffffff'; // 尾焰纯白热核
+          const COL_FLAME_MID   = '#facc15'; // 尾焰金黄主束
+          const COL_FLAME_OUT   = '#f97316'; // 尾焰炽橙外焰
 
           if (this.stance === 'slide') {
-            // 1) 地面贴地极速滑铲
+            // 1) 地面贴地极速滑铲 (超低姿态飞驰，身后火箭靴强力喷火推进)
+            // 头部前探与双尖发型
             ctx.fillStyle = COL_HAIR_DARK;
-            ctx.fillRect(px + 17, py + 1, 2, 2);
-            ctx.fillRect(px + 12, py + 1, 6, 8);
+            ctx.fillRect(px + 22, py + 1, 4, 3); // 前额翘角
+            ctx.fillRect(px + 14, py + 1, 9, 10); // 脑后黑发
             ctx.fillStyle = COL_SKIN_BASE;
-            ctx.fillRect(px + 14, py + 3, 6, 6);
+            ctx.fillRect(px + 17, py + 4, 8, 8);  // 脸庞
             ctx.fillStyle = COL_EYE_PUPIL;
-            ctx.fillRect(px + 17, py + 4, 3, 3);
+            ctx.fillRect(px + 20, py + 5, 4, 5);  // 大眼睛
             ctx.fillStyle = COL_EYE_GLEAM;
-            ctx.fillRect(px + 18, py + 4, 1, 1);
+            ctx.fillRect(px + 21, py + 5, 2, 2);  // 晶莹高光点
 
-            ctx.fillStyle = COL_SKIN_BASE; ctx.fillRect(px + 7, py + 4, 7, 6);
-            ctx.fillStyle = COL_BELT_GRN;  ctx.fillRect(px + 5, py + 4, 2, 6);
-            ctx.fillStyle = COL_BELT_GOLD; ctx.fillRect(px + 5, py + 6, 2, 2);
-            ctx.fillStyle = COL_SHORTS_RED;ctx.fillRect(px + 1, py + 4, 4, 6);
+            // 水平流线身躯与绿腰带、红短裤
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 8, py + 6, 9, 8);
+            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 5, py + 6, 3, 8);
+            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 6, py + 8, 2, 4);
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 1, py + 6, 4, 8);
 
-            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px - 5, py + 5, 6, 5);
-            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px - 6, py + 5, 2, 5);
+            // 笔直后伸的大红火箭靴
+            ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px - 6, py + 7, 7, 6);
+            ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px - 8, py + 7, 2, 6);
 
-            // 火箭靴水平喷焰
-            ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px - 11, py + 6, 5, 3);
-            ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px - 9,  py + 6, 3, 2);
-            ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px - 7,  py + 7, 2, 1);
-            ctx.fillStyle = '#ffffff';      ctx.fillRect(px + 6,  py + 12, 6, 2);
+            // 火箭靴向后水平强力喷火长焰 (14px)
+            ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px - 18, py + 8, 10, 4);
+            ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px - 14, py + 8, 6, 3);
+            ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px - 11, py + 9, 3, 2);
+            ctx.fillStyle = '#ffffff';      ctx.fillRect(px + 6,  py + 18, 8, 2); // 地面火花
           } else if (this.stance === 'wall_slide') {
-            // 2) 贴墙下滑
+            // 2) 贴墙下滑姿态 (单手撑墙，外侧脚喷火缓冲)
             ctx.fillStyle = COL_HAIR_DARK;
-            ctx.fillRect(px + 3, py - 2, 2, 3);
-            ctx.fillRect(px + 9, py - 1, 2, 2);
-            ctx.fillRect(px + 4, py,     8, 8);
+            ctx.fillRect(px + 3,  py - 3, 5, 4); // 脑后后翘大尖角
+            ctx.fillRect(px + 14, py - 1, 4, 3); // 前额小尖角
+            ctx.fillRect(px + 5,  py + 1, 12, 10);
             ctx.fillStyle = COL_SKIN_BASE;
-            ctx.fillRect(px + 6, py + 2, 6, 6);
+            ctx.fillRect(px + 8,  py + 4, 9, 8);
             ctx.fillStyle = COL_EYE_PUPIL;
-            ctx.fillRect(px + 9, py + 3, 3, 4);
+            ctx.fillRect(px + 12, py + 5, 4, 5);
             ctx.fillStyle = COL_EYE_GLEAM;
-            ctx.fillRect(px + 10, py + 3, 1, 1);
+            ctx.fillRect(px + 13, py + 5, 2, 2);
 
-            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 3, py + 8, 8, 7);
-            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 3, py + 15, 8, 2);
-            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 6, py + 15, 2, 2);
-            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 3, py + 17, 8, 4);
+            // 身躯与服饰
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 5, py + 14, 11, 8);
+            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 5, py + 22, 11, 3);
+            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 9, py + 22, 3, 3);
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 5, py + 25, 11, 6);
 
-            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 11, py + 9, 5, 3);
-            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 4, py + 21, 6, 6);
-            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 4, py + 27, 6, 2);
+            // 撑墙手臂
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 16, py + 15, 6, 4);
 
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(px + 17, py + 12, 3, 3);
-            ctx.fillStyle = '#facc15'; ctx.fillRect(px + 17, py + 18, 2, 4);
-            ctx.fillStyle = COL_FLAME_MID; ctx.fillRect(px + 5, py + 29, 4, 2);
+            // 大红火箭靴
+            ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 6, py + 31, 8, 8);
+            ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 6, py + 39, 8, 2);
+
+            // 贴墙剧烈摩擦火花
+            const spk_x = px + 26 - 1;
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(spk_x, py + 18, 3, 3);
+            ctx.fillStyle = '#facc15'; ctx.fillRect(spk_x, py + 26, 3, 5);
+            ctx.fillStyle = COL_FLAME_MID; ctx.fillRect(px + 8, py + 41, 5, 3);
           } else if (this.stance === 'run') {
-            // 3) 楼顶极速飞奔 (经典阿童木双尖发型 + 阳光大眼 + 纯正大红短裤 + 大红火箭长靴)
+            // 3) 楼顶极速疾跑 (饱满生动的 2.5 头身阿童木形象)
             const runFrame = Math.floor(this.tick / 3) % 4;
 
+            // 1. 脑后冲天耸立大后角 (阿童木第一剪影特征)
             ctx.fillStyle = COL_HAIR_DARK;
-            ctx.fillRect(px + 2,  py - 3, 3, 4); // 脑后经典耸立后翘尖角！
-            ctx.fillRect(px + 10, py - 2, 2, 3); // 前额帅气微翘小尖角！
-            ctx.fillRect(px + 3,  py,     9, 8);
+            ctx.fillRect(px + 2, py - 4, 4, 4);
+            ctx.fillRect(px + 4, py - 1, 6, 4);
             ctx.fillStyle = COL_HAIR_LIGHT;
-            ctx.fillRect(px + 5,  py + 1, 5, 2);
+            ctx.fillRect(px + 5, py + 1, 4, 3); // 尖角发丝高光
+            // 2. 前额向前挑起的小帅发角
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 16, py - 2, 4, 4);
+            ctx.fillRect(px + 18, py + 1, 3, 3);
+            // 3. 乌黑发冠主体与高光
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 5, py + 2, 14, 6);
+            ctx.fillStyle = COL_HAIR_LIGHT;
+            ctx.fillRect(px + 8, py + 2, 7, 2);
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 4, py + 7, 5, 7);
 
+            // 4. 阳光英雄面庞 (肉色大面积展现)
             ctx.fillStyle = COL_SKIN_BASE;
-            ctx.fillRect(px + 6, py + 2, 7, 7);
+            ctx.fillRect(px + 9, py + 7, 12, 9);
+            ctx.fillStyle = COL_SKIN_SHADOW;
+            ctx.fillRect(px + 11, py + 15, 7, 2);
+            ctx.fillStyle = '#ea580c'; // 自信微笑嘴角
+            ctx.fillRect(px + 18, py + 13, 2, 1);
+
+            // 5. 传神英雄大眼睛 (5x7 像素，纯白大高光球，清澈灵动！)
             ctx.fillStyle = COL_EYE_PUPIL;
-            ctx.fillRect(px + 9, py + 3, 4, 4);
-            ctx.fillStyle = COL_EYE_GLEAM;
-            ctx.fillRect(px + 10, py + 3, 2, 2);
+            ctx.fillRect(px + 13, py + 7, 6, 7);
+            ctx.fillStyle = '#f8fafc'; // 眼白
+            ctx.fillRect(px + 14, py + 12, 4, 2);
+            ctx.fillStyle = COL_EYE_GLEAM; // 白色晶莹反光高光！
+            ctx.fillRect(px + 14, py + 8, 3, 3);
+            ctx.fillStyle = COL_EYE_PUPIL; // 浓密上睫毛
+            ctx.fillRect(px + 12, py + 7, 6, 1);
 
+            // 健美少年胸腹部与手臂摆动
             ctx.fillStyle = COL_SKIN_BASE;
-            ctx.fillRect(px + 4, py + 9, 8, 7);
+            ctx.fillRect(px + 7, py + 16, 12, 8);
+            ctx.fillStyle = COL_SKIN_SHADOW;
+            ctx.fillRect(px + 9, py + 19, 8, 1);
+
             if (runFrame === 0 || runFrame === 1) {
-              ctx.fillRect(px + 11, py + 11, 4, 3);
-              ctx.fillRect(px + 1,  py + 10, 3, 3);
+              ctx.fillStyle = COL_SKIN_BASE;
+              ctx.fillRect(px + 17, py + 18, 6, 4); // 前伸摆臂
+              ctx.fillRect(px + 22, py + 17, 3, 4); // 握拳
+              ctx.fillRect(px + 2,  py + 17, 5, 4); // 后摆小臂
             } else {
-              ctx.fillRect(px + 12, py + 10, 3, 3);
-              ctx.fillRect(px + 1,  py + 11, 4, 3);
+              ctx.fillStyle = COL_SKIN_BASE;
+              ctx.fillRect(px + 18, py + 16, 5, 4);
+              ctx.fillRect(px + 2,  py + 18, 6, 4);
             }
 
-            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 4, py + 16, 8, 2);
-            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 7, py + 16, 2, 2);
-            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 4, py + 18, 8, 4);
+            // 绿腰带与纯金方扣
+            ctx.fillStyle = COL_BELT_GRN;  ctx.fillRect(px + 6, py + 24, 14, 3);
+            ctx.fillStyle = COL_BELT_GOLD; ctx.fillRect(px + 11, py + 23, 4, 4);
+            ctx.fillStyle = '#ffffff';     ctx.fillRect(px + 12, py + 24, 2, 2); // 金扣高光
 
+            // 经典大红战斗短裤
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 6, py + 27, 14, 6);
+            ctx.fillStyle = '#991b1b';      ctx.fillRect(px + 12, py + 29, 1, 4); // 裤管分缝
+
+            // 经典高筒大红火箭长靴 (双腿大步交替)
             if (runFrame === 0) {
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 8, py + 20, 5, 5);
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 8, py + 25, 6, 4);
-              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 8, py + 29, 6, 2);
+              ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 13, py + 33, 8, 2);
+              ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 13, py + 35, 8, 5);
+              ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 13, py + 40, 8, 2);
 
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 19, 4, 4);
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px - 1, py + 23, 5, 4);
-              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px - 1, py + 27, 5, 2);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px - 2, py + 29, 2, 2);
+              ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 2,  py + 32, 7, 2);
+              ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 1,  py + 34, 7, 5);
+              ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 1,  py + 39, 7, 2);
+              ctx.fillStyle = COL_FLAME_MID;   ctx.fillRect(px - 1,  py + 41, 3, 2); // 脚跟推进微火花
             } else if (runFrame === 1 || runFrame === 3) {
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 5, py + 20, 5, 5);
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 5, py + 25, 6, 4);
-              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 5, py + 29, 6, 2);
+              ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 8, py + 33, 8, 2);
+              ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 8, py + 35, 8, 5);
+              ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 8, py + 40, 8, 2);
             } else {
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 20, 4, 4);
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px,     py + 24, 5, 4);
-              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px,     py + 28, 5, 2);
+              ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 2,  py + 33, 7, 2);
+              ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 2,  py + 35, 7, 5);
+              ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 2,  py + 40, 7, 2);
 
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 7, py + 19, 5, 5);
-              ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 8, py + 23, 6, 5);
-              ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 8, py + 28, 6, 2);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 9, py + 30, 2, 2);
+              ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 13, py + 32, 8, 2);
+              ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 14, py + 34, 8, 5);
+              ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 14, py + 39, 8, 2);
+              ctx.fillStyle = COL_FLAME_MID;   ctx.fillRect(px + 16, py + 41, 3, 2);
             }
           } else {
-            // 4) 空中腾空 / 飞跃 / 两段跳 / 俯冲 —— 【超级飞人冲天飞行姿态】！
+            // 4) 空中飞跃 / 两段跳 / 俯冲 —— 【超级飞人冲天飞行姿态】！
+            // 经典前后双尖角
             ctx.fillStyle = COL_HAIR_DARK;
-            ctx.fillRect(px + 2,  py - 3, 3, 4);
-            ctx.fillRect(px + 10, py - 2, 2, 3);
-            ctx.fillRect(px + 3,  py,     9, 8);
+            ctx.fillRect(px + 2, py - 4, 4, 4); // 冲天耸立后角
+            ctx.fillRect(px + 4, py - 1, 6, 4);
             ctx.fillStyle = COL_HAIR_LIGHT;
-            ctx.fillRect(px + 5,  py + 1, 5, 2);
+            ctx.fillRect(px + 5, py + 1, 4, 3);
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 16, py - 2, 4, 4); // 前额微翘角
+            ctx.fillRect(px + 18, py + 1, 3, 3);
+            ctx.fillStyle = COL_HAIR_DARK;
+            ctx.fillRect(px + 5, py + 2, 14, 6);
+            ctx.fillStyle = COL_HAIR_LIGHT;
+            ctx.fillRect(px + 8, py + 2, 7, 2);
 
+            // 英雄大眼睛 (英姿飒爽向前看)
             ctx.fillStyle = COL_SKIN_BASE;
-            ctx.fillRect(px + 6, py + 2, 7, 7);
+            ctx.fillRect(px + 9, py + 7, 12, 9);
             ctx.fillStyle = COL_EYE_PUPIL;
-            ctx.fillRect(px + 9, py + 3, 4, 4);
+            ctx.fillRect(px + 13, py + 7, 6, 7);
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(px + 14, py + 12, 4, 2);
             ctx.fillStyle = COL_EYE_GLEAM;
-            ctx.fillRect(px + 10, py + 3, 2, 2);
+            ctx.fillRect(px + 14, py + 8, 3, 3);
 
-            // 超级飞人前伸飞拳！
+            // 超级飞人前冲飞拳！(标志性超人向前直拳飞行出拳)
             ctx.fillStyle = COL_SKIN_BASE;
-            ctx.fillRect(px + 12, py + 8, 6, 3);
-            ctx.fillRect(px + 16, py + 7, 3, 4);
+            ctx.fillRect(px + 19, py + 16, 7, 4); // 前伸直臂
+            ctx.fillRect(px + 25, py + 15, 5, 6); // 英雄握拳
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(px + 26, py + 16, 2, 2); // 拳峰高光
 
-            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 4, py + 9, 8, 7);
-            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 4, py + 16, 8, 2);
-            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 7, py + 16, 2, 2);
-            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 4, py + 18, 8, 4);
+            // 健美身躯与绿腰带黄金扣
+            ctx.fillStyle = COL_SKIN_BASE;  ctx.fillRect(px + 7,  py + 16, 12, 8);
+            ctx.fillStyle = COL_BELT_GRN;   ctx.fillRect(px + 6,  py + 24, 14, 3);
+            ctx.fillStyle = COL_BELT_GOLD;  ctx.fillRect(px + 11, py + 23, 4, 4);
+            ctx.fillStyle = '#ffffff';      ctx.fillRect(px + 12, py + 24, 2, 2);
 
-            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 7, py + 20, 5, 4);
-            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 7, py + 24, 6, 4);
-            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 7, py + 28, 6, 2);
+            // 经典大红短裤
+            ctx.fillStyle = COL_SHORTS_RED; ctx.fillRect(px + 6, py + 27, 14, 6);
+            ctx.fillStyle = '#991b1b';      ctx.fillRect(px + 12, py + 29, 1, 4);
 
-            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 19, 4, 4);
-            ctx.fillStyle = COL_BOOT_RED;   ctx.fillRect(px + 1, py + 23, 5, 4);
-            ctx.fillStyle = COL_BOOT_NOZZLE;ctx.fillRect(px + 1, py + 27, 5, 2);
+            // 飞行收腿姿态：双腿向后斜下方并拢，高筒红靴靴口白边分明
+            ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 11, py + 33, 7, 2);
+            ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 11, py + 35, 7, 6);
+            ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 11, py + 40, 7, 2);
+
+            ctx.fillStyle = COL_BOOT_TOP;    ctx.fillRect(px + 2,  py + 32, 7, 2);
+            ctx.fillStyle = COL_BOOT_RED;    ctx.fillRect(px + 2,  py + 34, 7, 6);
+            ctx.fillStyle = COL_BOOT_NOZZLE; ctx.fillRect(px + 2,  py + 39, 7, 2);
 
             // ★★★ 火箭靴推进尾焰 ★★★
             if (this.stance === 'double_jump') {
-              // 两段跳：爆发粗壮双管火箭大尾焰 (12px 长焰)
-              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 7, py + 30, 6, 5);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 8, py + 30, 4, 8);
-              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 9, py + 30, 2, 12);
+              // 两段跳：双管粗壮巨型火箭长焰 (长达 18 像素！)
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 11, py + 42, 7, 8);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 12, py + 42, 5, 14);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 13, py + 42, 3, 18);
 
-              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 1, py + 29, 5, 5);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 2, py + 29, 3, 8);
-              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 3, py + 29, 1, 12);
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 2,  py + 41, 7, 8);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 3,  py + 41, 5, 14);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 4,  py + 41, 3, 18);
             } else if (this.stance === 'dive') {
-              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 7, py + 15, 4, 6);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 8, py + 13, 2, 8);
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 11, py + 22, 6, 9);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 12, py + 20, 4, 11);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 13, py + 18, 2, 13);
             } else {
-              // 一段跳推进火光
-              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 8, py + 30, 4, 3);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 9, py + 30, 2, 6);
-              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 2, py + 29, 3, 3);
-              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 3, py + 29, 1, 5);
+              // 一段跳或浮空：平稳火箭推进尾焰 (9 像素长)
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 12, py + 42, 5, 5);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 13, py + 42, 3, 9);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 14, py + 42, 1, 7);
+
+              ctx.fillStyle = COL_FLAME_OUT;  ctx.fillRect(px + 3,  py + 41, 5, 5);
+              ctx.fillStyle = COL_FLAME_MID;  ctx.fillRect(px + 4,  py + 41, 3, 9);
+              ctx.fillStyle = COL_FLAME_CORE; ctx.fillRect(px + 5,  py + 41, 1, 7);
             }
           }
 
           if (this.shield) {
             ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2;
-            ctx.strokeRect(px - 3, py - 3, 24, ph + 6);
+            ctx.strokeRect(px - 4, py - 4, 34, ph + 8);
           }
         }
 

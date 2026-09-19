@@ -19,9 +19,9 @@ extern "C" {
 #define CR_SCREEN_H          320
 
 #define CR_PLAYER_X          48    // 玩家在屏幕上的基准横向锚点
-#define CR_PLAYER_W          18    // 玩家站立宽度
-#define CR_PLAYER_H          30    // 玩家站立高度
-#define CR_SLIDE_H           14    // 滑铲高度 (低姿态)
+#define CR_PLAYER_W          26    // 玩家站立宽度 (阿童木 2.5 头身饱满比例)
+#define CR_PLAYER_H          42    // 玩家站立高度 (脚底严丝合缝贴合大楼屋顶)
+#define CR_SLIDE_H           20    // 滑铲高度 (低姿态)
 
 #define CR_MAX_BUILDINGS     5     // 循环建筑平台池
 #define CR_MAX_HAZARDS       6     // 动态障碍/陷阱池 (激光、无人机、排风口)

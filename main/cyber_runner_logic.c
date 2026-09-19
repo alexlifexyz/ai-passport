@@ -324,8 +324,8 @@ void cyber_runner_input_ok(cr_game_t *g)
     for (int i = 0; i < CR_MAX_PROJECTILES; i++) {
         if (!g->projectiles[i].active) {
             g->projectiles[i].active = true;
-            g->projectiles[i].x = px + 16.0f;
-            g->projectiles[i].y = py + 12.0f;
+            g->projectiles[i].x = px + 18.0f;
+            g->projectiles[i].y = py + 24.0f;
             g->projectiles[i].vx = 420.0f;
             g->projectiles[i].vy = 0.0f;
             g->projectiles[i].life_ms = 700.0f;
@@ -337,7 +337,7 @@ void cyber_runner_input_ok(cr_game_t *g)
     g->slash_active = true;
     g->slash_timer_ms = 90; // 弧光显示时长
     g->slash_start_x = px;
-    g->slash_start_y = py + 12.0f;
+    g->slash_start_y = py + 24.0f;
 
     // 寻找前方 75px 内的可斩击目标 (无人机或激光)
     int target_idx = -1;
@@ -391,7 +391,7 @@ void cyber_runner_input_ok(cr_game_t *g)
     } else {
         // 远程投掷月牙光刃 + 破空声
         g->slash_target_x = px + 60.0f;
-        g->slash_target_y = py + 12.0f;
+        g->slash_target_y = py + 24.0f;
         g->pending_sound = CR_SND_SLASH_HIT;
 
         if (g->blink_charges > 0 && !g->phase_shift) {
@@ -546,8 +546,8 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
     float current_roof_y = 999.0f;
     bool wall_touched = false;
 
-    float foot_x1 = (float)CR_PLAYER_X + 2.0f;
-    float foot_x2 = (float)CR_PLAYER_X + 14.0f;
+    float foot_x1 = (float)CR_PLAYER_X + 4.0f;
+    float foot_x2 = (float)CR_PLAYER_X + 22.0f;
 
     for (int i = 0; i < CR_MAX_BUILDINGS; i++) {
         cr_building_t *b = &g->buildings[i];
@@ -824,8 +824,8 @@ void cyber_runner_step(cr_game_t *g, uint32_t dt_ms)
     }
 
     // 8. 围巾动态追随物理模拟
-    float neck_x = px + 4.0f;
-    float neck_y = py + 7.0f;
+    float neck_x = px + 6.0f;
+    float neck_y = py + 14.0f;
     g->scarf[0].x = neck_x;
     g->scarf[0].y = neck_y;
 

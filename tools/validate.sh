@@ -100,6 +100,22 @@ run_static_checks() {
         tests/test_pawssprint_logic.c main/pawssprint_logic.c \
         -lm -o "${test_dir}/test_pawssprint_logic"
     "${test_dir}/test_pawssprint_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_smash_logic.c main/smash_logic.c \
+        -lm -o "${test_dir}/test_smash_logic"
+    "${test_dir}/test_smash_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_bubble_logic.c main/bubble_logic.c \
+        -lm -o "${test_dir}/test_bubble_logic"
+    "${test_dir}/test_bubble_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_wind_logic.c main/wind_logic.c \
+        -lm -o "${test_dir}/test_wind_logic"
+    "${test_dir}/test_wind_logic"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_wave_logic.c main/wave_logic.c \
+        -lm -o "${test_dir}/test_wave_logic"
+    "${test_dir}/test_wave_logic"
     python3 tests/test_verify_firmware.py
     rm -rf "${test_dir}"
     echo "Host tests: PASS"
