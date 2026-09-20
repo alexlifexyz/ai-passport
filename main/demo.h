@@ -69,6 +69,9 @@ void demo_cyber_runner_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 void demo_pawssprint_enter(void); void demo_pawssprint_exit(void);
 void demo_pawssprint_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 
+void demo_wave_enter(void); void demo_wave_exit(void);
+void demo_wave_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+
 void bsp_demo_return_to_menu(void);
 
 

@@ -261,6 +261,105 @@
     playHurt() { this.playHit(); }
     playEat() { this.playCoin(); }
     playBlip() { this.playClick(); }
+
+    playPop(pitch = 1.0) {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420 * pitch, t);
+      osc.frequency.exponentialRampToValueAtTime(860 * pitch, t + 0.04);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.05);
+    }
+
+    playBounce() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(600, t);
+      osc.frequency.exponentialRampToValueAtTime(240, t + 0.08);
+      g.gain.setValueAtTime(0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.08);
+    }
+
+    playSplash() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, t);
+      osc.frequency.exponentialRampToValueAtTime(120, t + 0.12);
+      g.gain.setValueAtTime(0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.14);
+    }
+
+    playPurr() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(580, t);
+      osc.frequency.linearRampToValueAtTime(740, t + 0.08);
+      osc.frequency.linearRampToValueAtTime(460, t + 0.18);
+      g.gain.setValueAtTime(0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.2);
+    }
+
+    playClack() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(480, t);
+      osc.frequency.exponentialRampToValueAtTime(80, t + 0.06);
+      g.gain.setValueAtTime(0.25, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.06);
+    }
+
+    playJump() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(200, t);
+      osc.frequency.exponentialRampToValueAtTime(620, t + 0.12);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.14);
+    }
+
+    playSlip() {
+      if (this.muted) return; this.init(); if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(650, t);
+      osc.frequency.linearRampToValueAtTime(220, t + 0.22);
+      g.gain.setValueAtTime(0.16, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.25);
+    }
   }
 
   // --- 2. 炫彩粒子与屏幕震动系统 ---
@@ -338,6 +437,141 @@
 
   // --- 3. 游戏注册表元数据定义 ---
   const GAME_REGISTRY = [
+    {
+      id: 'pawssprint',
+      title: '短腿爪爪运动会：萌宠冲刺',
+      subtitle: 'PAWS SPRINT: WHOLESOME DASH',
+      icon: '🐾',
+      category: 'chill',
+      badge: 'NEW 45°',
+      difficulty: 1,
+      tags: ['45度正面萌脸', '柯基柴犬海豹企鹅', '三轨平滑吸附对齐', '小短腿涡轮狂蹬', '终点大抱枕扑倒'],
+      desc: '专为解压与治愈打造的正面萌宠冲刺！45° 视角看清柯基、阿柴与小海豹吐舌表情，三车道绝对平稳吸附绝不跑偏。踩香蕉皮360°原地搞笑旋转，双击OK开启涡轮狂蹬无敌冲撞！',
+      upHint: '左道切换 / 选人',
+      downHint: '右道切换 / 选人',
+      okHint: '起跳跨越 / 涡轮狂蹬 / 飞扑抱枕',
+      help: '• <strong>选人界面</strong>：UP/DOWN 挑选萌宠（柯基、柴犬、海豹、企鹅），按 OK 开始！<br>• <strong>比赛奔跑</strong>：UP 向左变道，DOWN 向右变道（按一次稳稳居中对齐，绝不跑偏）。<br>• <strong>短按 OK 键</strong>：起跳跃过跨栏与泥洼。<br>• <strong>双击/长按 OK</strong>：开启【小短腿涡轮狂蹬】双倍极速无敌冲刺！<br>• <strong>终点狂欢</strong>：终点飞扑进蓬松大抱枕炸出漫天彩色羽毛，抽取今日治愈寄语！'
+    },
+    {
+      id: 'smash',
+      title: '万物皆可敲：爆浆解压',
+      subtitle: 'SMASH FRENZY: STRESS RELIEF',
+      icon: '🔨',
+      category: 'chill',
+      badge: 'NEW ASMR',
+      difficulty: 1,
+      tags: ['生鸡蛋金蛋西瓜', '蛋黄流屏ASMR', '绿色人字拖雷神锤', '长按全屏暴击震颤'],
+      desc: '极致解压物理破坏！换上大拖鞋、充气爱心锤或雷神重锤，疯狂敲碎生鸡蛋、大西瓜、闹钟与周一打卡机。OK 短按快速敲击，长按蓄力全屏暴击，蛋黄顺屏滑落，按一下爽一下！',
+      upHint: '切换工具 (木槌/雷神锤)',
+      downHint: '切换工具 (充气锤/拖鞋)',
+      okHint: '敲击 / 长按蓄力暴击',
+      help: '• <strong>UP / DOWN</strong>：循环切换打击工具（木槌、粉色充气锤、雷神大锤、绿色人字拖）。<br>• <strong>OK 键短按</strong>：快速敲击物体，触发 ASMR 破壳声与碎片喷溅！<br>• <strong>OK 键长按</strong>：蓄力暴击！蓄满松开触发全屏巨震，将目标砸成粉碎！'
+    },
+    {
+      id: 'bubble',
+      title: '飞针破泡录：连锁消除',
+      subtitle: 'BUBBLE NEEDLE: POP FRENZY',
+      icon: '🪡',
+      category: 'chill',
+      badge: 'NEW COMBO',
+      difficulty: 2,
+      tags: ['左右侧壁反弹物理', '雷云电弧范围连锁', '全屏冰冻定格', '旋风贯穿大钢针'],
+      desc: '升华版扎气球与捏泡泡纸！底部发射台角度微调，飞针左右侧壁真实反弹，雷云泡范围连锁引爆，冰冻泡全屏悬停，长按发射旋风大钢针全屏贯通！',
+      upHint: '向左调整射角',
+      downHint: '向右调整射角',
+      okHint: '发射飞针 / 长按贯穿针',
+      help: '• <strong>UP / DOWN</strong>：左右微调发射角度（带瞄准线，支持左右墙壁反弹）。<br>• <strong>OK 键短按</strong>：发射快速单发飞针刺破气泡。<br>• <strong>OK 键长按</strong>：蓄力发射【旋风大钢针】，贯穿整列气泡！<br>• 刺破雷云泡引发连锁大爆炸，刺破冰冻泡定格全屏气泡 3 秒。'
+    },
+    {
+      id: 'wind',
+      title: '风与纸翼：云海滑翔',
+      subtitle: 'WIND RIDER: DREAM GLIDE',
+      icon: '🪁',
+      category: 'chill',
+      badge: 'NEW ZEN',
+      difficulty: 1,
+      tags: ['永不坠毁死亡', '草地安全滑行', '按住俯冲松开冲天', '风之环音效加速', '晚霞星空心流'],
+      desc: '梦境般的心流飞行体验！操控一叶系着绯红丝带的折纸飞机，按住 OK 顺坡极速俯冲下潜，松开 OK 迎风展开直冲云霄。即使落地也只是草地滑行激起草屑，绝无死局挫败！',
+      upHint: '机头仰角抬头',
+      downHint: '机头俯角压低',
+      okHint: '按住俯冲 / 松开冲天',
+      help: '• <strong>OK 键按住</strong>：收拢双翼，顺着下坡斜面极速俯冲蓄势！<br>• <strong>OK 键松开</strong>：迎风展翼，借坡度动能化为升力呼啸冲天！<br>• <strong>UP / DOWN</strong>：微调机身俯仰角度，辅助对准上升气流环。<br>• <strong>绝不坠毁</strong>：碰到地面自动变成草地滑行，伴随草屑飞扬，随时可再次起飞。'
+    },
+    {
+      id: 'wave',
+      title: '浪涌漫游者：海獭冲浪',
+      subtitle: 'WAVE WALKER: LO-FI SURF',
+      icon: '🏄',
+      category: 'race',
+      badge: 'NEW SURF',
+      difficulty: 2,
+      tags: ['正弦海浪波涌', '顺坡压板推力加速', '浪尖腾空360翻滚', '完美切水二次冲刺'],
+      desc: '戴着小墨镜的海獭在动态正弦海浪上惬意冲浪！顺坡按 DOWN 压板重力加速，浪尖按 OK 腾空而起，空中 UP/DOWN 旋转 360° 滑稽特技，落水前按 OK 校正角度完美切水！',
+      upHint: '空中顺时针翻滚',
+      downHint: '顺坡压板加速 / 逆时针翻滚',
+      okHint: '浪尖起跳 / 切水校正',
+      help: '• <strong>DOWN 键</strong>：顺坡下滑时按住压板加速，冲出惊人推力！<br>• <strong>OK 键（浪尖瞬间）</strong>：借冲力高高跃起腾空！<br>• <strong>滞空特技</strong>：在空中按 UP 或 DOWN 触发 360° 滑稽大翻滚！<br>• <strong>触水瞬间</strong>：按 OK 摆正板面切水，角度吻合达成【完美切水】二次加速；偏差过大触发【肚皮拍水】搞笑减速。'
+    },
+    {
+      id: 'huddle',
+      title: '午后温泉：萌物抱抱团',
+      subtitle: 'FLUFFY HUDDLE: ONSEN PETS',
+      icon: '🛁',
+      category: 'chill',
+      badge: 'NEW HEALING',
+      difficulty: 1,
+      tags: ['柴犬海豹团子猫', 'Q弹果冻物理形变', '相同动物抱团进阶', '长按抚摸治愈短语'],
+      desc: '日式露天温泉下的萌宠果冻抱抱团！将圆滚滚的阿柴、海豹、团子猫滑入暖泉，Q 弹挤压形变，相同小动物抱团融合进阶。长按 OK 触发温泉抚摸，冒出暖心人生短语与樱花雨！',
+      upHint: '滑轨向左移动',
+      downHint: '滑轨向右移动',
+      okHint: '投放萌宠 / 长按温泉抚摸',
+      help: '• <strong>UP / DOWN</strong>：在温泉池顶部左右滑动落点瞄准导轨。<br>• <strong>OK 键短按</strong>：将当前小动物滑入温泉池，享受水流浮力与果冻碰撞！<br>• <strong>OK 键长按</strong>：触发【温泉轻抚】，全池小动物舒适膨胀，吐出暖心治愈金句！<br>• 相同种类的小动物相撞会自动抱团融合升阶为头戴毛巾享受形态。'
+    },
+    {
+      id: 'lasercat',
+      title: '猫猫激光笔指挥官',
+      subtitle: 'LASER CAT: POUNCE TACTICS',
+      icon: '🐱',
+      category: 'action',
+      badge: 'NEW TACTICS',
+      difficulty: 3,
+      tags: ['红外激光多段折射', '猫咪摇屁股猛扑', '借冲击力推箱解谜', '踩停扫地机器人'],
+      desc: '手里的枪是一把特工专用红外激光笔！旋转射角在镜面间折射光斑。猫咪看到红点会摇屁股蓄力并疯狂飞扑，利用猫咪的冲击力推翻重箱、拍击高处开关通电过关！',
+      upHint: '逆时针调整激光',
+      downHint: '顺时针调整激光',
+      okHint: '单点引诱 / 长按猛烈飞扑',
+      help: '• <strong>UP / DOWN</strong>：旋转调整激光笔射出角度，观察镜面折射光路。<br>• <strong>OK 键短按</strong>：轻点激光，引诱猫咪警惕挪步。<br>• <strong>OK 键长按</strong>：强激光锁定，指挥猫群全速猛扑推倒重箱撞击开关！'
+    },
+    {
+      id: 'splasher',
+      title: '泡泡高压水枪狂欢节',
+      subtitle: 'HYDRO SPLASHER: COLOR BURST',
+      icon: '🔫',
+      category: 'shoot',
+      badge: 'NEW COLOR',
+      difficulty: 2,
+      tags: ['重力抛物线水弹', '黑白都市彩色复苏', '打工人换夏威夷衫跳舞', '长按水龙卷暴风雨'],
+      desc: '没有杀戮，只有清凉彩墨！黑白灰的沉闷办公室与街头，手持高压水枪喷射抛物线彩墨水弹。被击中的物体瞬间爆开七彩颜料复苏，行色匆匆的打工人秒变夏威夷花衬衫欢呼跳舞！',
+      upHint: '水枪仰角调高',
+      downHint: '水枪俯角调低',
+      okHint: '连发水球 / 长按高压水龙卷',
+      help: '• <strong>UP / DOWN</strong>：调节高压水枪发射仰角，瞄准天空与楼顶。<br>• <strong>OK 键短按</strong>：快速发射重力抛物线彩墨水球，洗净阴沉灰度。<br>• <strong>OK 键长按</strong>：水泵充能，释放超高压水龙卷暴风雨，席卷整条街区！'
+    },
+    {
+      id: 'bouncy',
+      title: '回声几何弹射枪',
+      subtitle: 'BOUNCY BLASTER: TRICK SHOT',
+      icon: '🎱',
+      category: 'shoot',
+      badge: 'NEW TRICK',
+      difficulty: 3,
+      tags: ['高精激光反射预测线', '超级橡胶10次反弹', '防弹盾牌绕后爆头', '炸药桶连锁AOE'],
+      desc: '台球几何与特工神枪手绝配！1.5° 超高精度激光瞄准，实时投射未来 3 次反射虚线。橡胶弹球在钢板与棱镜间疯狂反弹 10 次，隔山打牛绕过正面防弹盾牌一击爆头，引爆炸药桶！',
+      upHint: '逆时针精细微调',
+      downHint: '顺时针精细微调',
+      okHint: '击发超级弹球',
+      help: '• <strong>UP / DOWN</strong>：1.5° 微调瞄准激光，观察实时虚线预测弹道。<br>• <strong>OK 键击发</strong>：射出高弹橡胶球，利用墙壁多次反弹绕过正面防盾！<br>• 射中 TNT 炸药桶可引爆周围大片区域。'
+    },
     {
       id: 'thunderracer',
       title: '雷霆飞车：极速武装',
@@ -577,21 +811,6 @@
       downHint: '滑铲 / 俯冲砸地震荡波',
       okHint: '影刃突进斩 (杀怪刷新)',
       help: '• <strong>UP 键</strong>：地面【起跳】与【二段跳】；贴墙下滑时按下触发【蹬墙反弹大跳】。<br>• <strong>DOWN 键</strong>：地面【滑铲】；空中按下【极速俯冲】砸地激发震荡波消灭陷阱。<br>• <strong>OK 键</strong>：前方 75px 内锁定无人机时触发【影刃瞬影斩】，直接斩爆目标并【刷新二段跳与回充瞬移能量】，借力爆跃腾空！无目标时触发【幽灵闪现】无敌虚化穿透。'
-    },
-    {
-      id: 'pawssprint',
-      title: '短腿爪爪运动会：萌宠冲刺',
-      subtitle: 'PAWS SPRINT: WHOLESOME DASH',
-      icon: '🐾',
-      category: 'chill',
-      badge: 'NEW',
-      difficulty: 1,
-      tags: ['柯基柴犬海豹企鹅', '零惩罚爆笑平地摔', 'Q弹果冻形变', '慢动作大抱枕扑倒', '今日治愈寄语'],
-      desc: '专为解压与治愈打造的萌宠滑稽跑酷！操控短腿柯基、柴犬、海豹与企鹅在三轨跑道上狂奔，踩香蕉皮360度滑跪，捡骨头吃爱心，最后慢动作全员四脚腾空飞扑进蓬松大抱枕！',
-      upHint: '左道切换 / 选人',
-      downHint: '右道切换 / 选人',
-      okHint: '起跳跨越 / 飞扑抱枕',
-      help: '• <strong>选人界面</strong>：UP/DOWN 挑选萌宠（柯基、柴犬、海豹、企鹅），按 OK 开始！<br>• <strong>比赛奔跑</strong>：UP 向左变道，DOWN 向右变道，按 OK 键起跳跨越障碍！<br>• <strong>零死亡惩罚</strong>：撞到香蕉皮或扫地机只会搞笑打转滑行，笑完继续跑！<br>• <strong>终点狂欢</strong>：500米终点按 OK 飞扑进蓬松大抱枕，炸出漫天彩色羽毛，抽取今日治愈寄语！'
     }
   ];
 

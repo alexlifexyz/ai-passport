@@ -19,15 +19,16 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { "Wave Walker", demo_wave_enter,       demo_wave_exit,       demo_wave_key       },
     { "Paws Sprint", demo_pawssprint_enter, demo_pawssprint_exit, demo_pawssprint_key },
-    { "Runner",    demo_cyber_runner_enter, demo_cyber_runner_exit, demo_cyber_runner_key },
-    { "Cavalry",   demo_geartrooper_enter,  demo_geartrooper_exit,  demo_geartrooper_key  },
-    { "Neon Pop",  demo_match3_enter,       demo_match3_exit,       demo_match3_key       },
-    { "Tank 1990", demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
-    { "Island",    demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
-    { "Contra",    demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
-    { "Racer",     demo_thunderracer_enter, demo_thunderracer_exit, demo_thunderracer_key },
-    { "Striker",   demo_thunder_enter,      demo_thunder_exit,      demo_thunder_key      },
+    { "Runner",      demo_cyber_runner_enter, demo_cyber_runner_exit, demo_cyber_runner_key },
+    { "Cavalry",     demo_geartrooper_enter,  demo_geartrooper_exit,  demo_geartrooper_key  },
+    { "Neon Pop",    demo_match3_enter,       demo_match3_exit,       demo_match3_key       },
+    { "Tank 1990",   demo_battlecity_enter,   demo_battlecity_exit,   demo_battlecity_key   },
+    { "Island",      demo_adventure_enter,    demo_adventure_exit,    demo_adventure_key    },
+    { "Contra",      demo_contra_enter,       demo_contra_exit,       demo_contra_key       },
+    { "Racer",       demo_thunderracer_enter, demo_thunderracer_exit, demo_thunderracer_key },
+    { "Striker",     demo_thunder_enter,      demo_thunder_exit,      demo_thunder_key      },
 };
 #define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
 
@@ -38,7 +39,7 @@ static lv_obj_t *s_menu_scr;
 static lv_obj_t *s_cards[DEMO_COUNT];
 static lv_obj_t *s_rows[DEMO_COUNT];
 static lv_obj_t *s_mascot;
-static int  s_sel = 0;             // 当前选中项 (默认停在第一项 Paws Sprint)
+static int  s_sel = 0;             // 当前选中项 (默认停在第一项 Wave Walker)
 static int  s_active = -1;         // 当前所在演示页;-1 = 在菜单
 
 static void menu_refresh(void) {
@@ -55,9 +56,9 @@ static void menu_refresh(void) {
 static void menu_build(void) {
     s_menu_scr = ui_pixel_screen_create("ARCADE");
 
-    int card_h = (DEMO_COUNT > 8) ? 23 : ((DEMO_COUNT > 7) ? 26 : ((DEMO_COUNT > 5) ? 30 : 34));
-    int step_y = (DEMO_COUNT > 8) ? 27 : ((DEMO_COUNT > 7) ? 31 : ((DEMO_COUNT > 5) ? 36 : 42));
-    int start_y = (DEMO_COUNT > 8) ? 34 : ((DEMO_COUNT > 7) ? 36 : ((DEMO_COUNT > 5) ? 42 : 46));
+    int card_h = (DEMO_COUNT >= 10) ? 20 : ((DEMO_COUNT > 8) ? 23 : ((DEMO_COUNT > 7) ? 26 : ((DEMO_COUNT > 5) ? 30 : 34)));
+    int step_y = (DEMO_COUNT >= 10) ? 24 : ((DEMO_COUNT > 8) ? 27 : ((DEMO_COUNT > 7) ? 31 : ((DEMO_COUNT > 5) ? 36 : 42)));
+    int start_y = (DEMO_COUNT >= 10) ? 30 : ((DEMO_COUNT > 8) ? 34 : ((DEMO_COUNT > 7) ? 36 : ((DEMO_COUNT > 5) ? 42 : 46)));
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
         int x = 16;
@@ -73,7 +74,7 @@ static void menu_build(void) {
         lv_obj_center(s_rows[i]);
     }
 
-    int mascot_y = (DEMO_COUNT > 7) ? 286 : 268;
+    int mascot_y = (DEMO_COUNT >= 10) ? 275 : ((DEMO_COUNT > 7) ? 286 : 268);
     s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, mascot_y);
 
     menu_refresh();
