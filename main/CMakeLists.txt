@@ -30,6 +30,8 @@ idf_component_register(
          "pawssprint_logic.c"
          "demo_wave.c"
          "wave_logic.c"
+         "demo_wind.c"
+         "wind_logic.c"
     INCLUDE_DIRS "."
     REQUIRES bsp bt esp_event esp_hw_support esp_netif esp_timer esp_wifi nvs_flash
 )

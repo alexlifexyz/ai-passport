@@ -640,48 +640,95 @@
         // 操控模型：按住 OK 俯冲下潜，松开迎风抬头翱翔
         if (keys.ok) {
           this.isDiving = true;
-          this.planeVy += 420 * sec;
-          this.planeVx = Math.min(360, this.planeVx + 85 * sec);
+          this.diveCharge = (this.diveCharge || 0) + sec;
+          this.planeVy += 460 * sec;
+          this.planeVx = Math.min(380, this.planeVx + 100 * sec);
           this.pitch = Math.min(0.65, this.pitch + 2.5 * sec);
         } else {
+          if (this.isDiving && (this.diveCharge || 0) > 0.15) {
+            if (snd) snd.playBounce();
+            if (fx) fx.floatText(60, this.planeY - 14, 'SOARING! ✈️', '#38bdf8');
+          }
           this.isDiving = false;
+          this.diveCharge = 0;
           // 借势转化为升力！
-          const lift = (this.planeVx - 80) * 1.6;
+          const lift = (this.planeVx - 75) * 1.75;
           this.planeVy -= lift * sec;
-          this.planeVy += 160 * sec; // 自然重力
+          this.planeVy += 155 * sec; // 自然重力
           this.pitch = Math.max(-0.55, this.pitch - 2.0 * sec);
-          this.planeVx = Math.max(90, this.planeVx - 45 * sec);
+          this.planeVx = Math.max(90, this.planeVx - 42 * sec);
         }
 
         if (keys.up) this.pitch -= 0.8 * sec;
         if (keys.down) this.pitch += 0.8 * sec;
+
+        // UP 键按下瞬间：提供瞬间抬头升力；若在草地上则迎风直接冲天起飞！
+        if (keys.upEdge) {
+          this.pitch = Math.max(-0.65, this.pitch - 0.25);
+          if (this.planeY >= groundY - 14) {
+            this.planeVy = -180;
+            this.planeVx = Math.max(150, this.planeVx);
+            if (snd) snd.playJump();
+            if (fx) fx.floatText(60, this.planeY - 12, 'LIFT UP! 🍃', '#86efac');
+          } else {
+            this.planeVy -= 60;
+          }
+        }
 
         this.planeY += this.planeVy * sec;
 
         // 绝不坠毁死亡：贴草地顺势滑行
         if (this.planeY > groundY - 10) {
           this.planeY = groundY - 10;
-          this.planeVy = -30;
-          this.pitch = 0;
+          this.planeVy = -20;
+          this.pitch = Math.max(-0.1, Math.min(0.1, this.pitch));
           // 激起草屑粒子
-          if (Math.random() < 0.35) {
+          if (Math.random() < 0.4) {
             this.particles.push({
               x: 50, y: this.planeY + 6,
-              vx: -60 - Math.random() * 40, vy: -30 - Math.random() * 40,
+              vx: -70 - Math.random() * 50, vy: -25 - Math.random() * 35,
               col: '#86efac', r: 2.5, life: 0.6
             });
           }
         }
 
-        // 周期生成气流光环
+        // 周期生成气流光环与风之水晶/蒲公英
         if (this.rings.length < 3) {
           const lastX = this.rings.length ? this.rings[this.rings.length - 1].x : this.dist + 150;
           this.rings.push({
             x: lastX + 180 + Math.random() * 120,
-            y: 80 + Math.random() * 80,
+            y: 70 + Math.random() * 85,
             active: true
           });
         }
+        if (!this.crystals) this.crystals = [];
+        if (this.crystals.length < 4) {
+          const lastX = this.crystals.length ? this.crystals[this.crystals.length - 1].x : this.dist + 120;
+          this.crystals.push({
+            x: lastX + 100 + Math.random() * 90,
+            y: 50 + Math.random() * 130,
+            type: Math.random() < 0.65 ? 'dandelion' : 'crystal',
+            active: true
+          });
+        }
+
+        // 水晶与蒲公英拾取
+        for (const c of this.crystals) {
+          if (c.active && Math.abs((this.dist + 50) - c.x) < 22 && Math.abs(this.planeY - c.y) < 22) {
+            c.active = false;
+            if (c.type === 'crystal') {
+              this.score += 50;
+              this.planeVx = Math.min(420, this.planeVx + 35);
+              if (snd) snd.playCoin();
+              if (fx) fx.floatText(60, this.planeY, '+50 💎', '#38bdf8');
+            } else {
+              this.score += 15;
+              if (snd) snd.playClick();
+              if (fx) fx.floatText(60, this.planeY, '+15 🌾', '#fef08a');
+            }
+          }
+        }
+        this.crystals = this.crystals.filter(c => c.x > this.dist - 80);
 
         // 穿环检测
         for (const r of this.rings) {
@@ -744,6 +791,38 @@
             ctx.beginPath();
             ctx.ellipse(rx, r.y, 14, 24, 0, 0, Math.PI * 2);
             ctx.stroke();
+          }
+        }
+
+        // 绘制收集品：风之水晶 💎 与 蒲公英 🌾
+        if (this.crystals) {
+          for (const c of this.crystals) {
+            if (!c.active) continue;
+            const cx = c.x - this.dist;
+            if (cx < -20 || cx > 260) continue;
+            ctx.save();
+            ctx.translate(cx, c.y);
+            if (c.type === 'crystal') {
+              // 菱形晶石微光
+              ctx.fillStyle = '#38bdf8';
+              ctx.beginPath();
+              ctx.moveTo(0, -7); ctx.lineTo(6, 0); ctx.lineTo(0, 7); ctx.lineTo(-6, 0);
+              ctx.fill();
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(-1, -2, 1.5, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              // 蒲公英绒球
+              ctx.fillStyle = '#fef08a';
+              ctx.beginPath();
+              ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+            ctx.restore();
           }
         }
 

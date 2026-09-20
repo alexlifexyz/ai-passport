@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- Added Wind Rider: Soaring Breeze, an origami paper plane gliding and soaring game designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features a crash-proof continuous rolling hill mathematical terrain, fluid aerodynamic lift mechanics (hold OK to dive into slopes, release OK to soar into clouds, UP/DOWN pitch trim and ground take-off lift), soaring wind rings with sonic speed bursts, dandelion and wind crystal collectibles, a 5-phase day-night sky flow cycle, 40 FPS zero-malloc vector rendering, 16kHz wind and chime audio synthesis, 100% host unit test coverage, and an Alex Arcade browser cabinet.
+
 - Added Wave Walker: Lo-Fi Surf, a cute, zero-frustration surfing title designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features a dual-harmonic continuous sine wave mathematical model, 3-button surfing mechanics (down-slope pump boost, crest launch leap, mid-air 360° stunt flips, and perfect clean entry alignment assist with secondary speed burst), dynamic floating obstacles (crabs, driftwood, and jellyfish), starfish and shell collectibles, 40 FPS zero-malloc vector rendering, 16kHz ocean wave audio synthesis, 100% host unit test coverage, and an Alex Arcade browser cabinet.
 
 - Added Paws Sprint: Fluffy Runner, a zero-frustration healing pet obstacle runner designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features 4 selectable fluffy companions (Corgi, Shiba, Seal, Penguin), 3-lane smooth switching, jump physics, zero-penalty comic banana peel 360° pirouette spins, Roomba bumps, bone and heart pickups, a 500m cushion dive with feather explosion, healing fortune cards, 40 FPS zero-malloc vector rendering, 16kHz pet sound effect synthesis, and 100% host unit test coverage.

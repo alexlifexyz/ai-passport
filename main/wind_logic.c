@@ -306,6 +306,12 @@ void wind_input_pitch_up(wind_game_t *g)
     if (!g->on_ground && g->vy > -180.0f) {
         // 瞬间微升力
         g->vy -= 28.0f;
+    } else if (g->on_ground && g->vx > WIND_MIN_SPEED_X + 15.0f) {
+        // 草地滑行中按 UP：迎风直接抬头冲云腾飞！
+        g->on_ground = false;
+        g->vy = fminf(-160.0f, -g->vx * 0.75f);
+        g->stance = WIND_STANCE_SOAR;
+        g->pending_sound = WIND_SND_SOAR;
     }
 }
 
