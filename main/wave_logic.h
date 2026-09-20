@@ -38,12 +38,12 @@ extern "C" {
 
 // 物理与动力学常量
 #define WAVE_SPEED_MIN         80.0f    // 极小保底速度 (px/s)
-#define WAVE_SPEED_BASE        150.0f   // 基础巡航速度 (px/s)
-#define WAVE_SPEED_MAX         380.0f   // 极限俯冲/冲刺速度 (px/s)
-#define WAVE_GRAVITY           750.0f   // 空中重力加速度 (px/s^2)
-#define WAVE_PUMP_ACCEL        420.0f   // 顺坡压板重力加速推力增益 (px/s^2)
-#define WAVE_JUMP_BASE_VY      -280.0f  // 基础起跳纵向冲量初速度 (px/s)
-#define WAVE_AIR_ROT_SPEED     720.0f   // 空中翻滚旋转角速度 (deg/s)
+#define WAVE_SPEED_BASE        160.0f   // 基础巡航速度 (px/s)
+#define WAVE_SPEED_MAX         440.0f   // 极限俯冲/冲刺速度 (px/s)
+#define WAVE_GRAVITY           850.0f   // 空中重力加速度 (px/s^2)
+#define WAVE_PUMP_ACCEL        520.0f   // 顺坡压板重力加速推力增益 (px/s^2)
+#define WAVE_JUMP_BASE_VY      -320.0f  // 基础起跳纵向冲量初速度 (px/s)
+#define WAVE_AIR_ROT_SPEED     800.0f   // 空中翻滚旋转角速度 (deg/s)
 
 // 海浪数学模型参数
 #define WAVE_BASE_Y            210.0f   // 海平面基准基线 Y

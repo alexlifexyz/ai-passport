@@ -551,13 +551,19 @@ void demo_wave_exit(void)
 // 三键按键分发 (响应 PRESS 与 CLICK，低延迟无死角)
 void demo_wave_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
-    if (ev != BSP_BTN_PRESS && ev != BSP_BTN_CLICK) return;
-
     if (btn == BSP_BTN_UP) {
-        wave_input_up(&s_game);
+        if (ev == BSP_BTN_PRESS) {
+            wave_input_up(&s_game);
+        }
     } else if (btn == BSP_BTN_DOWN) {
-        wave_input_down(&s_game);
+        if (ev == BSP_BTN_PRESS) {
+            wave_input_down(&s_game);
+        } else if (ev == BSP_BTN_CLICK) {
+            wave_input_down_release(&s_game);
+        }
     } else if (btn == BSP_BTN_OK) {
-        wave_input_ok(&s_game);
+        if (ev == BSP_BTN_PRESS) {
+            wave_input_ok(&s_game);
+        }
     }
 }

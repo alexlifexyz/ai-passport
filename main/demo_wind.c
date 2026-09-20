@@ -426,11 +426,11 @@ void demo_wind_key(bsp_btn_t btn, bsp_btn_ev_t ev)
             wind_input_ok(&s_game, false);
         }
     } else if (btn == BSP_BTN_UP) {
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+        if (ev == BSP_BTN_PRESS) {
             wind_input_pitch_up(&s_game);
         }
     } else if (btn == BSP_BTN_DOWN) {
-        if (ev == BSP_BTN_PRESS || ev == BSP_BTN_CLICK) {
+        if (ev == BSP_BTN_PRESS) {
             wind_input_pitch_down(&s_game);
         }
     }
