@@ -31,16 +31,16 @@
     },
     {
       id: 'thunderracer', title: '雷霆飞车', en: 'Thunder Racer', icon: '🏎️', cat: 'race', color: '#ff5a5a', featured: true, remade: true,
-      pitch: '限时冲关，擦车攒氮气，弯道别被甩出去',
-      desc: '伪 3D 公路狂飙。倒计时归零就结束，冲过检查点续时间。贴着车流擦过去会攒氮气，弯道离心力会把车往外甩，冲出路面会减速。',
-      controls: { up: '向左转向', down: '向右转向', ok: '按住开氮气' },
-      tips: ['入弯前提前往内侧打方向。', '擦车越近奖励越多，还会回氮气。', '开氮气时撞车不会减速太多，但会扣时间。'],
+      pitch: '空中飞车，千万至亿级曲率光速，自动激光打战机',
+      desc: '空中战车飞驰狂飙。保底千万时速，按住 OK 升入高空狂飙至 1 亿！双联等离子炮自动开火，追踪导弹摧毁空中敌机，擦弹擦车秒回满氮气！',
+      controls: { up: '向左变向', down: '向右变向', ok: '按住升空狂飙 · 追踪导弹' },
+      tips: ['按住 OK 飞入高空，完全无视地面车辆和树木！', '双联脉冲炮自动开火，点按或按住 OK 发射追踪导弹。', '时速保底 1000 万，按住 OK 直冲 1 亿极限曲率！'],
       missions: [
         { text: '通过 3 个检查点', test: (st) => st.checkpoints >= 3 },
-        { text: '单局擦车 15 次', test: (st) => st.nearMiss >= 15 },
-        { text: '时速突破 320 km/h', test: (st) => st.topSpeed >= 320 }
+        { text: '单局击落 10 架敌机', test: (st) => (st.kills || 0) >= 10 },
+        { text: '时速突破 1 亿光速', test: (st) => st.topSpeed >= 100000000 }
       ],
-      ranks: [60000, 30000, 12000]
+      ranks: [80000, 40000, 15000]
     },
     {
       id: 'battlecity', title: '坦克大战', en: 'Tank 1990', icon: '🪖', cat: 'shoot', color: '#ffd23f', featured: true, remade: true,
