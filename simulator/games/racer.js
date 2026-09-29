@@ -5,7 +5,7 @@
   const A = window.Arcade, U = A.U, D = A.D;
   const W = 240, H = 320;
   const SEG = 200, ROADW = 1100, CAMH = 900, DEPTH = 0.84, DRAW = 110, HOR = 132;
-  const MAXS = SEG * 60, ACC = MAXS / 5, OFF_DEC = -MAXS / 1.8, OFF_LIM = MAXS / 4, CENTRI = 0.32;
+  const MAXS = SEG * 60, ACC = MAXS / 5, OFF_DEC = -MAXS / 2.5, OFF_LIM = MAXS * 0.45, CENTRI = 0.32;
   const CP_EVERY = 1500;
 
   const CAR = [
@@ -102,18 +102,18 @@
       }
       addRoad(40, 40, 60, 0, -lastY() / SEG);
       const N = segs.length, TRACK = N * SEG;
-      // 路边装饰
-      for (let i = 20; i < N; i += U.randi(4, 9)) {
+      // 路边装饰（大幅稀释，远离赛道边缘，留出宽阔视野与缓冲区）
+      for (let i = 30; i < N; i += U.randi(35, 55)) {
         const side = U.chance(0.5) ? -1 : 1;
-        segs[i].sprites.push({ kind: 'deco', off: side * U.rand(1.45, 2.6) });
-        if (U.chance(0.35)) segs[i].sprites.push({ kind: 'deco', off: -side * U.rand(1.45, 2.4) });
+        segs[i].sprites.push({ kind: 'deco', off: side * U.rand(2.2, 3.4) });
       }
 
       // ------------------------------------------------ 状态
       const g = {
-        pos: 0, x: 0, speed: 0, dist: 0, time: 38, nitro: 50, nitroOn: false,
-        cpIndex: 1, cpNextSeg: CP_EVERY, cpBonus: 24, theme: 0,
+        pos: 0, x: 0, speed: 0, dist: 0, time: 600, nitro: 50, nitroOn: false,
+        cpIndex: 1, cpNextSeg: CP_EVERY, cpBonus: 30, theme: 0,
         skyOff: 0, bump: 0, crash: 0, chain: 0, chainT: 0, lastSteer: 0, t: 0, over: false, overT: 0,
+        decoCooldown: 0,
         cars: []
       };
       const playerZ = CAMH * DEPTH;
@@ -133,6 +133,7 @@
       // ------------------------------------------------ update
       function update(input) {
         g.t++;
+        if (g.decoCooldown > 0) g.decoCooldown--;
         const dt = 1 / 60;
         const pct = g.speed / MAXS;
         const pseg = segAt(g.pos + playerZ);
@@ -144,12 +145,16 @@
           return;
         }
 
-        // 转向：按住越久越灵敏
+        // 转向：出界或低速时提供强效脱困敏捷度，彻底防止打不动方向
         const dir = (input.up ? -1 : 0) + (input.down ? 1 : 0);
-        const steer = dt * 2.2 * Math.min(1, pct + 0.35);
+        const returning = (g.x > 1 && dir < 0) || (g.x < -1 && dir > 0);
+        const steerRate = returning ? 3.4 : 2.4;
+        const steer = dt * steerRate * Math.max(0.7, Math.min(1.2, pct + 0.45));
         g.x += dir * steer;
         g.lastSteer = U.approach(g.lastSteer, dir, 0.2);
-        g.x -= steer * pct * pseg.curve * CENTRI * 1.15;
+        // 离心力：赛道内感受推背离心，出界时大幅削弱，避免车子被死死往外拉扯打转
+        const centriFactor = Math.abs(g.x) > 1 ? 0.35 : 0.8;
+        g.x -= dt * 2.0 * pct * pseg.curve * CENTRI * centriFactor;
 
         // 氮气
         g.nitroOn = input.ok && g.nitro > 0 && g.crash <= 0;
@@ -167,9 +172,18 @@
           if (g.speed > OFF_LIM) g.speed += OFF_DEC * dt;
           g.bump = (g.t % 4 < 2) ? 1.5 : -1.5;
           if (g.t % 3 === 0) fx.burst(W / 2 + U.rand(-20, 20), H - 16, 2, [THEMES[g.theme].grass[0], '#8a6a3a'], { speed: 2, angle: -Math.PI / 2, spread: 2, life: 16, gravity: 0.2 });
-          // 撞路边
-          for (const s of pseg.sprites) {
-            if (Math.abs(g.x - s.off) < 0.25) { g.speed *= 0.35; g.x += g.x > s.off ? 0.12 : -0.12; fx.addShake(6); sfx.thud(); break; }
+          // 撞路边树木：带有防连撞冷却，且智能向内侧弹回赛道方向，保留动力绝不卡死
+          if (g.decoCooldown <= 0) {
+            for (const s of pseg.sprites) {
+              if (Math.abs(g.x - s.off) < 0.28) {
+                g.speed = Math.max(MAXS * 0.38, g.speed * 0.75);
+                g.x += (g.x > 0 ? -0.25 : 0.25);
+                g.decoCooldown = 35;
+                fx.addShake(6);
+                sfx.thud();
+                break;
+              }
+            }
           }
         } else g.bump = 0;
         g.x = U.clamp(g.x, -2.6, 2.6);
@@ -376,11 +390,13 @@
       }
 
       function drawHud(ctx) {
-        // 时间
+        // 时间（支持分秒显示，如 10:00）
         const low = g.time < 10;
+        const sec = Math.max(0, Math.ceil(g.time));
+        const timeStr = sec >= 60 ? (Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0')) : String(sec);
         D.panel(ctx, W / 2 - 34, 4, 68, 26, { r: 6, fill: 'rgba(0,0,0,.55)', stroke: low ? '#ff5a5a' : 'rgba(255,255,255,.25)' });
         D.text(ctx, 'TIME', W / 2, 12, { size: 6, color: '#ffd23f', align: 'center' });
-        D.text(ctx, String(Math.ceil(g.time)), W / 2, 27, { size: 14, color: low && (g.t >> 3) % 2 ? '#ff5a5a' : '#fff', align: 'center' });
+        D.text(ctx, timeStr, W / 2, 27, { size: 14, color: low && (g.t >> 3) % 2 ? '#ff5a5a' : '#fff', align: 'center' });
         // 分数 / 距离
         D.text(ctx, U.fmt(st.score), 6, 14, { size: 9, color: '#fff', outline: '#000' });
         D.text(ctx, (st.dist / 1000).toFixed(1) + ' km', 6, 25, { size: 7, color: '#ffd23f', outline: '#000' });
