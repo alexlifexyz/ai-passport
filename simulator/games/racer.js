@@ -186,22 +186,22 @@
         const centriFactor = (Math.abs(g.x) > 1 || g.alt > 0.5) ? 0.25 : 0.75;
         g.x -= dt * 2.0 * pct * pseg.curve * CENTRI * centriFactor;
 
-        // 飞行高度与超光速时速系统：保底 1000 万，按住 OK 飙升至 1 亿并升至高空！
+        // 飞行高度与超光速时速系统：常态时速稳稳锁定 1000 万，按住 OK 飙升至 1 亿！
         g.nitroOn = input.ok && g.crash <= 0;
         if (g.nitroOn) {
           g.nitro = Math.max(0, g.nitro - 0.2);
           // 狂飙至 1 亿
-          g.kmh = Math.min(100000000, g.kmh + 2800000);
+          g.kmh = Math.min(100000000, g.kmh + 3500000);
           g.targetAlt = 2.0; // 按住飞得更高！高空俯冲！
           if (g.t % 3 === 0) {
             const burstColor = g.kmh >= 100000000 ? ['#ffd23f', '#ff3bd4', '#38e1ff', '#fff'] : ['#38e1ff', '#fff', '#7dffb3'];
             fx.burst(W / 2 + U.rand(-16, 16), H - 18 - g.alt * 28, 4, burstColor, { speed: 4, angle: Math.PI / 2, spread: 1.2, life: 16 });
           }
         } else {
-          // 松开氮气：巡航回落，最低只降到 1000 万！
-          g.kmh = Math.max(10000000, g.kmh - 1500000);
+          // 松开氮气：巡航回落，速度稳稳保持在 1000 万！
+          g.kmh = Math.max(10000000, g.kmh - 2500000);
           g.targetAlt = 1.0; // 松开平稳悬浮在中空
-          g.nitro = Math.min(100, g.nitro + 0.15);
+          g.nitro = Math.min(100, g.nitro + 0.2);
         }
         if (input.okP) sfx.whoosh();
         // 平滑升降（高空 2.0 ⇄ 中空 1.0）
@@ -246,23 +246,23 @@
         st.score = st.dist * 2 + Math.floor(g.bonus || 0);
 
         // ---------------- 雷霆战机式射击武器 ----------------
-        // 1. 自动双联等离子脉冲炮（每隔 7 帧发射一波）
-        if (++g.shootT >= 7) {
+        // 1. 自动双联等离子脉冲炮（每隔 4 帧极速发射，满屏扫射！）
+        if (++g.shootT >= 4) {
           g.shootT = 0;
           const bz = g.pos + playerZ + SEG * 0.5;
           const by = g.alt * 260;
-          g.bullets.push({ off: g.x - 0.12, z: bz, y: by, speed: MAXS * 4.8, active: true });
-          g.bullets.push({ off: g.x + 0.12, z: bz, y: by, speed: MAXS * 4.8, active: true });
-          if (g.t % 14 === 0) sfx.tone(880, 0.04, { type: 'square', vol: 0.035, to: 440 });
+          g.bullets.push({ off: g.x - 0.14, z: bz, y: by, speed: MAXS * 5.2, active: true });
+          g.bullets.push({ off: g.x + 0.14, z: bz, y: by, speed: MAXS * 5.2, active: true });
+          if (g.t % 8 === 0) sfx.tone(960, 0.035, { type: 'square', vol: 0.035, to: 480 });
         }
 
-        // 2. 按住 OK 或点按发射追踪微型导弹
-        if (input.ok && ++g.missileT >= 16) {
+        // 2. 按住 OK 或点按发射追踪微型导弹（每隔 12 帧高速连射！）
+        if (input.ok && ++g.missileT >= 12) {
           g.missileT = 0;
           const bz = g.pos + playerZ + SEG * 0.8;
           const by = g.alt * 260 + 20;
-          g.missiles.push({ off: g.x - 0.22, z: bz, y: by, speed: MAXS * 3.8, active: true, target: null });
-          g.missiles.push({ off: g.x + 0.22, z: bz, y: by, speed: MAXS * 3.8, active: true, target: null });
+          g.missiles.push({ off: g.x - 0.22, z: bz, y: by, speed: MAXS * 4.2, active: true, target: null });
+          g.missiles.push({ off: g.x + 0.22, z: bz, y: by, speed: MAXS * 4.2, active: true, target: null });
           sfx.whoosh();
         }
 
@@ -286,25 +286,29 @@
             }
           }
           if (m.target && m.target.active) {
-            m.off = U.approach(m.off, m.target.off, 0.04);
-            m.y = U.approach(m.y, m.target.y, 14);
+            m.off = U.approach(m.off, m.target.off, 0.045);
+            m.y = U.approach(m.y, m.target.y, 16);
           }
           if (m.z > g.pos + playerZ + SEG * 90) m.active = false;
         }
         g.missiles = g.missiles.filter(m => m.active);
 
-        // ---------------- 空中敌机与敌弹系统 ----------------
-        // 周期生成敌机编队
-        if (g.t % 40 === 0 && g.enemies.length < 8) {
-          const isBoss = (g.enemies.length === 0 && g.t % 320 === 0);
-          g.enemies.push({
-            active: true, isBoss, hp: isBoss ? 30 : 4, maxHp: isBoss ? 30 : 4,
-            off: U.rand(-0.85, 0.85), targetOff: U.rand(-0.85, 0.85),
-            z: g.pos + playerZ + SEG * U.rand(50, 85),
-            speed: MAXS * U.rand(0.65, 0.95),
-            y: isBoss ? 360 : U.rand(180, 360),
-            shootTimer: U.randi(25, 60), t: 0
-          });
+        // ---------------- 空中敌机与敌弹系统（高密敌人大军） ----------------
+        // 高频编队出击！同屏上限提升至 24 架，每次刷 2~4 架战机冲锋
+        if (g.t % 14 === 0 && g.enemies.length < 24) {
+          const spawnCount = U.randi(2, 4);
+          const isBoss = (g.enemies.length === 0 && g.t % 220 === 0);
+          for (let k = 0; k < (isBoss ? 1 : spawnCount); k++) {
+            const laneOff = isBoss ? 0 : U.pick([-0.75, -0.4, 0, 0.4, 0.75]) + U.rand(-0.08, 0.08);
+            g.enemies.push({
+              active: true, isBoss, hp: isBoss ? 40 : 3, maxHp: isBoss ? 40 : 3,
+              off: laneOff, targetOff: laneOff + U.rand(-0.25, 0.25),
+              z: g.pos + playerZ + SEG * U.rand(40, 75) + k * SEG * 2.5,
+              speed: MAXS * U.rand(0.65, 0.95),
+              y: isBoss ? 380 : U.rand(160, 380),
+              shootTimer: U.randi(18, 45), t: 0
+            });
+          }
         }
 
         for (const e of g.enemies) {
@@ -724,7 +728,7 @@
         if (kmh >= 100000000) {
           speedText = '1 亿 MAX';
         } else {
-          speedText = (kmh / 10000).toFixed(0) + '万';
+          speedText = Math.round(kmh / 10000).toLocaleString('zh-CN') + ' 万';
         }
 
         const speedCol = isMax ? ((g.t >> 2) % 2 ? '#ffd23f' : '#ff3bd4') : '#38e1ff';
