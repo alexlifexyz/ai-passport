@@ -110,7 +110,7 @@
 
       // ------------------------------------------------ 状态
       const g = {
-        pos: 0, x: 0, speed: 0, dist: 0, time: 600, nitro: 50, nitroOn: false,
+        pos: 0, x: 0, speed: 0, kmh: 0, dist: 0, time: 600, nitro: 50, nitroOn: false,
         cpIndex: 1, cpNextSeg: CP_EVERY, cpBonus: 30, theme: 0,
         skyOff: 0, bump: 0, crash: 0, chain: 0, chainT: 0, lastSteer: 0, t: 0, over: false, overT: 0,
         decoCooldown: 0,
@@ -140,6 +140,7 @@
 
         if (g.over) {
           g.speed = Math.max(0, g.speed - MAXS * dt * 0.8);
+          g.kmh = Math.max(0, g.kmh * 0.92);
           g.pos = U.wrap(g.pos + g.speed * dt, TRACK);
           if (++g.overT === 80) api.end({ overText: 'TIME UP' });
           return;
@@ -156,15 +157,37 @@
         const centriFactor = Math.abs(g.x) > 1 ? 0.35 : 0.8;
         g.x -= dt * 2.0 * pct * pseg.curve * CENTRI * centriFactor;
 
-        // 氮气
+        // 氮气与超光速时速系统（支持从 1 万秒飙到 1 亿！）
         g.nitroOn = input.ok && g.nitro > 0 && g.crash <= 0;
-        if (g.nitroOn) { g.nitro = Math.max(0, g.nitro - 0.55); if (g.t % 6 === 0) fx.burst(W / 2 + U.rand(-10, 10), H - 20, 3, ['#38e1ff', '#fff', '#b58cff'], { speed: 2, angle: Math.PI / 2, spread: 1, life: 14 }); }
-        else g.nitro = Math.min(100, g.nitro + 0.035);
+        if (g.nitroOn) {
+          g.nitro = Math.max(0, g.nitro - 0.28);
+          if (g.t % 4 === 0) {
+            const burstColor = g.kmh >= 100000000 ? ['#ffd23f', '#ff3bd4', '#38e1ff', '#fff'] : (g.kmh >= 10000 ? ['#38e1ff', '#fff', '#7dffb3'] : ['#38e1ff', '#fff']);
+            fx.burst(W / 2 + U.rand(-12, 12), H - 18, 4, burstColor, { speed: 3.5, angle: Math.PI / 2, spread: 1.2, life: 16 });
+          }
+          // 狂暴指数级飙速：从 1 万秒飙到 1 亿！
+          if (g.kmh < 10000) {
+            g.kmh = Math.min(10000, g.kmh + 1250);
+          } else if (g.kmh < 100000) {
+            g.kmh = Math.min(100000, g.kmh * 1.15 + 4000);
+          } else if (g.kmh < 1000000) {
+            g.kmh = Math.min(1000000, g.kmh * 1.25 + 60000);
+          } else if (g.kmh < 10000000) {
+            g.kmh = Math.min(10000000, g.kmh * 1.35 + 800000);
+          } else {
+            g.kmh = Math.min(100000000, g.kmh * 1.45 + 5000000);
+          }
+        } else {
+          // 松开氮气：巡航回落
+          const cruiseTarget = Math.round(pct * 680);
+          g.kmh = Math.max(cruiseTarget, g.kmh * 0.94);
+          g.nitro = Math.min(100, g.nitro + 0.08);
+        }
         if (input.okP && g.nitro > 0) sfx.whoosh();
 
-        const cap = g.nitroOn ? MAXS * 1.3 : MAXS;
-        if (g.crash > 0) { g.crash--; g.speed = U.approach(g.speed, MAXS * 0.35, ACC * dt); }
-        else g.speed = g.speed < cap ? g.speed + ACC * dt * (g.nitroOn ? 1.8 : 1) : U.approach(g.speed, cap, ACC * dt * 2);
+        const cap = g.nitroOn ? MAXS * 2.6 : MAXS * 1.5;
+        if (g.crash > 0) { g.crash--; g.speed = U.approach(g.speed, MAXS * 0.45, ACC * dt); }
+        else g.speed = g.speed < cap ? g.speed + ACC * dt * (g.nitroOn ? 2.5 : 1.2) : U.approach(g.speed, cap, ACC * dt * 2);
 
         // 越界
         const off = Math.abs(g.x) > 1;
@@ -172,30 +195,36 @@
           if (g.speed > OFF_LIM) g.speed += OFF_DEC * dt;
           g.bump = (g.t % 4 < 2) ? 1.5 : -1.5;
           if (g.t % 3 === 0) fx.burst(W / 2 + U.rand(-20, 20), H - 16, 2, [THEMES[g.theme].grass[0], '#8a6a3a'], { speed: 2, angle: -Math.PI / 2, spread: 2, life: 16, gravity: 0.2 });
-          // 撞路边树木：带有防连撞冷却，且智能向内侧弹回赛道方向，保留动力绝不卡死
+          // 撞路边树木：若时速破万直接穿透击碎，否则内侧弹回
           if (g.decoCooldown <= 0) {
             for (const s of pseg.sprites) {
               if (Math.abs(g.x - s.off) < 0.28) {
-                g.speed = Math.max(MAXS * 0.38, g.speed * 0.75);
-                g.x += (g.x > 0 ? -0.25 : 0.25);
-                g.decoCooldown = 35;
-                fx.addShake(6);
-                sfx.thud();
+                if (g.kmh >= 10000) {
+                  fx.burst(W / 2 + (g.x > 0 ? 30 : -30), H - 30, 20, ['#ffd23f', '#fff', '#38e1ff'], { speed: 5 });
+                  fx.addShake(4);
+                  sfx.thud();
+                  g.decoCooldown = 25;
+                } else {
+                  g.speed = Math.max(MAXS * 0.38, g.speed * 0.75);
+                  g.x += (g.x > 0 ? -0.25 : 0.25);
+                  g.decoCooldown = 35;
+                  fx.addShake(6);
+                  sfx.thud();
+                }
                 break;
               }
             }
           }
         } else g.bump = 0;
         g.x = U.clamp(g.x, -2.6, 2.6);
-        g.speed = U.clamp(g.speed, 0, MAXS * 1.3);
+        g.speed = U.clamp(g.speed, 0, MAXS * 2.8);
 
         const move = g.speed * dt;
         g.pos = U.wrap(g.pos + move, TRACK);
-        g.dist += move;
+        g.dist += move * (g.kmh >= 10000 ? Math.min(100, Math.log10(g.kmh)) : 1);
         g.skyOff += pseg.curve * pct * 0.003;
 
-        const kmh = Math.round(pct * 280);
-        st.topSpeed = Math.max(st.topSpeed, kmh);
+        st.topSpeed = Math.max(st.topSpeed, Math.round(g.kmh));
         st.dist = Math.floor(g.dist / 50);
         st.score = st.dist * 2 + Math.floor(g.bonus || 0);
 
@@ -211,15 +240,21 @@
           let relOld = U.wrap(oldZ - (g.pos - move + playerZ), TRACK); if (relOld > TRACK / 2) relOld -= TRACK;
           const dx = Math.abs(c.off - g.x);
           if (rel < SEG * 0.6 && rel > -SEG * 0.3 && dx < c.w + 0.06) {
-            // 相撞
-            if (g.nitroOn) {
-              c.flyT = 90; c.z = U.wrap(c.z + SEG * 60, TRACK);
-              addBonus(500, '撞飞!', '#38e1ff');
-              fx.burst(W / 2, H - 70, 24, ['#fff', '#ffd23f', '#38e1ff'], { speed: 4 }); fx.addShake(8); sfx.boom(false);
-              g.speed *= 0.85;
+            // 相撞：如果时速破万或开氮气，开启无敌曲率撞飞！
+            const warpShield = g.nitroOn || g.kmh >= 10000;
+            if (warpShield) {
+              c.flyT = 100; c.z = U.wrap(c.z + SEG * 70, TRACK);
+              const bonus = g.kmh >= 100000000 ? 5000 : (g.kmh >= 10000 ? 1500 : 600);
+              const label = g.kmh >= 100000000 ? '超光速击穿!' : (g.kmh >= 10000 ? '破万撞飞!' : '撞飞!');
+              addBonus(bonus, label, '#38e1ff');
+              fx.burst(W / 2, H - 70, 32, ['#fff', '#ffd23f', '#38e1ff', '#ff3bd4'], { speed: 6 });
+              fx.addShake(8);
+              sfx.boom(false);
+              g.nitro = Math.min(100, g.nitro + 30);
             } else {
               g.speed = Math.min(g.speed, c.speed * 0.8);
-              g.crash = 40; g.chain = 0;
+              g.crash = 35; g.chain = 0;
+              g.kmh = Math.max(150, g.kmh * 0.5);
               g.x += g.x > c.off ? 0.25 : -0.25;
               c.z = U.wrap(c.z + SEG * 3, TRACK);
               fx.addShake(10); fx.flash('#ff3b3b', 0.35); fx.hitstop(4); sfx.hurt();
@@ -231,10 +266,15 @@
           if (!c.passed && relOld >= 0 && rel < 0) {
             c.passed = true;
             if (dx < c.w + 0.38 && g.crash <= 0) {
-              g.chain++; g.chainT = 150; st.nearMiss++;
-              const v = 150 * g.chain;
-              addBonus(v, g.chain > 1 ? '擦车 x' + g.chain : '擦车!', '#7dffb3');
-              g.nitro = Math.min(100, g.nitro + 18);
+              g.chain++; g.chainT = 180; st.nearMiss++;
+              g.nitro = 100; // 擦车瞬间回满氮气！
+              g.kmh = Math.min(100000000, Math.max(10000, g.kmh * 2.5));
+              const v = 500 * g.chain;
+              let label = '擦车 x' + g.chain;
+              if (g.kmh >= 100000000) label = '★ 1 亿 极限曲率 ★';
+              else if (g.kmh >= 10000000) label = '光速暴走 x' + g.chain;
+              else if (g.kmh >= 10000) label = '破万冲刺 x' + g.chain;
+              addBonus(v, label, g.kmh >= 100000000 ? '#ffd23f' : '#7dffb3');
               sfx.combo(g.chain);
             }
           }
@@ -378,13 +418,37 @@
         ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(px, pyy + 22, 34, 5, 0, 0, 7); ctx.fill();
         ctx.save(); ctx.translate(px, pyy); ctx.rotate(g.lastSteer * 0.05);
         D.sprite(ctx, CAR, PAL_PLAYER, -36, 0, { scale: 3 });
-        if (g.nitroOn) { ctx.fillStyle = (g.t % 4 < 2) ? '#38e1ff' : '#fff'; ctx.fillRect(-28, 30, 8, 6 + (g.t % 3) * 2); ctx.fillRect(20, 30, 8, 6 + (g.t % 3) * 2); }
+        // 玩家车尾焰（开氮气或时速破万喷射，破亿喷射三核神级粒子）
+        if (g.nitroOn || g.kmh >= 10000) {
+          const flameCol = g.kmh >= 100000000 ? ((g.t >> 1) % 2 ? '#ffd23f' : '#ff3bd4') : (g.kmh >= 10000 ? '#38e1ff' : '#fff');
+          const flameH = 8 + (g.t % 4) * 3 + (g.kmh >= 10000000 ? 8 : 0);
+          ctx.fillStyle = flameCol;
+          ctx.fillRect(-28, 30, 8, flameH);
+          ctx.fillRect(20, 30, 8, flameH);
+          if (g.kmh >= 10000) {
+            ctx.fillStyle = g.kmh >= 100000000 ? '#fff' : '#ff3bd4';
+            ctx.fillRect(-8, 30, 16, flameH + 5);
+          }
+        }
         ctx.restore();
         if (g.crash > 0 && (g.t >> 2) % 2) { ctx.fillStyle = 'rgba(255,60,60,.15)'; ctx.fillRect(0, 0, W, H); }
-        // 氮气速度线
-        if (g.nitroOn) {
-          ctx.strokeStyle = 'rgba(255,255,255,.35)';
-          for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + g.t; const r = 60 + ((g.t * 9 + i * 40) % 120); ctx.beginPath(); ctx.moveTo(W / 2 + Math.cos(a) * r, HOR + Math.sin(a) * r * 0.8); ctx.lineTo(W / 2 + Math.cos(a) * (r + 30), HOR + Math.sin(a) * (r + 30) * 0.8); ctx.stroke(); }
+        // 氮气与超光速曲率射线
+        if (g.nitroOn || g.kmh >= 10000) {
+          const rayCount = g.kmh >= 100000000 ? 28 : (g.kmh >= 10000 ? 16 : 8);
+          const rayPalette = g.kmh >= 100000000
+            ? ['#ffd23f', '#ff3bd4', '#38e1ff', '#ffffff']
+            : (g.kmh >= 10000 ? ['#38e1ff', '#7dffb3', '#ffffff'] : ['rgba(255,255,255,.45)']);
+          ctx.lineWidth = g.kmh >= 10000000 ? 2 : 1;
+          for (let i = 0; i < rayCount; i++) {
+            ctx.strokeStyle = rayPalette[i % rayPalette.length];
+            const a = (i / rayCount) * Math.PI * 2 + g.t * 0.08;
+            const r = 35 + ((g.t * 14 + i * 36) % 150);
+            const len = g.kmh >= 10000000 ? 55 : 30;
+            ctx.beginPath();
+            ctx.moveTo(W / 2 + Math.cos(a) * r, HOR + Math.sin(a) * r * 0.75);
+            ctx.lineTo(W / 2 + Math.cos(a) * (r + len), HOR + Math.sin(a) * (r + len) * 0.75);
+            ctx.stroke();
+          }
         }
         drawHud(ctx);
       }
@@ -402,16 +466,45 @@
         D.text(ctx, (st.dist / 1000).toFixed(1) + ' km', 6, 25, { size: 7, color: '#ffd23f', outline: '#000' });
         D.text(ctx, THEMES[g.theme].name, W - 6, 14, { size: 7, color: '#fff', align: 'right', outline: '#000' });
         D.text(ctx, 'CP ' + st.checkpoints, W - 6, 25, { size: 7, color: '#7dffb3', align: 'right', outline: '#000' });
-        // 速度表 + 氮气
-        const kmh = Math.round(g.speed / MAXS * 280);
-        D.panel(ctx, 4, H - 36, 64, 32, { r: 6, fill: 'rgba(0,0,0,.55)', stroke: 'rgba(255,255,255,.2)' });
-        D.text(ctx, String(kmh), 36, H - 16, { size: 14, color: kmh > 290 ? '#38e1ff' : '#fff', align: 'center' });
-        D.text(ctx, 'KM/H', 36, H - 7, { size: 6, color: '#aaa', align: 'center' });
+        // 速度表 + 氮气（支持 1 万至 1 亿动态显示）
+        const kmh = Math.round(g.kmh);
+        const isSuper = kmh >= 1000;
+        const isWarp = kmh >= 10000;
+        const isMax = kmh >= 100000000;
+
+        D.panel(ctx, 4, H - 36, 78, 32, { r: 6, fill: 'rgba(0,0,0,.65)', stroke: isMax ? '#ffd23f' : (isWarp ? '#38e1ff' : 'rgba(255,255,255,.2)') });
+
+        let speedText = '';
+        let fontSize = 13;
+        if (kmh < 10000) {
+          speedText = String(kmh);
+          fontSize = 13;
+        } else if (kmh < 1000000) {
+          speedText = U.fmt(kmh);
+          fontSize = kmh >= 100000 ? 10 : 11;
+        } else if (kmh < 100000000) {
+          speedText = (kmh / 10000).toFixed(0) + '万';
+          fontSize = 12;
+        } else {
+          speedText = '1 亿 MAX';
+          fontSize = 12;
+        }
+
+        const speedCol = isMax ? ((g.t >> 2) % 2 ? '#ffd23f' : '#ff3bd4') : (isWarp ? '#38e1ff' : (isSuper ? '#7dffb3' : '#fff'));
+        D.text(ctx, speedText, 43, H - 16, { size: fontSize, color: speedCol, align: 'center', outline: isWarp ? '#000' : null });
+
+        let unitText = 'KM/H';
+        if (isMax) unitText = '★ 1 亿 极限曲率 ★';
+        else if (kmh >= 10000000) unitText = 'LIGHTSPEED 光速';
+        else if (isWarp) unitText = 'WARP 曲率推进';
+        else if (isSuper) unitText = 'SUPER SPEED';
+
+        D.text(ctx, unitText, 43, H - 7, { size: isWarp ? 5 : 6, color: isWarp ? '#ffd23f' : '#aaa', align: 'center' });
         D.panel(ctx, W - 68, H - 36, 64, 32, { r: 6, fill: 'rgba(0,0,0,.55)', stroke: 'rgba(255,255,255,.2)' });
         D.text(ctx, 'NITRO', W - 36, H - 24, { size: 7, color: '#38e1ff', align: 'center' });
         D.bar(ctx, W - 62, H - 18, 52, 6, g.nitro / 100, g.nitroOn ? '#fff' : '#38e1ff', 'rgba(255,255,255,.15)');
         if (g.chain > 1) D.text(ctx, 'CHAIN x' + g.chain, W / 2, 46, { size: 10, color: '#7dffb3', align: 'center', outline: '#000' });
-        if (g.t > 0 && g.t < 200) D.text(ctx, '贴着车流擦过去 = 攒氮气', W / 2, 190, { size: 9, color: '#fff', align: 'center', outline: '#000' });
+        if (g.t > 0 && g.t < 200) D.text(ctx, '按住 OK 开氮气 · 擦车秒飙 1 亿', W / 2, 190, { size: 9, color: '#fff', align: 'center', outline: '#000' });
       }
 
       return { update, draw };
