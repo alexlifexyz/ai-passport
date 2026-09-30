@@ -61,7 +61,8 @@
 
       function update(input) {
         g.t++;
-        const flap = input.okP || input.upP || input.downP;
+        let flap = input.okP || input.upP || input.downP;
+        if (api.demo) { const nx = g.pipes.find((q) => q.x + 30 > BX); const ty = nx ? nx.cy + 8 : 150; flap = g.y > ty && g.vy > -1; }
         if (g.dead) {
           g.vy = Math.min(7, g.vy + 0.4); g.y = Math.min(GROUND - 6, g.y + g.vy); g.rot = Math.min(Math.PI / 2, g.rot + 0.15);
           if (++g.deadT === 70) { const m = medal(); api.end({ overText: m ? 'GAME OVER · ' + m : 'GAME OVER' }); }

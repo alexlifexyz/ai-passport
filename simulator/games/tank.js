@@ -296,7 +296,7 @@
               // 偏向基地和玩家
               const r = Math.random();
               let want;
-              if (r < 0.35) want = 2;
+              if (r < 0.25) want = 2;
               else if (r < 0.6 && p) want = Math.abs(p.x - e.x) > Math.abs(p.y - e.y) ? (p.x > e.x ? 1 : 3) : (p.y > e.y ? 2 : 0);
               else want = U.randi(0, 3);
               if (!moved && want === e.dir) want = (e.dir + (U.chance(0.5) ? 1 : 3)) % 4;

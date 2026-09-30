@@ -2,7 +2,6 @@
 // 大厅、游戏页、封面都只读这里。任务 test(stats) 的字段由各游戏在 api.stats 上实时写入。
 (function (G) {
   'use strict';
-  const s = (n) => (st) => (st.score || 0) >= n;
 
   G.CATEGORIES = [
     { id: 'all', label: '全部' },
@@ -10,8 +9,8 @@
     { id: 'action', label: '动作' },
     { id: 'race', label: '竞速' },
     { id: 'puzzle', label: '益智' },
-    { id: 'casual', label: '休闲' },
-    { id: 'toy', label: '小品' }
+    { id: 'rhythm', label: '节奏' },
+    { id: 'casual', label: '休闲' }
   ];
 
   G.CATALOG = [
@@ -173,7 +172,7 @@
       ranks: [30000, 20000, 10000]
     },
     {
-      id: 'splasher', title: '水枪狂欢节', en: 'Hydro Splash', icon: '💦', cat: 'shoot', color: '#22d3ee', remade: true,
+      id: 'splasher', title: '水枪狂欢节', en: 'Hydro Splash', icon: '💦', cat: 'shoot', color: '#22d3ee', remade: true, time: 60,
       pitch: '给灰扑扑的打工人一身彩色',
       desc: '六十秒水枪射击馆。窗口和街上会冒出灰扑扑的打工人，抛物线水弹命中就变成夏威夷衬衫跳舞。连续命中有连击，别误伤猫猫。',
       controls: { up: '抬高枪口', down: '压低枪口', ok: '发射水弹 · 按住连射' },
@@ -181,7 +180,7 @@
       missions: [
         { text: '单局染色 25 人', test: (st) => st.hits >= 25 },
         { text: '连击 10 次', test: (st) => st.maxCombo >= 10 },
-        { text: '单局得分 8000', test: s(8000) }
+        { text: '单局得分 8000', test: (st) => st.score >= 8000 }
       ],
       ranks: [12000, 7000, 3500]
     },
@@ -199,135 +198,161 @@
       ranks: [20000, 12000, 6000]
     },
 
-    // ---------------- 原作接入（统一壳层） ----------------
     {
-      id: 'gearcavalry', title: '齿轮骑兵', en: 'Gear Cavalry', icon: '⚙️', cat: 'action', color: '#fbbf24',
-      pitch: '骑着发条战马冲锋，攒满蒸汽开过载',
-      desc: '蒸汽朋克横版冲锋。跃马、下刺、滑铲、骑枪突刺，攒满 100 PSI 蒸汽开启过载。',
-      controls: { up: '跃马 · 空中二段', down: '下刺 · 滑铲', ok: '骑枪突刺 · 满气过载' },
+      id: 'gearcavalry', title: '齿轮骑兵', en: 'Gear Cavalry', icon: '⚙️', cat: 'action', color: '#fbbf24', remade: true,
+      pitch: '骑枪冲锋，看敌人出招：戳、刺、铲',
+      desc: '蒸汽朋克横版冲锋。普通兵用骑枪戳，举盾的要跳起来下刺，贴地的机械蜘蛛要滑铲碾过去，滚来的油桶跳过去。连击攒蒸汽，满压自动过载横冲直撞；每 900 米有一只铁巨人，核心发光时才打得动。',
+      controls: { up: '跃马 · 空中再按二段跳', down: '滑铲 · 空中下刺', ok: '骑枪突刺' },
+      tips: ['举盾兵正面戳不动，从头顶下刺。', '下刺落地会震飞身边的敌人。', '过载期间撞到什么都算你赢。'],
       missions: [
-        { text: '单局得分 5000', test: s(5000) },
-        { text: '单局得分 15000', test: s(15000) },
-        { text: '坚持 90 秒', test: (st) => st.time >= 90 }
+        { text: '单局连击 15 次', test: (st) => st.maxCombo >= 15 },
+        { text: '击倒一只铁巨人', test: (st) => st.bosses >= 1 },
+        { text: '冲过 2000m', test: (st) => st.dist >= 2000 }
       ],
-      ranks: [30000, 15000, 5000]
+      ranks: [60000, 25000, 8000]
     },
     {
-      id: 'flydriver', title: '果蝇超跑', en: 'Fly Driver', icon: '🚀', cat: 'race', color: '#a5b4fc',
-      pitch: '隧道光流里左右闪避',
-      desc: '伪 3D 隧道赛车，左右变道闪开障碍车，贴身超车攒氮气。',
-      controls: { up: '左变道', down: '右变道', ok: '氮气' },
+      id: 'flydriver', title: '果蝇超跑', en: 'Fly Driver', icon: '🚀', cat: 'race', color: '#a5b4fc', featured: true, remade: true,
+      pitch: '管道隧道里 360° 绕圈狂飙',
+      desc: '光速隧道竞速。飞船贴着圆管内壁飞，UP / DOWN 沿着管壁转圈，整个世界跟着旋转。一圈圈障碍环迎面扑来，找缺口钻过去；贴着障碍擦过能攒能量，按住 OK 用能量加速。',
+      controls: { up: '沿管壁逆时针转', down: '沿管壁顺时针转', ok: '按住加速' },
+      tips: ['点一下转一格，按住连续转。', '擦边比躲远更赚：分数和能量都会涨。', '三次护盾用完就结束。'],
       missions: [
-        { text: '单局得分 1000', test: s(1000) },
-        { text: '单局得分 3000', test: s(3000) },
-        { text: '坚持 60 秒', test: (st) => st.time >= 60 }
+        { text: '飞过 3000m', test: (st) => st.dist >= 3000 },
+        { text: '单局擦边 20 次', test: (st) => st.nearMiss >= 20 },
+        { text: '吃到 15 个能量球', test: (st) => st.orbs >= 15 }
       ],
-      ranks: [5000, 2500, 1000]
+      ranks: [20000, 10000, 4000]
     },
     {
-      id: 'flysaber', title: '果蝇光剑', en: 'Fly Saber', icon: '⚔️', cat: 'casual', color: '#fb7185',
-      pitch: '蓝刀砍蓝块，红刀砍红块',
-      desc: '三键节奏劈砍。UP 蓝刀、DOWN 红刀、OK 双刀合击核心块。',
-      controls: { up: '蓝刀', down: '红刀', ok: '双刀合击' },
+      id: 'flysaber', title: '果蝇光剑', en: 'Fly Saber', icon: '⚔️', cat: 'rhythm', color: '#fb7185', featured: true, remade: true,
+      pitch: '跟着音乐砍方块，三首曲子越来越快',
+      desc: '节奏劈砍。游戏自带合成音乐，方块踩着节拍飞过来：蓝色按 UP、红色按 DOWN、金色按 OK，踩准判定线是 PERFECT。别砍黑色炸弹。连击越长倍率越高，三首曲子全部打完就通关。',
+      controls: { up: '蓝刀（左）', down: '红刀（右）', ok: '劈金色核心（中）' },
+      tips: ['跟着鼓点按，比盯着方块更准。', 'PERFECT 会回一点同步值。', '炸弹直接放过就好。'],
       missions: [
-        { text: '单局得分 1500', test: s(1500) },
-        { text: '单局得分 5000', test: s(5000) },
-        { text: '坚持 60 秒', test: (st) => st.time >= 60 }
+        { text: '打完第一首', test: (st) => st.songs >= 1 },
+        { text: '单局 50 连击', test: (st) => st.maxCombo >= 50 },
+        { text: '三首全部通关', test: (st) => st.songs >= 3 }
+      ],
+      ranks: [60000, 35000, 15000]
+    },
+    {
+      id: 'wave', title: '浪涌漫游者', en: 'Wave Walker', icon: '🦦', cat: 'race', color: '#38bdf8', remade: true,
+      pitch: '一键冲浪：下坡按住，浪尖松手飞起来',
+      desc: '海獭冲浪。下坡时按住 OK 压板加速，冲到浪尖松手就会飞起来；在空中用 UP / DOWN 翻跟头，落水时板子和浪面对齐才算完美，完美落水连起来越来越快。太阳会慢慢落下，冲过浮标能续上白天。',
+      controls: { up: '空中向后翻', down: '空中向前翻', ok: '按住压板（下坡加速）' },
+      tips: ['上坡别按，按了会减速。', '空翻越多分越高，但落水角度不对会翻车。', '速度越快越容易赶上下一个浮标。'],
+      missions: [
+        { text: '单局完成 5 个空翻', test: (st) => st.flips >= 5 },
+        { text: '单局 10 次完美落水', test: (st) => st.perfect >= 10 },
+        { text: '冲出 1500m', test: (st) => st.dist >= 1500 }
+      ],
+      ranks: [30000, 15000, 6000]
+    },
+    {
+      id: 'wind', title: '风与纸翼', en: 'Wind Rider', icon: '🪁', cat: 'casual', color: '#2dd4bf', remade: true,
+      pitch: '纸飞机滑翔：俯冲换速度，拉起换高度',
+      desc: '纸飞机滑翔。UP 抬头、DOWN 压头：往下冲会越来越快，拉起来会越飞越高但会变慢。穿过金色风环能加速，绿色上升气流会把你托起来，雷云会劈掉一半速度。OK 放出一阵顺风。贴着地面滑行会越来越慢，停下来就结束。',
+      controls: { up: '抬起机头', down: '压低机头', ok: '顺风（3 次）' },
+      tips: ['快失速时压低机头换速度。', '每连穿 3 个风环回一次顺风。', '上升气流里可以放心拉高。'],
+      missions: [
+        { text: '单局穿过 20 个风环', test: (st) => st.rings >= 20 },
+        { text: '连续穿 8 个风环', test: (st) => st.maxChain >= 8 },
+        { text: '飞出 1500m', test: (st) => st.dist >= 1500 }
       ],
       ranks: [8000, 4000, 1500]
     },
     {
-      id: 'wave', title: '浪涌漫游者', en: 'Wave Walker', icon: '🦦', cat: 'race', color: '#38bdf8', time: 90,
-      pitch: '海獭冲浪，九十秒能滑多远',
-      desc: '顺坡压板加速，浪尖起跳，空中翻滚做特技。九十秒一轮。',
-      controls: { up: '空中翻滚', down: '压板加速', ok: '起跳 · 校正' },
+      id: 'bubble', title: '飞针破泡', en: 'Bubble Shooter', icon: '🫧', cat: 'puzzle', color: '#38bdf8', remade: true,
+      pitch: '打泡泡：三个同色就爆，吊着的整片掉',
+      desc: '泡泡射手。调好角度发射泡泡，碰到的地方就粘住；三个以上同色连在一起就会爆掉，失去支撑的整片泡泡跟着掉下来，掉得越多分越高。连续几发没打爆，天花板就会往下压一行，压过红线就输。清空整屏进下一关。',
+      controls: { up: '向左调角度', down: '向右调角度', ok: '发射' },
+      tips: ['瞄准线会显示一次撞墙反弹。', '打掉"吊点"能让下面一大片一起掉。', '左下角的格子是离天花板下压还剩几发。'],
       missions: [
-        { text: '单轮得分 3000', test: s(3000) },
-        { text: '单轮得分 8000', test: s(8000) },
-        { text: '单轮得分 15000', test: s(15000) }
+        { text: '一次掉落 8 个泡泡', test: (st) => st.maxDrop >= 8 },
+        { text: '打到第 3 关', test: (st) => st.level >= 3 },
+        { text: '单局打爆 150 个', test: (st) => st.popped >= 150 }
       ],
-      ranks: [15000, 8000, 3000]
+      ranks: [40000, 18000, 7000]
     },
     {
-      id: 'wind', title: '风与纸翼', en: 'Wind Rider', icon: '🪁', cat: 'casual', color: '#2dd4bf', time: 90,
-      pitch: '按住俯冲，松开冲天，永不坠毁',
-      desc: '折纸飞机的心流滑翔。按住 OK 俯冲，松开迎风拉起，九十秒一轮。',
-      controls: { up: '抬头', down: '压低', ok: '按住俯冲 · 松开上冲' },
+      id: 'huddle', title: '午后温泉', en: 'Fluffy Huddle', icon: '♨️', cat: 'puzzle', color: '#f472b6', featured: true, remade: true,
+      pitch: '萌物合成：两只一样的碰到就抱成更大的',
+      desc: '温泉合成。把小动物一只只放进木桶温泉，两只一样的碰到一起就会抱成更大的一只：小鸡、仓鼠、猫咪、柴犬、海豹、熊猫、水豚，最后是大白熊。大白熊不会再合成，只会越来越挤。连着抱团有连击。温泉挤到红线以上太久就结束。',
+      controls: { up: '向左移动', down: '向右移动', ok: '放下' },
+      tips: ['大的放两边，小的放中间。', '留一个空位等同款掉进去。', '右上角能看到下一只是谁。'],
       missions: [
-        { text: '单轮得分 1000', test: s(1000) },
-        { text: '单轮得分 3000', test: s(3000) },
-        { text: '单轮得分 6000', test: s(6000) }
+        { text: '抱出一只熊猫', test: (st) => st.best >= 5 },
+        { text: '抱出一只水豚', test: (st) => st.best >= 6 },
+        { text: '单局合成 80 次', test: (st) => st.merges >= 80 }
       ],
-      ranks: [6000, 3000, 1000]
+      ranks: [25000, 12000, 5000]
     },
     {
-      id: 'bubble', title: '飞针破泡', en: 'Bubble Needle', icon: '🪡', cat: 'puzzle', color: '#38bdf8', time: 90,
-      pitch: '飞针会撞墙反弹，雷云泡连锁引爆',
-      desc: '调角度发射飞针，靠墙反弹扎破气泡。雷云泡范围连锁，冰冻泡定格全场。九十秒一轮。',
-      controls: { up: '向左调角', down: '向右调角', ok: '发射 · 长按贯穿针' },
+      id: 'smash', title: '万物皆可敲', en: 'Smash Frenzy', icon: '🔨', cat: 'rhythm', color: '#fb923c', featured: true, remade: true,
+      pitch: '三个洞三颗键：敲闹钟、敲打卡机，别敲小猫',
+      desc: '三洞打地鼠。左中右三个洞正好对应 UP、OK、DOWN。闹钟、周一打卡机、蚊子、鸡蛋冒出来就敲，金猪值五倍；小猫是来玩的，别敲它。东西溜走或者敲到小猫都会扣心。连击每满 20 进入狂热模式，分数翻倍。',
+      controls: { up: '敲左边', down: '敲右边', ok: '敲中间' },
+      tips: ['冒出来的东西头上有倒计时圈。', '敲空洞会断连击。', '后面会两个洞一起冒。'],
       missions: [
-        { text: '单轮得分 2000', test: s(2000) },
-        { text: '单轮得分 6000', test: s(6000) },
-        { text: '单轮得分 12000', test: s(12000) }
+        { text: '单局 30 连击', test: (st) => st.maxCombo >= 30 },
+        { text: '进入一次狂热模式', test: (st) => st.fevers >= 1 },
+        { text: '单局敲中 100 次', test: (st) => st.hits >= 100 }
       ],
-      ranks: [12000, 6000, 2000]
+      ranks: [40000, 18000, 6000]
     },
     {
-      id: 'huddle', title: '午后温泉', en: 'Fluffy Huddle', icon: '♨️', cat: 'puzzle', color: '#f472b6', time: 120,
-      pitch: '把萌物滑进温泉，同类抱团进阶',
-      desc: '合成类小品。把圆滚滚的小动物投进温泉，相同的会抱团合成更大的一只。两分钟一轮。',
-      controls: { up: '左移', down: '右移', ok: '投放 · 长按抚摸' },
+      id: 'roulette', title: '恶魔轮盘', en: 'Devil Roulette', icon: '🎰', cat: 'casual', color: '#ff6b6b', remade: true,
+      pitch: '公布子弹数，轮流开枪，还有五种道具',
+      desc: '霰弹心理战。每轮先公布几发实弹几发空包，再打乱装膛。你可以朝恶魔开枪，也可以赌空包朝自己开枪换一个额外回合。放大镜、锯子、啤酒、香烟、手铐各有用处，连赢三个恶魔就通关。',
+      controls: { up: '上一个选项', down: '下一个选项', ok: '确认' },
+      tips: ['记住已经打出去几发实弹，剩下的概率自己算。', '确定是空包时朝自己开枪，白赚一回合。', '锯子配放大镜：确认是实弹再锯。'],
       missions: [
-        { text: '单轮得分 3000', test: s(3000) },
-        { text: '单轮得分 8000', test: s(8000) },
-        { text: '单轮得分 15000', test: s(15000) }
+        { text: '击败第一个恶魔', test: (st) => st.wins >= 1 },
+        { text: '单局朝自己打出 3 发空包', test: (st) => st.selfBlank >= 3 },
+        { text: '击败全部 3 个恶魔', test: (st) => st.clear }
       ],
-      ranks: [15000, 8000, 3000]
+      ranks: [12000, 7000, 3000]
     },
     {
-      id: 'smash', title: '万物皆可敲', en: 'Smash Frenzy', icon: '🔨', cat: 'casual', color: '#fb923c', time: 45,
-      pitch: '四十五秒，能敲碎多少东西',
-      desc: '解压敲击。切换木槌、充气锤、雷神锤和人字拖，短按连敲，长按蓄力暴击。',
-      controls: { up: '换工具', down: '换工具', ok: '敲 · 长按蓄力' },
+      id: 'fish', title: '会躲起来的鱼', en: 'Shy Fish', icon: '🐠', cat: 'casual', color: '#67e8f9', remade: true,
+      pitch: '小金鱼钻进贝壳，贝壳换位，猜它在哪',
+      desc: '猜猜鱼在哪。盯住小金鱼钻进哪个贝壳，三个贝壳会飞快地互换位置，停下后用 UP / OK / DOWN 选左中右。每轮换得更多更快，第 4 轮起还会有一条冒充的红鱼。',
+      controls: { up: '选左边', down: '选右边', ok: '选中间' },
+      tips: ['只盯一个贝壳，别看全局。', '前几轮鱼会吐泡泡露馅。', '答得越快分越高。'],
       missions: [
-        { text: '单轮得分 3000', test: s(3000) },
-        { text: '单轮得分 8000', test: s(8000) },
-        { text: '单轮得分 15000', test: s(15000) }
+        { text: '撑到第 5 轮', test: (st) => st.round >= 5 },
+        { text: '连续猜中 6 次', test: (st) => st.maxStreak >= 6 },
+        { text: '撑到第 12 轮', test: (st) => st.round >= 12 }
       ],
-      ranks: [15000, 8000, 3000]
+      ranks: [15000, 7000, 2500]
     },
     {
-      id: 'roulette', title: '恶魔轮盘', en: 'Devil Roulette', icon: '🎰', cat: 'casual', color: '#fca5a5',
-      pitch: '一把霰弹枪，你和恶魔轮流开火',
-      desc: '霰弹心理博弈。朝恶魔开枪，或冒险朝自己开枪赢得额外回合。',
-      controls: { up: '选道具', down: '朝恶魔开枪', ok: '朝自己开枪 · 确认' },
+      id: 'sparkler', title: '仙女棒', en: 'Firework Night', icon: '🎆', cat: 'rhythm', color: '#fdba74', featured: true, remade: true,
+      pitch: '烟花大会：飞到光圈里再按，越准越大',
+      desc: '烟花大会。左中右三根发射筒对应 UP、OK、DOWN，烟花飞进光圈时按对应的键就会炸开，按得越准烟花越大。连续完美会攒满压轴条，放出一整片压轴大烟花。错过五发哑炮就结束。',
+      controls: { up: '点左边', down: '点右边', ok: '点中间' },
+      tips: ['光圈变黄就是时机。', '后面会两根筒一起发射。', '连续命中倍率会涨到 6 倍。'],
       missions: [
-        { text: '打赢恶魔一次', test: (st) => st.clear },
-        { text: '单局得分 1000', test: s(1000) },
-        { text: '单局得分 3000', test: s(3000) }
+        { text: '单局 20 次完美', test: (st) => st.perfect >= 20 },
+        { text: '放出一次压轴烟花', test: (st) => st.finales >= 1 },
+        { text: '单局 30 连发', test: (st) => st.maxCombo >= 30 }
       ],
-      ranks: [3000, 1500, 500]
+      ranks: [30000, 12000, 4000]
     },
     {
-      id: 'fish', title: '会躲起来的鱼', en: 'Shy Fish', icon: '🐠', cat: 'toy', color: '#67e8f9', noScore: true,
-      pitch: '鱼缸里只有一条会害羞的像素鱼',
-      desc: '一个安静的小品。敲敲缸壁它会探出头，太久不理它就钻进水草。没有分数，也不会死。',
-      controls: { up: '轻敲缸壁', down: '白天 / 夜里', ok: '叫它一声' },
-      missions: []
-    },
-    {
-      id: 'sparkler', title: '仙女棒', en: 'Sparkler', icon: '🎇', cat: 'toy', color: '#fdba74', noScore: true,
-      pitch: '仙女棒和蜡烛，按 B 吹一口气',
-      desc: '粒子小品。调节燃烧速度，切换仙女棒和蜡烛。',
-      controls: { up: '烧快一点', down: '烧慢一点', ok: '仙女棒 / 蜡烛' },
-      missions: []
-    },
-    {
-      id: 'worldtime', title: '世界时钟', en: 'World Clock', icon: '🕰️', cat: 'toy', color: '#fde047', noScore: true,
-      pitch: '北京、东京、伦敦、纽约，找会议重叠时段',
-      desc: '三键时区罗盘。切换城市，OK 打开会议重叠矩阵。',
-      controls: { up: '上一个城市', down: '下一个城市', ok: '会议矩阵' },
-      missions: []
+      id: 'worldtime', title: '世界时钟', en: 'Time Zone Quiz', icon: '🕰️', cat: 'puzzle', color: '#fde047', remade: true,
+      pitch: '时差大挑战：北京几点，纽约几点？',
+      desc: '时差问答。看着北京时间，答出别的城市现在几点、谁正是白天、谁最先跨年。三个选项对应 UP / OK / DOWN，越快答对分越高，连对还有倍率。答错三次结束。',
+      controls: { up: '选第一个', down: '选第三个', ok: '选第二个' },
+      tips: ['往东每 15 度早一小时。', '北京是 UTC+8，伦敦是 UTC+0。', '题目按标准时间，不算夏令时。'],
+      missions: [
+        { text: '连续答对 5 题', test: (st) => st.maxStreak >= 5 },
+        { text: '单局答对 15 题', test: (st) => st.correct >= 15 },
+        { text: '单局得分 8000', test: (st) => st.score >= 8000 }
+      ],
+      ranks: [12000, 6000, 2500]
     }
   ];
 })(window);

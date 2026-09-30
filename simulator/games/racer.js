@@ -146,7 +146,8 @@
         }
 
         // 转向：出界或低速时提供强效脱困敏捷度，彻底防止打不动方向
-        const dir = (input.up ? -1 : 0) + (input.down ? 1 : 0);
+        let dir = (input.up ? -1 : 0) + (input.down ? 1 : 0);
+        if (api.demo) { const want = -pseg.curve * 0.12; dir = g.x > want + 0.15 ? -1 : g.x < want - 0.15 ? 1 : 0; }
         const returning = (g.x > 1 && dir < 0) || (g.x < -1 && dir > 0);
         const steerRate = returning ? 3.4 : 2.4;
         const steer = dt * steerRate * Math.max(0.7, Math.min(1.2, pct + 0.45));

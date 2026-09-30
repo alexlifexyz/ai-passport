@@ -4,27 +4,34 @@
 
 # Alex Arcade
 
-Public playground for the AI Passport game collection. Thirteen cabinets on the floor, plus a world-clock lounge toy. Every title uses the same three buttons as the handheld: UP, DOWN, and OK.
+Public playground for the AI Passport game collection: 26 titles in the browser, all played with the handheld's three buttons (UP, DOWN, OK). Every title was remade in 2026 on one shared engine, each with its own goal, three missions, and S/A/B/C ranks.
 
 ## Layout
 
 ```text
 arcade/                 public homepage (this folder)
-  index.html            lobby / cabinet wall
-  assets/               hall photos, coin token, and attract-mode stills
+  index.html            lobby: live attract mode, daily challenge, featured rail, library
+  assets/               hall photos, coin token, passport photo
 simulator/              playable pages
-  hub.html              HD pixel tables (Adventure, Contra, Racer, Flappy, Pong, Sparkler, Tank, World Clock)
-  thunder.html          Thunder Striker
-  flysaber.html         FlySaber
-  flydriver.html        FlyDriver
-  game.html             standalone cabinets (Fish, Roulette, Cyber Match-3)
-  games-engine.js       shared audio, FX, and catalog
-  games-impl.js         Fish / Roulette / Match-3 implementations
+  play.html             the single game page (every title opens here: play.html?id=<id>)
+  arcade-kit.js         shared engine: fixed 60 Hz loop, input, audio, FX, saves, title/pause/result shell, demo sandbox
+  catalog.js            the only game list: names, controls, tips, missions, rank thresholds
+  games/*.js            one file per title
+  games-engine.js, games-impl.js, games-new-impl.js, games/legacy.js
+                        the pre-2026 implementations; no page loads them any more and they can be deleted
+  game.html, hub.html, thunder.html, flysaber.html, flydriver.html, paws-sprint.html
+                        redirects to play.html so old links keep working
 ```
 
-Open `arcade/index.html` next to `simulator/` (a local static server or GitHub Pages at the repository root). Cabinets open the matching HD table, not the simplified `game.html` player.
+Open `arcade/index.html` next to `simulator/` through a static server. The lobby thumbnails and the attract screen are the real games running in a muted sandbox, so there are no screenshot files to keep in sync.
 
-The lobby is data-driven: floor cabinets, the nightly pick, ticker copy, and the cabinet count all come from the same list. Keyboard `←` `→` selects a machine; Space inserts a coin. High scores and the last machine played stay in this browser.
+## Adding a game
+
+1. Add an entry to `simulator/catalog.js` (id, title, controls, missions, ranks).
+2. Create `simulator/games/<name>.js` that calls `Arcade.define({ id, create(api) { return { update(input), draw(ctx) } } })`. Write live numbers to `api.stats` and call `api.end()` when the run is over; the shell handles the title card, pause, result card, missions, and high scores.
+3. Add a `<script>` tag for the file to `simulator/play.html` and `arcade/index.html`.
+
+Scores, stars, the local top five, and the last game played stay in this browser (`localStorage`).
 
 ## GitHub Pages and a custom domain
 
@@ -32,7 +39,7 @@ The lobby is data-driven: floor cabinets, the nightly pick, ticker copy, and the
 2. The root `index.html` redirects into `arcade/`.
 3. To use a domain later, add a `CNAME` file in `arcade/` (or at the repository root if Pages is serving `/`) containing the hostname, then point DNS at GitHub.
 
-No build step. The site is static HTML, CSS, and a little JavaScript.
+No build step. The site is static HTML, CSS, and JavaScript.
 
 ## Local preview
 

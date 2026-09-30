@@ -2,785 +2,531 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alex Arcade · 独立游戏综合门户</title>
-<meta name="description" content="Alex Arcade 是 AI Passport 上的专属游乐场。十三台柜机、三颗按键、即开即玩。雷霆飞车、雷霆战机、坦克大战、冒险岛、魂斗罗、果蝇光剑、赛博晶核消消乐与更多。">
-<meta property="og:title" content="Alex Arcade">
-<meta property="og:description" content="十三台柜机，三颗键，即开即玩。">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0910">
+<title>Alex Arcade · 三键街机厅</title>
+<meta name="description" content="Alex Arcade：为 AI Passport 三键掌机做的街机合集。雷霆战机、雷霆飞车、坦克大战、冒险岛、魂斗罗、霓虹宝石等 26 款，浏览器里即开即玩。">
+<meta property="og:title" content="Alex Arcade · 三键街机厅">
+<meta property="og:description" content="26 款三键小游戏，浏览器里即开即玩，每款三个任务等你拿星。">
 <meta property="og:image" content="assets/hall.jpg">
 <link rel="icon" href="assets/coin.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #100a08;
-    --paper: #f2e2c4;
+    --bg: #0b0910;
+    --bg2: #131019;
+    --card: rgba(255,255,255,.035);
+    --line: rgba(255,255,255,.08);
+    --text: #f3ece0;
+    --sub: #a79f93;
     --gold: #f0c14b;
-    --neon: #ff3d7f;
-    --crt: #7dffb3;
-    --muted: #c4b49a;
-    --wood: #1a110e;
-    --line: rgba(240, 193, 75, .28);
+    --pink: #ff4d8d;
+    --cyan: #38e1ff;
+    --cjk: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  html, body { background: var(--ink); color: var(--paper); }
-  body {
-    font-family: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  a { color: inherit; }
-  button { font-family: inherit; }
-  .scan {
-    pointer-events: none;
-    position: fixed; inset: 0; z-index: 40;
-    background: repeating-linear-gradient(to bottom, rgba(0,0,0,.12) 0 1px, transparent 1px 3px);
-    mix-blend-mode: multiply;
-    opacity: .28;
-  }
+  html, body { background: var(--bg); color: var(--text); }
+  body { font-family: var(--cjk); min-height: 100vh; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; color: inherit; cursor: pointer; }
+  .wrap { width: min(1180px, calc(100vw - 40px)); margin: 0 auto; }
+  .display { font-family: "Bebas Neue", Impact, var(--cjk); letter-spacing: .06em; }
+  .pix { font-family: "Silkscreen", "Courier New", monospace; }
+
+  /* ---------- header ---------- */
   header {
     position: sticky; top: 0; z-index: 30;
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 12px;
-    padding: 10px 22px;
-    background: rgba(12, 8, 7, .88);
-    backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--line);
+    background: rgba(11,9,16,.8); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
   }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .brand img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px #1a1008, 0 0 0 3px var(--gold); }
-  .brand-mark {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    font-size: 28px; letter-spacing: .16em;
-    color: var(--gold);
-    text-shadow: 0 0 18px rgba(240, 193, 75, .45);
-  }
-  .brand-sub { font-size: 11px; color: var(--muted); letter-spacing: .18em; text-transform: uppercase; }
-  .nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-  .nav a, .nav button {
-    font-size: 12px; font-weight: 700; letter-spacing: .08em;
-    text-decoration: none; color: var(--paper);
-    background: transparent; border: 1px solid rgba(242, 226, 196, .2);
-    padding: 7px 12px; border-radius: 999px; cursor: pointer;
-  }
-  .nav a:hover, .nav button:hover, .nav button.is-on {
-    border-color: var(--gold); color: var(--gold);
-  }
-  .count-pill {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    letter-spacing: .12em;
-    background: var(--gold); color: #1a1008;
-    padding: 6px 10px; border-radius: 999px;
-  }
+  .hdr { display: flex; align-items: center; gap: 16px; height: 58px; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo img { width: 28px; height: 28px; border-radius: 50%; box-shadow: 0 0 0 2px #1a1008, 0 0 0 3px var(--gold); }
+  .logo b { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 26px; letter-spacing: .14em; color: var(--gold); }
+  nav { display: flex; gap: 4px; margin-left: 12px; }
+  nav a { font-size: 14px; color: var(--sub); padding: 8px 12px; border-radius: 10px; }
+  nav a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+  .hdr-r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid var(--line); background: rgba(255,255,255,.04); font-size: 13px; font-weight: 700; }
+  .pill.star { color: var(--gold); border-color: rgba(240,193,75,.35); }
+  .pill svg { width: 16px; height: 16px; }
 
-  .hero {
-    position: relative;
-    min-height: clamp(520px, 72vh, 720px);
-    display: grid;
-    place-items: end start;
-    padding: 48px 8vw 56px;
+  /* ---------- hero ---------- */
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; z-index: -2;
+    background: url("assets/hall.jpg") center 35% / cover no-repeat; opacity: .32; filter: saturate(.9);
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; z-index: -1;
     background:
-      linear-gradient(180deg, rgba(16,10,8,.18) 0%, rgba(16,10,8,.58) 50%, #100a08 100%),
-      url("assets/hall.jpg") center 40% / cover no-repeat;
+      radial-gradient(60% 70% at 78% 45%, rgba(56,225,255,.12), transparent 70%),
+      linear-gradient(90deg, rgba(11,9,16,.96) 0%, rgba(11,9,16,.75) 50%, rgba(11,9,16,.55) 100%),
+      linear-gradient(180deg, transparent 60%, var(--bg) 100%);
   }
-  .hero-kicker {
-    font-size: 12px; letter-spacing: .28em; text-transform: uppercase;
-    color: var(--gold); margin-bottom: 10px;
-  }
-  .hero h1 {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    font-size: clamp(56px, 10vw, 112px);
-    line-height: .86;
-    letter-spacing: .06em;
-    text-shadow: 0 10px 40px rgba(0,0,0,.8);
-    max-width: 12ch;
-  }
-  .hero h1 span { color: var(--neon); }
-  .hero p {
-    max-width: 46ch; margin: 16px 0 22px;
-    color: #f7ead3; font-size: 16px; line-height: 1.6;
-    text-shadow: 0 2px 12px #000;
-  }
-  .hero-stats {
-    display: flex; gap: 18px; flex-wrap: wrap;
-    margin-bottom: 22px; font-size: 12px; letter-spacing: .14em;
-    text-transform: uppercase; color: var(--gold);
-  }
-  .hero-stats b { color: var(--paper); }
-  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-  .coin {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: var(--gold); color: #1a1008;
-    font-family: "Bebas Neue", Impact, sans-serif;
-    font-size: 22px; letter-spacing: .14em;
-    padding: 12px 22px; text-decoration: none; border: 0; cursor: pointer;
-    box-shadow: 0 0 0 3px #1a1008, 0 0 0 5px var(--gold), 0 12px 30px rgba(0,0,0,.45);
-  }
-  .coin img { width: 22px; height: 22px; border-radius: 50%; }
-  .coin:hover { transform: translateY(-2px); }
-  .ghost {
-    color: var(--paper); text-decoration: none; font-size: 13px; font-weight: 600;
-    border-bottom: 1px solid rgba(242,226,196,.4); padding: 8px 2px;
-  }
-  .key-hint {
-    margin-top: 16px; font-size: 12px; color: var(--muted);
-    letter-spacing: .06em;
-  }
-  kbd {
-    display: inline-block;
-    background: #2a1c16; border: 1px solid #5a4336; color: var(--paper);
-    padding: 1px 6px; border-radius: 4px; font-size: 11px;
-  }
+  .hero-in { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding: 56px 0 64px; }
+  .kicker { font-size: 13px; letter-spacing: .2em; color: var(--gold); font-weight: 700; margin-bottom: 14px; }
+  .kicker i { font-style: normal; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3f3; box-shadow: 0 0 8px #3f3; margin-right: 8px; vertical-align: 1px; animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: clamp(64px, 9vw, 128px); line-height: .85; letter-spacing: .04em; }
+  h1 span { color: var(--pink); text-shadow: 0 0 30px rgba(255,77,141,.5); }
+  .lead { font-size: 18px; line-height: 1.7; color: #e6ddcf; max-width: 32em; margin: 20px 0 26px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 22px; border-radius: 14px; font-weight: 800; font-size: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.06); transition: transform .12s, filter .12s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--gold); color: #1a1008; border: 0; box-shadow: 0 10px 30px rgba(240,193,75,.25); }
+  .btn.primary small { font-weight: 600; opacity: .7; font-size: 12px; }
+  .btn img { width: 22px; height: 22px; border-radius: 50%; }
+  .stats { display: flex; gap: 28px; margin-top: 34px; }
+  .stats div b { display: block; font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 38px; line-height: 1; color: var(--text); }
+  .stats div span { font-size: 12px; color: var(--sub); letter-spacing: .08em; }
 
-  .ticker {
-    background: #0a0706; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
-    overflow: hidden; white-space: nowrap;
-    font-family: "Bebas Neue", Impact, sans-serif;
-    letter-spacing: .18em; color: var(--gold); font-size: 18px; padding: 8px 0;
+  .hero-dev { justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .dev {
+    width: 300px; padding: 14px 14px 18px; border-radius: 28px;
+    background: linear-gradient(165deg, #2b2533, #15121b 70%);
+    box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08), inset 0 1px 0 rgba(255,255,255,.12), 0 0 120px rgba(56,225,255,.12);
+    transform: rotate(2deg);
   }
-  .ticker b { display: inline-block; padding-left: 100%; animation: marq 32s linear infinite; }
-  @keyframes marq { to { transform: translateX(-100%); } }
+  .dev-top { display: flex; justify-content: space-between; font-size: 10px; color: #8d8496; padding: 0 6px 10px; }
+  .dev-scr { position: relative; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 0 0 3px #07060a; cursor: pointer; }
+  .dev-scr canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; transition: opacity .35s; }
+  .dev-scr .tag { position: absolute; left: 10px; bottom: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,.65); backdrop-filter: blur(6px); font-size: 13px; font-weight: 800; }
+  .dev-scr .tag span { font-size: 11px; color: var(--gold); }
+  .dev-keys { display: flex; justify-content: space-around; margin-top: 14px; }
+  .dev-keys i { width: 42px; height: 42px; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #4a4352, #1a161f); box-shadow: 0 4px 0 #0a080d; display: grid; place-items: center; font-style: normal; font-size: 10px; color: #cfc6d8; }
+  .dev-keys i:last-child { background: radial-gradient(circle at 35% 28%, #ffe08a, #f0c14b 55%, #8a5a10); color: #1a1008; }
+  .dots { display: flex; gap: 6px; }
+  .dots b { width: 6px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.2); transition: width .3s, background .3s; }
+  .dots b.on { width: 20px; background: var(--gold); }
 
-  main { padding: 48px 6vw 80px; }
-  .section-h {
-    display: flex; justify-content: space-between; align-items: end; gap: 16px;
-    margin-bottom: 18px;
-  }
-  .section-h h2 {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    font-size: 36px; letter-spacing: .1em;
-  }
-  .section-h p { color: var(--muted); font-size: 13px; max-width: 46ch; }
+  /* ---------- sections ---------- */
+  section.block { padding: 56px 0 8px; }
+  .sh { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+  .sh h2 { font-size: 26px; font-weight: 900; }
+  .sh h2 em { font-style: normal; font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; color: var(--gold); letter-spacing: .08em; margin-right: 10px; font-size: 30px; }
+  .sh p { color: var(--sub); font-size: 14px; }
 
-  .featured {
-    display: grid; grid-template-columns: 320px 1fr; gap: 0;
-    margin-bottom: 42px;
-    background: var(--wood);
-    border: 1px solid #3a2a22;
-    overflow: hidden;
-    min-height: 280px;
-  }
-  .featured-art {
-    position: relative; min-height: 280px; height: 100%;
-    background: #050308;
-  }
-  .featured-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .featured-art::after {
-    content: ""; position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent 55%, var(--wood)),
-                repeating-linear-gradient(to bottom, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
-    pointer-events: none;
-  }
-  .featured-copy { padding: 28px 32px; display: flex; flex-direction: column; justify-content: center; }
-  .featured-copy .badge {
-    align-self: flex-start;
-    font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
-    color: #1a1008; background: var(--gold); padding: 4px 8px; font-weight: 800;
-    margin-bottom: 10px;
-  }
-  .featured-copy h3 {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    font-size: 42px; letter-spacing: .08em; line-height: .9; margin-bottom: 6px;
-  }
-  .featured-copy .sub { color: var(--crt); font-size: 12px; letter-spacing: .14em; margin-bottom: 12px; }
-  .featured-copy p { color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
-  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-  .tag {
-    border: 1px solid rgba(125,255,179,.35); color: var(--crt);
-    padding: 3px 8px; font-size: 11px; font-weight: 700; border-radius: 4px;
-  }
-  .featured-meta { color: var(--gold); font-size: 12px; letter-spacing: .08em; margin-bottom: 14px; }
+  /* 今日 */
+  .today { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; }
+  .daily { display: grid; grid-template-columns: 120px 1fr; gap: 18px; align-items: center; position: relative; overflow: hidden; }
+  .daily::after { content: "DAILY"; position: absolute; right: -8px; bottom: -22px; font-family: "Bebas Neue", Impact, sans-serif; font-size: 110px; color: rgba(255,255,255,.03); pointer-events: none; }
+  .daily canvas, .thumb canvas { width: 100%; aspect-ratio: 3/4; display: block; border-radius: 12px; background: #000; image-rendering: pixelated; }
+  .daily .lbl { font-size: 12px; font-weight: 800; letter-spacing: .14em; color: var(--pink); }
+  .daily h3 { font-size: 22px; margin: 6px 0; }
+  .daily p { color: #d8cfc1; font-size: 15px; line-height: 1.6; margin-bottom: 14px; }
+  .daily p b { color: var(--gold); }
+  .btn.sm { height: 40px; font-size: 14px; padding: 0 16px; border-radius: 12px; }
+  .prog h3 { font-size: 15px; color: var(--sub); font-weight: 700; margin-bottom: 12px; }
+  .bigstar { display: flex; align-items: baseline; gap: 10px; }
+  .bigstar b { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 52px; color: var(--gold); line-height: 1; }
+  .bigstar span { color: var(--sub); }
+  .bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; margin: 12px 0 16px; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--pink)); border-radius: 4px; }
+  .recent { display: flex; flex-direction: column; gap: 8px; }
+  .recent a { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.03); font-size: 14px; }
+  .recent a:hover { background: rgba(255,255,255,.07); }
+  .recent a span:last-child { font-family: "Bebas Neue", Impact, sans-serif; font-size: 18px; color: var(--gold); letter-spacing: .04em; }
+  .recent .empty { color: var(--sub); font-size: 13px; }
 
-  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
-  .filters button {
-    background: #1c1310; color: var(--muted); border: 1px solid #3a2a22;
-    padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 12px;
-  }
-  .filters button.active { color: #1a1008; background: var(--gold); border-color: var(--gold); }
-  .filters button span { opacity: .7; margin-left: 4px; }
+  /* 精选横滑 */
+  .rail { display: grid; grid-auto-flow: column; grid-auto-columns: 220px; gap: 16px; overflow-x: auto; padding: 4px 4px 18px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: rgba(240,193,75,.3) transparent; }
+  .feat { scroll-snap-align: start; border-radius: 20px; overflow: hidden; background: var(--bg2); border: 1px solid var(--line); transition: transform .18s, border-color .18s, box-shadow .18s; position: relative; }
+  .feat:hover, .feat:focus-visible { transform: translateY(-6px); border-color: var(--c); box-shadow: 0 20px 40px rgba(0,0,0,.5), 0 0 30px color-mix(in srgb, var(--c) 25%, transparent); outline: none; }
+  .feat .thumb { position: relative; }
+  .feat .thumb canvas { border-radius: 0; }
+  .feat .thumb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, var(--bg2)); pointer-events: none; }
+  .feat .badge { position: absolute; top: 10px; left: 10px; z-index: 2; font-size: 11px; font-weight: 900; padding: 3px 8px; border-radius: 99px; background: var(--c); color: #120c06; }
+  .feat .play { position: absolute; top: 10px; right: 10px; z-index: 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.6); opacity: 0; transition: .2s; }
+  .feat:hover .play { opacity: 1; }
+  .feat .info { padding: 2px 14px 16px; margin-top: -30px; position: relative; z-index: 2; }
+  .feat h3 { font-size: 18px; font-weight: 900; }
+  .feat .en { font-family: "Silkscreen", monospace; font-size: 10px; color: var(--c); letter-spacing: .04em; }
+  .feat p { font-size: 13px; color: var(--sub); line-height: 1.55; margin: 8px 0 10px; min-height: 40px; }
+  .meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--sub); }
+  .stars { color: var(--gold); letter-spacing: 2px; }
+  .stars .o { color: rgba(255,255,255,.2); }
 
-  .floor {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 28px 18px;
-    align-items: end;
-  }
-  .cab {
-    display: block; text-decoration: none; color: inherit;
-    transform-origin: 50% 100%;
-    transition: transform .18s ease, filter .18s ease;
-    outline: none;
-  }
-  .cab:hover, .cab.is-on { transform: translateY(-10px) scale(1.03); }
-  .cab.is-on .cab-body {
-    box-shadow: 0 0 0 2px var(--gold), 0 22px 36px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.16);
-  }
-  .cab-body {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 58%, #2a1814), #0c0807);
-    border-radius: 10px 10px 4px 4px;
-    padding: 8px 8px 10px;
-    box-shadow: 0 18px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.16);
-  }
-  .cab-marquee {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    text-align: center; letter-spacing: .12em;
-    background: #0a0a0a; color: var(--g);
-    text-shadow: 0 0 12px var(--g);
-    padding: 7px 4px 5px; font-size: clamp(14px, 1.4vw, 20px);
-    margin-bottom: 8px;
-    border: 1px solid rgba(255,255,255,.06);
-  }
-  .cab-bezel {
-    background: #111; padding: 6px;
-    border: 2px solid #1c1c1c;
-    box-shadow: inset 0 0 0 1px #000;
-  }
-  .cab-screen {
-    position: relative; aspect-ratio: 3 / 4;
-    background: #050308; overflow: hidden;
-  }
-  .cab-screen img {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-    image-rendering: pixelated;
-    filter: saturate(1.05) contrast(1.05);
-  }
-  .cab-scan, .cab-glass {
-    position: absolute; inset: 0; pointer-events: none;
-  }
-  .cab-scan {
-    background: repeating-linear-gradient(to bottom, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);
-    opacity: .55;
-  }
-  .cab-glass {
-    background: linear-gradient(180deg, rgba(255,255,255,.1), transparent 18%, transparent 72%, rgba(0,0,0,.4));
-  }
-  .cab-insert {
-    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
-    font-family: "Bebas Neue", Impact, sans-serif;
-    letter-spacing: .14em; font-size: 13px;
-    background: var(--gold); color: #1a1008; padding: 3px 8px;
-    opacity: 0; transition: opacity .15s ease;
-  }
-  .cab:hover .cab-insert, .cab.is-on .cab-insert { opacity: 1; }
-  .cab-deck {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 6px; margin-top: 8px; padding: 0 2px;
-  }
-  .spk {
-    width: 28px; height: 10px;
-    background: repeating-linear-gradient(90deg, #2a2a2a 0 2px, #111 2px 4px);
-    border-radius: 2px;
-  }
-  .mini-btn {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #666, #222);
-    border: 1px solid #888;
-  }
-  .mini-btn.ok { background: radial-gradient(circle at 30% 30%, #f0c14b, #8a5a10); border-color: var(--gold); }
-  .slot {
-    width: 16px; height: 8px; border-radius: 1px;
-    background: #050505; border: 1px solid #444;
-  }
-  .cab-lip {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-top: 8px; font-size: 12px; color: var(--muted); gap: 6px;
-  }
-  .cab-lip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .play-chip {
-    font-family: "Bebas Neue", Impact, sans-serif;
-    letter-spacing: .14em; color: #1a1008;
-    background: var(--gold); padding: 3px 8px; flex-shrink: 0;
-  }
-  .hs {
-    font-size: 10px; color: var(--gold); letter-spacing: .06em; flex-shrink: 0;
-  }
-  .cab-feet { display: flex; justify-content: space-between; padding: 0 14px; }
-  .cab-feet i {
-    display: block; width: 16px; height: 8px;
-    background: #1a1a1a; clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%);
-  }
+  /* 游戏库 */
+  .tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button { height: 34px; padding: 0 14px; border-radius: 17px; border: 1px solid var(--line); background: none; color: var(--sub); font-size: 13px; font-weight: 700; }
+  .chips button:hover { color: var(--text); }
+  .chips button.on { background: var(--gold); border-color: var(--gold); color: #120c06; }
+  .chips button span { opacity: .6; margin-left: 4px; font-weight: 500; }
+  .search { margin-left: auto; position: relative; }
+  .search input { height: 38px; width: 220px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--text); padding: 0 12px 0 34px; font-size: 14px; outline: none; font-family: inherit; }
+  .search input:focus { border-color: var(--gold); }
+  .search svg { position: absolute; left: 11px; top: 11px; width: 16px; height: 16px; color: var(--sub); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+  .card { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid var(--line); transition: transform .15s, border-color .15s; }
+  .card:hover, .card:focus-visible { transform: translateY(-4px); border-color: var(--c); outline: none; }
+  .card .thumb { position: relative; }
+  .card .thumb canvas { border-radius: 0; }
+  .card .badge { position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: 99px; background: var(--c); color: #120c06; }
+  .card .body { padding: 10px 12px 12px; }
+  .card h4 { font-size: 15px; font-weight: 800; display: flex; gap: 6px; align-items: center; }
+  .card .pitch { font-size: 12px; color: var(--sub); margin: 4px 0 8px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 34px; }
+  .none { color: var(--sub); padding: 40px 0; text-align: center; }
 
-  .lounge {
-    margin-top: 64px;
-    display: grid; grid-template-columns: 1.05fr .95fr; gap: 0;
-    background: #1a100e; border: 1px solid #3a2a22; overflow: hidden;
-  }
-  .lounge-photos { display: grid; grid-template-rows: 1fr 1fr; min-height: 320px; }
-  .lounge-photos img { width: 100%; height: 100%; object-fit: cover; filter: saturate(1.05); }
-  .lounge-copy { padding: 28px; display: flex; flex-direction: column; justify-content: center; }
-  .lounge h2 { font-family: "Bebas Neue", Impact, sans-serif; font-size: 34px; letter-spacing: .1em; margin: 8px 0 10px; }
-  .lounge p { color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
+  /* 三键 */
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .key { padding: 24px; }
+  .key .cap { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-family: "Silkscreen", monospace; font-weight: 700; margin-bottom: 14px;
+    background: radial-gradient(circle at 35% 28%, #4a4352, #28222e 60%, #1a161f); box-shadow: 0 5px 0 #0a080d, inset 0 1px 0 rgba(255,255,255,.18); }
+  .key.ok .cap { background: radial-gradient(circle at 35% 28%, #ffe08a, #f0c14b 55%, #8a5a10); color: #1a1008; }
+  .key h3 { font-size: 18px; margin-bottom: 6px; }
+  .key p { color: var(--sub); font-size: 14px; line-height: 1.7; }
+  .key kbd { font-family: "Silkscreen", monospace; font-size: 11px; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--text); }
 
-  .howto {
-    margin-top: 56px;
-    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
-  }
-  .howto article {
-    background: #1c1310; border: 1px solid #3a2a22; padding: 20px;
-  }
-  .howto h3 { font-family: "Bebas Neue", Impact, sans-serif; letter-spacing: .12em; font-size: 22px; color: var(--gold); margin-bottom: 8px; }
-  .howto p { color: var(--muted); font-size: 14px; line-height: 1.6; }
-  .howto img { width: 100%; height: 88px; object-fit: cover; margin-bottom: 10px; filter: saturate(1.1); }
-  .btns { display: flex; gap: 10px; margin-top: 12px; }
-  .fake {
-    width: 46px; height: 46px; border-radius: 50%;
-    background: linear-gradient(#3a3a3a, #161616);
-    border: 2px solid #888; color: #fff; display: grid; place-items: center;
-    font-size: 12px; font-weight: 800; cursor: pointer;
-    box-shadow: 0 4px 0 #050505;
-  }
-  .fake.ok { border-color: var(--gold); }
-  .fake:active, .fake.is-on {
-    transform: translateY(3px);
-    box-shadow: 0 1px 0 #050505;
-    background: var(--gold); color: #1a1008;
-  }
+  /* 掌机 */
+  .passport { display: grid; grid-template-columns: .9fr 1.1fr; gap: 0; overflow: hidden; padding: 0; }
+  .passport img { width: 100%; height: 100%; object-fit: cover; min-height: 260px; }
+  .passport .txt { padding: 32px; display: flex; flex-direction: column; justify-content: center; }
+  .passport h2 { font-size: 26px; margin-bottom: 10px; }
+  .passport p { color: #d8cfc1; line-height: 1.8; font-size: 15px; margin-bottom: 18px; }
 
-  footer {
-    padding: 28px 6vw 40px;
-    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-    border-top: 1px solid #3a2a22; color: var(--muted); font-size: 12px;
-  }
+  footer { margin-top: 64px; border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--sub); font-size: 13px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   footer a { color: var(--gold); }
 
-  .drop {
-    position: fixed; inset: 0; z-index: 50;
-    display: grid; place-items: center;
-    background: rgba(8,5,4,.55);
-    opacity: 0; pointer-events: none; transition: opacity .2s ease;
-  }
-  .drop.show { opacity: 1; pointer-events: auto; }
-  .drop img {
-    width: 120px; height: 120px; border-radius: 50%;
-    animation: coinspin .7s ease;
-    filter: drop-shadow(0 18px 30px rgba(0,0,0,.7));
-  }
-  @keyframes coinspin {
-    from { transform: translateY(-40vh) rotateY(0); }
-    to { transform: translateY(0) rotateY(540deg); }
-  }
+  .coin-drop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(8,5,4,.5); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .coin-drop.show { opacity: 1; }
+  .coin-drop img { width: 110px; height: 110px; border-radius: 50%; }
+  .coin-drop.show img { animation: drop .55s cubic-bezier(.3,1.4,.6,1); }
+  @keyframes drop { from { transform: translateY(-40vh) rotateY(0); } to { transform: none; } }
 
-  .dock {
-    display: none;
-    position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 28;
+  @media (max-width: 960px) {
+    .hero-in { grid-template-columns: 1fr; padding: 36px 0 44px; }
+    .hero-dev { order: -1; }
+    .dev { width: 250px; transform: none; }
+    .today, .passport { grid-template-columns: 1fr; }
+    .keys { grid-template-columns: 1fr; }
+    nav { display: none; }
   }
-  .dock .coin { width: 100%; justify-content: center; }
-
-  @media (max-width: 1100px) {
-    .floor { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 600px) {
+    .wrap { width: calc(100vw - 28px); }
+    .lead { font-size: 16px; }
+    .stats { gap: 18px; }
+    .stats div b { font-size: 30px; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .search { margin-left: 0; width: 100%; }
+    .search input { width: 100%; }
+    .daily { grid-template-columns: 90px 1fr; }
+    .rail { grid-auto-columns: 180px; }
+    .hdr-r .pill.mute span { display: none; }
   }
-  @media (max-width: 980px) {
-    .featured, .lounge, .howto { grid-template-columns: 1fr; }
-    .featured-art { min-height: 200px; max-height: 240px; }
-    .featured-art::after { background: linear-gradient(180deg, transparent 40%, var(--wood)); }
-  }
-  @media (max-width: 640px) {
-    .floor { grid-template-columns: repeat(2, 1fr); gap: 18px 10px; }
-    header { padding: 10px 14px; }
-    .hero { min-height: 560px; padding: 32px 6vw 40px; }
-    .brand-sub, .nav a:nth-child(2), .nav a:nth-child(3) { display: none; }
-    .dock { display: block; }
-    main { padding-bottom: 96px; }
-    .featured-copy h3 { font-size: 32px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .ticker b, .drop img { animation: none; }
-    .cab { transition: none; }
-  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-<div class="scan"></div>
+
 <header>
-  <a class="brand" href="./">
-    <img src="assets/coin.jpg" alt="">
-    <span class="brand-mark">ALEX ARCADE</span>
-    <span class="brand-sub">Indie Playground</span>
-  </a>
-  <nav class="nav">
-    <a href="#floor">柜机</a>
-    <a href="#lounge">休息室</a>
-    <button type="button" id="btn-mute">音效开</button>
-    <span class="count-pill" id="cab-count">14 CABINETS</span>
-  </nav>
+  <div class="wrap hdr">
+    <a class="logo" href="./"><img src="assets/coin.jpg" alt=""><b>ALEX ARCADE</b></a>
+    <nav>
+      <a href="#today">今日</a>
+      <a href="#featured">重制精选</a>
+      <a href="#library">游戏库</a>
+      <a href="#keys">怎么玩</a>
+    </nav>
+    <div class="hdr-r">
+      <span class="pill star" title="任务星星"><svg viewBox="0 0 20 20"><path fill="currentColor" d="M10 1.5l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6L1.4 7.8l6-.8z"/></svg><span id="starPill">0</span></span>
+      <button class="pill mute" id="mute" type="button"></button>
+    </div>
+  </div>
 </header>
 
 <section class="hero">
-  <div>
-    <div class="hero-kicker">Independent playground · 240×320 · 3 buttons</div>
-    <h1>ALEX<br>AR<span>CADE</span></h1>
-    <p id="hero-copy">十四台柜机，一间通宵游乐场。为 AI Passport 写的独立游戏，也能在浏览器里投币开玩。没有账号，没有加载条，只有三颗键。</p>
-    <div class="hero-stats">
-      <span><b id="stat-cabs">14</b> cabinets</span>
-      <span><b>3</b> keys</span>
-      <span><b>240×320</b> passport</span>
-      <span><b>FREE</b> play</span>
+  <div class="wrap hero-in">
+    <div>
+      <div class="kicker"><i></i>AI PASSPORT · 三键街机厅</div>
+      <h1>ALEX<br>AR<span>CADE</span></h1>
+      <p class="lead">一台只有三颗键的掌机，二十几款能在浏览器里直接玩的街机。自动开火、自动奔跑、一键扑翼，按键少，照样好玩。</p>
+      <div class="cta">
+        <a class="btn primary" id="ctaMain" href="../simulator/play.html"><img src="assets/coin.jpg" alt=""><span id="ctaText">投币开玩</span></a>
+        <button class="btn" id="ctaRandom" type="button">🎲 随机来一台</button>
+      </div>
+      <div class="stats">
+        <div><b id="sGames">26</b><span>款游戏</span></div>
+        <div><b id="sRemade">15</b><span>款 2026 重制</span></div>
+        <div><b id="sStars">0</b><span>颗星待收集</span></div>
+      </div>
     </div>
-    <div class="hero-actions">
-      <button class="coin" id="insert" type="button"><img src="assets/coin.jpg" alt=""> INSERT COIN</button>
-      <a class="ghost" href="#floor">先逛一圈大厅 →</a>
+    <div class="hero-dev">
+      <div class="dev">
+        <div class="dev-top pix"><span>AI PASSPORT</span><span id="attractEn">ATTRACT MODE</span></div>
+        <div class="dev-scr" id="attract" role="link" tabindex="0" aria-label="打开当前演示的游戏">
+          <canvas id="attractCv" width="480" height="640"></canvas>
+          <div class="tag"><b id="attractName">…</b><span>点击开玩 ▶</span></div>
+        </div>
+        <div class="dev-keys"><i>UP</i><i>DN</i><i>OK</i></div>
+      </div>
+      <div class="dots" id="dots"></div>
     </div>
-    <div class="key-hint">键盘 <kbd>←</kbd> <kbd>→</kbd> 选柜机 · <kbd>Space</kbd> 投币 · <kbd>M</kbd> 静音</div>
   </div>
 </section>
 
-<div class="ticker"><b id="ticker-text">FREE PLAY · ALEX ARCADE · UP / DOWN / OK · 240×320 PASSPORT ·&nbsp;</b></div>
-
-<main>
-  <div class="section-h">
-    <h2>TONIGHT'S PICK</h2>
-    <p>昨晚没打完的那台会亮在这儿。没有记录就按日期轮换。</p>
-  </div>
-  <section class="featured" id="featured">
-    <div class="featured-art"><img id="feat-img" src="assets/attract-thunderracer.jpg" alt=""></div>
-    <div class="featured-copy">
-      <div class="badge" id="feat-badge">TONIGHT</div>
-      <h3 id="feat-title">雷霆飞车</h3>
-      <div class="sub" id="feat-sub">THUNDER RACER</div>
-      <p id="feat-desc"></p>
-      <div class="featured-meta" id="feat-hs"></div>
-      <div class="tags" id="feat-tags"></div>
-      <a class="coin" id="feat-play" href="../simulator/hub.html?game=thunderracer"><img src="assets/coin.jpg" alt=""> PLAY</a>
-    </div>
-  </section>
-
-  <div class="section-h" id="floor">
-    <h2>THE FLOOR</h2>
-    <p id="floor-copy">点柜机屏幕即开玩，和掌机同一套三键操作。高分存在这台浏览器里。</p>
-  </div>
-  <div class="filters" id="filters"></div>
-  <div class="floor" id="cabs"></div>
-
-  <section class="lounge" id="lounge">
-    <div class="lounge-photos">
-      <img src="assets/attract-worldtime.jpg" alt="世界时钟罗盘">
-      <img src="assets/passport.jpg" alt="AI Passport 三键掌机放在柜机台上">
-    </div>
-    <div class="lounge-copy">
-      <div class="hero-kicker">Lobby companion</div>
-      <h2>休息室里的世界钟</h2>
-      <p>柜机打累了，墙上挂着世界时钟罗盘：北京、东京、伦敦、纽约的太阳位置和会议重叠时段。它也是同一套三键，算第 13 个节目。</p>
-      <a class="coin" id="clock-play" href="../simulator/hub.html?game=worldtime">看一眼时钟</a>
-    </div>
-  </section>
-
-  <div class="howto">
-    <article>
-      <h3>01  三颗键</h3>
-      <p>AI Passport 只有 UP、DOWN、OK。每台柜机都按这三键重做，键盘 ← → 空格 也能打。点下面试一下手感。</p>
-      <div class="btns">
-        <button class="fake" type="button" data-key="up">U</button>
-        <button class="fake" type="button" data-key="down">D</button>
-        <button class="fake ok" type="button" data-key="ok">OK</button>
+<main class="wrap">
+  <section class="block" id="today">
+    <div class="sh"><h2><em>TODAY</em>今日</h2><p>每天换一个挑战，完成就拿一颗星。</p></div>
+    <div class="today">
+      <div class="panel daily" id="daily"></div>
+      <div class="panel prog">
+        <h3>你的收集进度</h3>
+        <div class="bigstar"><b id="pStars">0</b><span id="pTotal">/ 0 颗星</span></div>
+        <div class="bar"><i id="pBar" style="width:0"></i></div>
+        <div class="recent" id="recent"></div>
       </div>
-    </article>
-    <article>
-      <h3>02  即开即玩</h3>
-      <p>纯前端，没有账号，没有安装。发给朋友的就是一条能玩的链接。柜机打开的是和掌机同一套 HD 玩法，不是精简版。</p>
-    </article>
-    <article>
-      <img src="assets/coin-door.jpg" alt="磨损的投币口">
-      <h3>03  投币只是仪式</h3>
-      <p>大厅写着 INSERT COIN，实际免费。点下去会响一声、转一枚金币，然后进柜机。</p>
-    </article>
-  </div>
+    </div>
+  </section>
+
+  <section class="block" id="featured">
+    <div class="sh"><h2><em>REMADE</em>2026 重制精选</h2><p>鼠标移上去就开始演示。</p></div>
+    <div class="rail" id="rail"></div>
+  </section>
+
+  <section class="block" id="library">
+    <div class="sh"><h2><em>LIBRARY</em>全部游戏</h2><p id="libCount"></p></div>
+    <div class="tools">
+      <div class="chips" id="chips"></div>
+      <label class="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg><input id="q" type="search" placeholder="搜索游戏  /" autocomplete="off"></label>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="block" id="keys">
+    <div class="sh"><h2><em>3 KEYS</em>三颗键就够了</h2><p>和掌机同一套操作，键盘、鼠标、手机触屏都能玩。</p></div>
+    <div class="keys">
+      <div class="panel key"><div class="cap">UP</div><h3>向左 / 向上</h3><p>移动、转向、抬枪、扔石斧，看游戏而定。键盘 <kbd>←</kbd> <kbd>↑</kbd> <kbd>A</kbd>。</p></div>
+      <div class="panel key"><div class="cap">DN</div><h3>向右 / 向下</h3><p>移动、转向、卧倒、冲刺。键盘 <kbd>→</kbd> <kbd>↓</kbd> <kbd>D</kbd>。</p></div>
+      <div class="panel key ok"><div class="cap">OK</div><h3>动作</h3><p>跳、开火、确认。很多游戏里按住和点按效果不同。键盘 <kbd>Space</kbd> <kbd>Enter</kbd>，也可以直接点屏幕。</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="panel passport">
+      <img src="assets/passport.jpg" alt="AI Passport 三键掌机">
+      <div class="txt">
+        <div class="kicker">HARDWARE</div>
+        <h2>这些游戏本来是为一台小掌机写的</h2>
+        <p>FoloToy AI Passport：240×320 小屏，UP、DOWN、OK 三颗键，ESP32-C3 芯片。仓库里有整合版固件，刷进去开机就是街机菜单，长按 OK 随时回菜单。</p>
+        <div class="cta"><a class="btn sm" href="../README.zh_CN.md">看固件和刷机方法 →</a></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
-  <div>© 2026 Alex Arcade · Independent playground for AI Passport</div>
-  <div>开源目录 <a href="./">arcade/</a> · 游玩页 <a href="../simulator/hub.html">simulator/hub.html</a></div>
+  <div class="wrap">
+    <div>© 2026 Alex Arcade · 给 AI Passport 做的独立游戏</div>
+    <div>最高分、星星都只存在这台浏览器里 · <a href="../simulator/play.html">直接进游戏页</a></div>
+  </div>
 </footer>
 
-<div class="drop" id="drop" aria-hidden="true"><img src="assets/coin.jpg" alt=""></div>
-<div class="dock"><button class="coin" id="insert-dock" type="button"><img src="assets/coin.jpg" alt=""> INSERT COIN</button></div>
+<div class="coin-drop" id="drop" aria-hidden="true"><img src="assets/coin.jpg" alt=""></div>
 
-<script src="../simulator/games-engine.js"></script>
+<script src="../simulator/catalog.js"></script>
+<script src="../simulator/arcade-kit.js"></script>
+<script src="../simulator/games/thunder.js"></script>
+<script src="../simulator/games/racer.js"></script>
+<script src="../simulator/games/tank.js"></script>
+<script src="../simulator/games/island.js"></script>
+<script src="../simulator/games/contra.js"></script>
+<script src="../simulator/games/flappy.js"></script>
+<script src="../simulator/games/paws.js"></script>
+<script src="../simulator/games/columns.js"></script>
+<script src="../simulator/games/fishhunter.js"></script>
+<script src="../simulator/games/runner.js"></script>
+<script src="../simulator/games/pong.js"></script>
+<script src="../simulator/games/bouncy.js"></script>
+<script src="../simulator/games/splasher.js"></script>
+<script src="../simulator/games/lasercat.js"></script>
+<script src="../simulator/games/roulette.js"></script>
+<script src="../simulator/games/gear.js"></script>
+<script src="../simulator/games/flydriver.js"></script>
+<script src="../simulator/games/flysaber.js"></script>
+<script src="../simulator/games/wave.js"></script>
+<script src="../simulator/games/wind.js"></script>
+<script src="../simulator/games/bubble.js"></script>
+<script src="../simulator/games/huddle.js"></script>
+<script src="../simulator/games/smash.js"></script>
+<script src="../simulator/games/shyfish.js"></script>
+<script src="../simulator/games/sparkler.js"></script>
+<script src="../simulator/games/worldtime.js"></script>
 <script>
-const PLAY_URL = {
-  pawssprint: '../simulator/game.html?id=pawssprint',
-  smash: '../simulator/game.html?id=smash',
-  bubble: '../simulator/game.html?id=bubble',
-  wind: '../simulator/game.html?id=wind',
-  wave: '../simulator/game.html?id=wave',
-  huddle: '../simulator/game.html?id=huddle',
-  lasercat: '../simulator/game.html?id=lasercat',
-  splasher: '../simulator/game.html?id=splasher',
-  bouncy: '../simulator/game.html?id=bouncy',
-  thunderracer: '../simulator/hub.html?game=thunderracer',
-  thunder: '../simulator/thunder.html',
-  battlecity: '../simulator/hub.html?game=battlecity',
-  adventure: '../simulator/hub.html?game=adventure',
-  contra: '../simulator/hub.html?game=contra',
-  flysaber: '../simulator/flysaber.html',
-  flydriver: '../simulator/flydriver.html',
-  flappy: '../simulator/hub.html?game=flappy',
-  pong: '../simulator/hub.html?game=pong',
-  roulette: '../simulator/game.html?id=roulette',
-  fish: '../simulator/game.html?id=fish',
-  sparkler: '../simulator/hub.html?game=sparkler',
-  worldtime: '../simulator/hub.html?game=worldtime',
-  match3: '../simulator/game.html?id=match3',
-  gearcavalry: '../simulator/game.html?id=gearcavalry',
-  cyberrunner: '../simulator/game.html?id=cyberrunner'
-};
-const CATS = [
-  { id: 'all', label: '全部' },
-  { id: 'chill', label: '轻松治愈' },
-  { id: 'race', label: '竞速' },
-  { id: 'shoot', label: '射击' },
-  { id: 'action', label: '动作' },
-  { id: 'party', label: '派对' }
-];
-const CABINETS = [
-  { id: 'pawssprint', marquee: 'PAWS SPRINT', short: '短腿爪爪', cat: 'chill', accent: '#831843', glow: '#f472b6', img: "assets/attract-pawssprint.jpg" },
-  { id: 'smash', marquee: 'SMASH FRENZY', short: '万物皆可敲', cat: 'chill', accent: '#7c2d12', glow: '#fb923c', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3CradialGradient id='bg' cx='50%25' cy='50%25' r='70%25'%3E%3Cstop offset='0%25' stop-color='%23ea580c'/%3E%3Cstop offset='100%25' stop-color='%23431407'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23bg)'/%3E%3Ccircle cx='120' cy='150' r='55' fill='%23fef3c7' stroke='%23f59e0b' stroke-width='4'/%3E%3Cellipse cx='120' cy='160' rx='30' ry='24' fill='%23f59e0b'/%3E%3Cpath d='M80,135 Q100,110 120,135 Q140,160 160,135' fill='none' stroke='%23d97706' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='105' y='60' width='30' height='40' rx='6' fill='%2378350f' transform='rotate(-25 120 80)'/%3E%3Crect x='115' y='100' width='10' height='45' fill='%23d97706' transform='rotate(-25 120 80)'/%3E%3Ctext x='120' y='250' font-family='Impact,sans-serif' font-size='24' font-weight='bold' text-anchor='middle' fill='%23fef08a' letter-spacing='2'%3ESMASH FRENZY%3C/text%3E%3Ctext x='120' y='275' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23fdba74'%3E万物皆可敲 · ASMR%3C/text%3E%3C/svg%3E" },
-  { id: 'bubble', marquee: 'BUBBLE POP', short: '飞针破泡录', cat: 'chill', accent: '#0284c7', glow: '#38bdf8', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3CradialGradient id='bbg' cx='50%25' cy='40%25' r='75%25'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%23082f49'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23bbg)'/%3E%3Ccircle cx='90' cy='100' r='32' fill='%2338bdf8' fill-opacity='0.4' stroke='%23e0f2fe' stroke-width='2'/%3E%3Ccircle cx='155' cy='130' r='42' fill='%23a855f7' fill-opacity='0.4' stroke='%23f3e8ff' stroke-width='2'/%3E%3Ccircle cx='110' cy='175' r='26' fill='%23fbbf24' fill-opacity='0.5' stroke='%23fef9c3' stroke-width='2'/%3E%3Cline x1='120' y1='290' x2='120' y2='190' stroke='%23f8fafc' stroke-width='4' stroke-linecap='round'/%3E%3Cpolygon points='120,180 114,195 126,195' fill='%2338bdf8'/%3E%3Ctext x='120' y='250' font-family='Impact,sans-serif' font-size='24' font-weight='bold' text-anchor='middle' fill='%2338bdf8' letter-spacing='2'%3EBUBBLE POP%3C/text%3E%3Ctext x='120' y='275' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23bae6fd'%3E飞针破泡录 · 连锁%3C/text%3E%3C/svg%3E" },
-  { id: 'wind', marquee: 'WIND RIDER', short: '风与纸翼', cat: 'chill', accent: '#0f766e', glow: '#2dd4bf', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3ClinearGradient id='wsky' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23f97316'/%3E%3Cstop offset='50%25' stop-color='%23fb7185'/%3E%3Cstop offset='100%25' stop-color='%23134e4a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23wsky)'/%3E%3Cellipse cx='180' cy='110' rx='28' ry='38' fill='none' stroke='%23fef08a' stroke-width='3' stroke-dasharray='6,4' transform='rotate(-20 180 110)'/%3E%3Cpath d='M60,150 L140,110 L100,165 Z' fill='%23ffffff' filter='drop-shadow(0 4px 6px rgba(0,0,0,0.3))'/%3E%3Cpath d='M60,150 Q40,170 30,200' fill='none' stroke='%23ef4444' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M0,230 Q60,190 130,225 T240,210 L240,320 L0,320 Z' fill='%23065f46'/%3E%3Ctext x='120' y='265' font-family='Impact,sans-serif' font-size='24' font-weight='bold' text-anchor='middle' fill='%23fef08a' letter-spacing='2'%3EWIND RIDER%3C/text%3E%3Ctext x='120' y='290' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23a7f3d0'%3E风与纸翼 · 永不坠毁%3C/text%3E%3C/svg%3E" },
-  { id: 'wave', marquee: 'WAVE WALKER', short: '浪涌漫游者', cat: 'race', accent: '#0284c7', glow: '#38bdf8', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3ClinearGradient id='wbg' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23wbg)'/%3E%3Cpath d='M0,170 Q60,120 120,160 T240,140 L240,320 L0,320 Z' fill='%230284c7' fill-opacity='0.6'/%3E%3Cpath d='M0,200 Q70,160 140,195 T240,180 L240,320 L0,320 Z' fill='%230369a1'/%3E%3Ccircle cx='115' cy='110' r='24' fill='%2392400e'/%3E%3Ccircle cx='106' cy='105' r='5' fill='%231e293b'/%3E%3Ccircle cx='124' cy='105' r='5' fill='%231e293b'/%3E%3Cellipse cx='115' cy='135' rx='34' ry='10' fill='%23f59e0b' transform='rotate(-18 115 135)'/%3E%3Ctext x='120' y='255' font-family='Impact,sans-serif' font-size='22' font-weight='bold' text-anchor='middle' fill='%2338bdf8' letter-spacing='2'%3EWAVE WALKER%3C/text%3E%3Ctext x='120' y='280' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23bae6fd'%3E浪涌漫游者 · 海獭冲浪%3C/text%3E%3C/svg%3E" },
-  { id: 'huddle', marquee: 'FLUFFY HUDDLE', short: '午后温泉', cat: 'chill', accent: '#9d174d', glow: '#f472b6', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3ClinearGradient id='hbg' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23fda4af'/%3E%3Cstop offset='100%25' stop-color='%234c0519'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23hbg)'/%3E%3Cellipse cx='120' cy='220' rx='100' ry='50' fill='%2338bdf8' fill-opacity='0.4' stroke='%2378350f' stroke-width='8'/%3E%3Ccircle cx='90' cy='165' r='32' fill='%23f59e0b'/%3E%3Ccircle cx='145' cy='170' r='30' fill='%23f1f5f9'/%3E%3Crect x='80' y='130' width='22' height='10' rx='3' fill='%23ffffff'/%3E%3Ctext x='120' y='265' font-family='Impact,sans-serif' font-size='22' font-weight='bold' text-anchor='middle' fill='%23f472b6' letter-spacing='2'%3EFLUFFY HUDDLE%3C/text%3E%3Ctext x='120' y='290' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23fbcfe8'%3E午后温泉 · 萌物抱抱团%3C/text%3E%3C/svg%3E" },
-  { id: 'lasercat', marquee: 'LASER CAT', short: '猫猫激光笔', cat: 'action', accent: '#991b1b', glow: '#f87171', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3CradialGradient id='lbg' cx='50%25' cy='50%25' r='75%25'%3E%3Cstop offset='0%25' stop-color='%23450a0a'/%3E%3Cstop offset='100%25' stop-color='%23050505'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23lbg)'/%3E%3Cpolyline points='40,280 200,130 130,70' fill='none' stroke='%23ef4444' stroke-width='3' stroke-dasharray='4,4'/%3E%3Ccircle cx='130' cy='70' r='8' fill='%23ef4444' filter='drop-shadow(0 0 8px %23ef4444)'/%3E%3Ccircle cx='120' cy='160' r='40' fill='%23f97316'/%3E%3Cpolygon points='90,130 100,95 118,125' fill='%23ea580c'/%3E%3Cpolygon points='150,130 140,95 122,125' fill='%23ea580c'/%3E%3Ccircle cx='105' cy='155' r='9' fill='%23fef08a'/%3E%3Ccircle cx='135' cy='155' r='9' fill='%23fef08a'/%3E%3Ccircle cx='107' cy='155' r='4' fill='%23000'/%3E%3Ccircle cx='137' cy='155' r='4' fill='%23000'/%3E%3Ctext x='120' y='255' font-family='Impact,sans-serif' font-size='24' font-weight='bold' text-anchor='middle' fill='%23f87171' letter-spacing='2'%3ELASER CAT%3C/text%3E%3Ctext x='120' y='280' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23fca5a5'%3E猫猫激光笔 · 飞扑推箱%3C/text%3E%3C/svg%3E" },
-  { id: 'splasher', marquee: 'HYDRO SPLASH', short: '水枪狂欢节', cat: 'shoot', accent: '#0891b2', glow: '#22d3ee', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3ClinearGradient id='sbg' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230891b2'/%3E%3Cstop offset='100%25' stop-color='%23164e63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23sbg)'/%3E%3Ccircle cx='70' cy='110' r='35' fill='%23ec4899' fill-opacity='0.7'/%3E%3Ccircle cx='160' cy='95' r='45' fill='%23eab308' fill-opacity='0.7'/%3E%3Ccircle cx='130' cy='150' r='50' fill='%2306b6d4' fill-opacity='0.8'/%3E%3Cpath d='M30,250 Q100,190 170,110' fill='none' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round'/%3E%3Crect x='25' y='230' width='50' height='24' rx='6' fill='%23f97316' transform='rotate(-30 40 240)'/%3E%3Ctext x='120' y='255' font-family='Impact,sans-serif' font-size='22' font-weight='bold' text-anchor='middle' fill='%2322d3ee' letter-spacing='2'%3EHYDRO SPLASH%3C/text%3E%3Ctext x='120' y='280' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23a5f3fc'%3E水枪狂欢节 · 彩墨复苏%3C/text%3E%3C/svg%3E" },
-  { id: 'bouncy', marquee: 'BOUNCY MASTER', short: '几何弹射枪', cat: 'shoot', accent: '#4338ca', glow: '#818cf8', img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 320'%3E%3Cdefs%3E%3ClinearGradient id='bbbg' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23312e81'/%3E%3Cstop offset='100%25' stop-color='%2309090b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='240' height='320' fill='url(%23bbbg)'/%3E%3Cpolyline points='120,290 200,160 50,90 170,40' fill='none' stroke='%23a855f7' stroke-width='2' stroke-dasharray='5,5'/%3E%3Ccircle cx='200' cy='160' r='8' fill='%23facc15'/%3E%3Ccircle cx='50' cy='90' r='8' fill='%23facc15'/%3E%3Crect x='150' y='30' width='40' height='20' rx='4' fill='%23ef4444'/%3E%3Ctext x='170' y='44' font-family='sans-serif' font-size='10' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3ETNT%3C/text%3E%3Ctext x='120' y='255' font-family='Impact,sans-serif' font-size='22' font-weight='bold' text-anchor='middle' fill='%23818cf8' letter-spacing='2'%3EBOUNCY BLASTER%3C/text%3E%3Ctext x='120' y='280' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23c7d2fe'%3E几何弹射枪 · 橡胶反弹%3C/text%3E%3C/svg%3E" },
-  { id: 'cyberrunner', marquee: 'RUNNER', short: '影刃闪现', cat: 'action', accent: '#1a102f', glow: '#38bdf8' },
-  { id: 'gearcavalry', marquee: 'CAVALRY', short: '齿轮骑兵', cat: 'action', accent: '#78350f', glow: '#fbbf24' },
-  { id: 'thunderracer', marquee: 'RACER', short: '雷霆飞车', cat: 'race', accent: '#9b1c1c', glow: '#ff6b6b' },
-  { id: 'thunder', marquee: 'STRIKER', short: '雷霆战机', cat: 'shoot', accent: '#123c4a', glow: '#7dffb3' },
-  { id: 'battlecity', marquee: 'TANK 1990', short: '坦克大战', cat: 'shoot', accent: '#854d0e', glow: '#fde047' },
-  { id: 'adventure', marquee: 'ISLAND', short: '冒险岛', cat: 'action', accent: '#1d6b3a', glow: '#86efac' },
-  { id: 'contra', marquee: 'CONTRA', short: '口袋魂斗罗', cat: 'shoot', accent: '#1e3a5f', glow: '#93c5fd' },
-  { id: 'flysaber', marquee: 'SABER', short: '果蝇光剑', cat: 'action', accent: '#4a1030', glow: '#fb7185' },
-  { id: 'flydriver', marquee: 'DRIVER', short: '果蝇超跑', cat: 'race', accent: '#1e1b4b', glow: '#a5b4fc' },
-  { id: 'flappy', marquee: 'FLAPPY', short: '像素飞鸟', cat: 'chill', accent: '#075985', glow: '#fde047' },
-  { id: 'pong', marquee: 'PONG', short: '变异乒乓', cat: 'party', accent: '#14532d', glow: '#5eead4' },
-  { id: 'roulette', marquee: 'ROULETTE', short: '恶魔轮盘', cat: 'party', accent: '#7f1d1d', glow: '#fca5a5' },
-  { id: 'fish', marquee: 'FISH', short: '会躲起来的鱼', cat: 'chill', accent: '#0c4a6e', glow: '#67e8f9' },
-  { id: 'sparkler', marquee: 'SPARKLER', short: '仙女棒', cat: 'chill', accent: '#422006', glow: '#fdba74' },
-  { id: 'match3', marquee: 'NEON POP', short: '晶核消消乐', cat: 'chill', accent: '#701a75', glow: '#f472b6' }
-];
+(function () {
+  'use strict';
+  const A = window.Arcade, Save = A.Save, U = A.U;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const CAT = Object.fromEntries(window.CATEGORIES.map((c) => [c.id, c.label]));
+  const LIST = window.CATALOG.filter((c) => A.games[c.id]);
+  const FEAT = LIST.filter((c) => c.featured);
+  const url = (id) => '../simulator/play.html?id=' + encodeURIComponent(id);
+  const totalStars = LIST.reduce((n, g) => n + g.missions.length, 0);
+  const sfx = new A.Sfx(); sfx.muted = Save.muted();
+  Save.migrate();
 
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
-  hs(id) { return +this.get('aa_hs_' + id, 0) || 0; }
-};
-
-const metaOf = (id) => (window.GAME_REGISTRY || []).find(g => g.id === id) || {};
-const hrefOf = (id) => PLAY_URL[id] || ('../simulator/hub.html?game=' + encodeURIComponent(id));
-
-let muted = store.get('aa_mute', '0') === '1';
-let cat = 'all';
-let selected = 0;
-let audioCtx = null;
-
-function ensureAudio() {
-  if (muted) return null;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return null;
-  if (!audioCtx) audioCtx = new AC();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-function beep(from, to, dur, type) {
-  try {
-    const ac = ensureAudio();
-    if (!ac) return;
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = type || 'square';
-    o.frequency.setValueAtTime(from, ac.currentTime);
-    o.frequency.exponentialRampToValueAtTime(Math.max(40, to), ac.currentTime + dur);
-    g.gain.setValueAtTime(0.07, ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
-    o.connect(g); g.connect(ac.destination);
-    o.start(); o.stop(ac.currentTime + dur + 0.02);
-  } catch (e) {
-    console.error('Beep error:', e);
+  function starsHtml(g) {
+    if (!g.missions.length) return '<span class="stars" style="color:var(--sub)">小品</span>';
+    const n = Save.stars(g.id);
+    return '<span class="stars">' + '★'.repeat(n) + '<span class="o">' + '★'.repeat(g.missions.length - n) + '</span></span>';
   }
-}
-function coinSound() {
-  beep(880, 220, 0.16, 'square');
-  setTimeout(() => beep(1320, 440, 0.12, 'triangle'), 80);
-}
-
-function visibleCabs() {
-  return CABINETS.filter(c => cat === 'all' || c.cat === cat);
-}
-function setMuteUi() {
-  document.getElementById('btn-mute').textContent = muted ? '已静音' : '音效开';
-  document.getElementById('btn-mute').classList.toggle('is-on', !muted);
-}
-
-function pickFeatured() {
-  const last = store.get('aa_last', '');
-  const fromLast = CABINETS.find(c => c.id === last);
-  if (fromLast) return fromLast;
-  const day = Math.floor(Date.now() / 86400000);
-  return CABINETS[day % CABINETS.length];
-}
-
-function renderFeatured() {
-  const cab = pickFeatured();
-  const meta = metaOf(cab.id);
-  const last = store.get('aa_last', '');
-  document.getElementById('feat-img').src = cab.img || ('assets/attract-' + cab.id + '.jpg');
-  document.getElementById('feat-img').alt = cab.short;
-  document.getElementById('feat-badge').textContent = last === cab.id ? 'CONTINUE' : 'TONIGHT';
-  document.getElementById('feat-title').textContent = cab.short;
-  document.getElementById('feat-sub').textContent = meta.subtitle || cab.marquee;
-  document.getElementById('feat-desc').textContent = meta.desc || '';
-  document.getElementById('feat-play').href = hrefOf(cab.id);
-  const hs = store.hs(cab.id);
-  document.getElementById('feat-hs').textContent = hs ? ('BEST  ' + hs) : '还没有本机高分';
-  document.getElementById('feat-tags').innerHTML = (meta.tags || []).slice(0, 4).map(t => '<span class="tag">' + t + '</span>').join('');
-}
-
-function renderFilters() {
-  const root = document.getElementById('filters');
-  root.innerHTML = CATS.map(c => {
-    const n = c.id === 'all' ? CABINETS.length : CABINETS.filter(x => x.cat === c.id).length;
-    return '<button type="button" data-cat="' + c.id + '"' + (c.id === cat ? ' class="active"' : '') + '>' + c.label + '<span>' + n + '</span></button>';
-  }).join('');
-}
-
-function renderCabs() {
-  const vis = visibleCabs();
-  if (selected >= vis.length) selected = Math.max(0, vis.length - 1);
-  document.getElementById('cabs').innerHTML = vis.map((cab, i) => {
-    const hs = store.hs(cab.id);
-    const imgSrc = cab.img || ('assets/attract-' + cab.id + '.jpg');
-    return (
-      '<a class="cab' + (i === selected ? ' is-on' : '') + '" data-id="' + cab.id + '" data-cat="' + cab.cat + '" data-i="' + i + '"' +
-      ' style="--c:' + cab.accent + ';--g:' + cab.glow + '" href="' + hrefOf(cab.id) + '">' +
-        '<div class="cab-body">' +
-          '<div class="cab-marquee">' + cab.marquee + '</div>' +
-          '<div class="cab-bezel"><div class="cab-screen">' +
-            '<img src="' + imgSrc + '" alt="' + cab.short + '">' +
-            '<div class="cab-scan"></div><div class="cab-glass"></div>' +
-            '<div class="cab-insert">INSERT COIN</div>' +
-          '</div></div>' +
-          '<div class="cab-deck"><span class="spk"></span><span class="mini-btn"></span><span class="mini-btn"></span><span class="mini-btn ok"></span><span class="slot"></span></div>' +
-          '<div class="cab-lip"><span class="name">' + cab.short + '</span>' +
-          (hs ? '<span class="hs">BEST ' + hs + '</span>' : '') +
-          '<span class="play-chip">PLAY</span></div>' +
-        '</div><div class="cab-feet"><i></i><i></i></div>' +
-      '</a>'
-    );
-  }).join('');
-}
-
-function markSelected() {
-  document.querySelectorAll('.cab').forEach((el, i) => el.classList.toggle('is-on', i === selected));
-  const on = document.querySelector('.cab.is-on');
-  if (on) on.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
-function goPlay(id) {
-  store.set('aa_last', id);
-  const drop = document.getElementById('drop');
-  drop.classList.add('show');
-  setTimeout(() => { location.href = hrefOf(id); }, 720);
-  try { coinSound(); } catch (e) { console.error('Audio error:', e); }
-}
-
-function insertCoin() {
-  const vis = visibleCabs();
-  const cab = vis[selected] || pickFeatured();
-  goPlay(cab.id);
-}
-
-document.getElementById('cab-count').textContent = CABINETS.length + ' CABINETS';
-document.getElementById('stat-cabs').textContent = CABINETS.length;
-document.getElementById('hero-copy').textContent =
-  CABINETS.length + ' 台柜机，一间通宵游乐场。为 AI Passport 写的独立游戏，也能在浏览器里投币开玩。没有账号，没有加载条，只有三颗键。';
-document.getElementById('ticker-text').textContent =
-  'FREE PLAY · ' + CABINETS.length + ' CABINETS · ' +
-  CABINETS.map(c => c.marquee).join(' · ') +
-  ' · WORLD CLOCK · UP / DOWN / OK · 240×320 PASSPORT · ';
-
-renderFeatured();
-renderFilters();
-renderCabs();
-setMuteUi();
-
-document.getElementById('filters').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  cat = btn.dataset.cat;
-  selected = 0;
-  beep(520, 880, 0.06);
-  renderFilters();
-  renderCabs();
-});
-
-document.getElementById('cabs').addEventListener('mouseover', (e) => {
-  const cab = e.target.closest('.cab');
-  if (!cab) return;
-  const i = +cab.dataset.i;
-  if (i !== selected) {
-    selected = i;
-    markSelected();
-    beep(420, 640, 0.04, 'sine');
+  function go(id) {
+    Save.setLast(id);
+    $('drop').classList.add('show');
+    sfx.coin();
+    setTimeout(() => { location.href = url(id); }, 520);
   }
-});
-document.getElementById('cabs').addEventListener('click', (e) => {
-  const cab = e.target.closest('.cab');
-  if (!cab) return;
-  e.preventDefault();
-  goPlay(cab.dataset.id);
-});
-document.getElementById('feat-play').addEventListener('click', (e) => {
-  e.preventDefault();
-  goPlay(pickFeatured().id);
-});
-document.getElementById('clock-play').addEventListener('click', (e) => {
-  e.preventDefault();
-  goPlay('worldtime');
-});
-document.getElementById('insert').addEventListener('click', insertCoin);
-document.getElementById('insert-dock').addEventListener('click', insertCoin);
-document.getElementById('btn-mute').addEventListener('click', () => {
-  muted = !muted;
-  store.set('aa_mute', muted ? '1' : '0');
-  setMuteUi();
-});
+  window.addEventListener('pageshow', () => $('drop').classList.remove('show'));
 
-document.querySelectorAll('.fake').forEach((btn) => {
-  const press = () => {
-    btn.classList.add('is-on');
-    const k = btn.dataset.key;
-    if (k === 'up') { selected = (selected + visibleCabs().length - 1) % Math.max(1, visibleCabs().length); beep(360, 520, 0.05); }
-    else if (k === 'down') { selected = (selected + 1) % Math.max(1, visibleCabs().length); beep(520, 360, 0.05); }
-    else { beep(880, 220, 0.1); }
-    markSelected();
-  };
-  const release = () => btn.classList.remove('is-on');
-  btn.addEventListener('mousedown', press);
-  btn.addEventListener('mouseup', release);
-  btn.addEventListener('mouseleave', release);
-  btn.addEventListener('touchstart', (e) => { e.preventDefault(); press(); }, { passive: false });
-  btn.addEventListener('touchend', release);
-});
+  // ---------- 顶部统计
+  function paintStats() {
+    const have = Save.totalStars(LIST.map((g) => g.id));
+    $('starPill').textContent = have + ' / ' + totalStars;
+    $('sGames').textContent = LIST.length;
+    $('sRemade').textContent = LIST.filter((g) => g.remade).length;
+    $('sStars').textContent = totalStars;
+    $('pStars').textContent = have;
+    $('pTotal').textContent = '/ ' + totalStars + ' 颗星';
+    $('pBar').style.width = (have / totalStars * 100).toFixed(1) + '%';
+  }
+  function paintMute() {
+    $('mute').innerHTML = (sfx.muted
+      ? '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 6h3l4-3v10L5 10H2z"/><path d="M11 6l4 4M15 6l-4 4" stroke="currentColor" stroke-width="1.6"/></svg>'
+      : '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 6h3l4-3v10L5 10H2z"/><path d="M11 5.5a3.5 3.5 0 010 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>') + '<span>' + (sfx.muted ? '静音' : '音效') + '</span>';
+  }
+  $('mute').onclick = () => { sfx.muted = !sfx.muted; Save.setMuted(sfx.muted); paintMute(); if (!sfx.muted) sfx.select(); };
 
-window.addEventListener('keydown', (e) => {
-  const cols = matchMedia('(max-width: 640px)').matches ? 2 : matchMedia('(max-width: 1100px)').matches ? 3 : 4;
-  const vis = visibleCabs();
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyM') {
-    muted = !muted; store.set('aa_mute', muted ? '1' : '0'); setMuteUi(); return;
+  // ---------- 继续 / 随机
+  const last = LIST.find((g) => g.id === Save.last());
+  if (last) { $('ctaText').innerHTML = '继续：' + esc(last.title) + ' <small>最佳 ' + U.fmt(Save.best(last.id)) + '</small>'; $('ctaMain').href = url(last.id); $('ctaMain').onclick = (e) => { e.preventDefault(); go(last.id); }; }
+  else { $('ctaMain').href = url('thunder'); $('ctaMain').onclick = (e) => { e.preventDefault(); go('thunder'); }; }
+  $('ctaRandom').onclick = () => go(U.pick(LIST.filter((g) => !g.noScore)).id);
+
+  // ---------- 缩略图：按需生成，悬停时实时演示（同一时刻只跑一个）
+  const thumbs = new Map();
+  let live = null;
+  const queue = [];
+  let busy = false;
+  function pump() {
+    if (busy || !queue.length) return;
+    busy = true;
+    const cv = queue.shift();
+    (window.requestIdleCallback || ((f) => setTimeout(f, 16)))(() => {
+      try { thumb(cv).snapshot(cv.dataset.frames ? +cv.dataset.frames : 260); } catch (e) { /* 忽略单个缩略图失败 */ }
+      busy = false; pump();
+    });
   }
-  if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-    selected = (selected + vis.length - 1) % vis.length; markSelected(); beep(360, 520, 0.04);
-  } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-    selected = (selected + 1) % vis.length; markSelected(); beep(520, 360, 0.04);
-  } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-    selected = (selected + vis.length - cols) % vis.length; markSelected(); beep(400, 600, 0.04);
-  } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-    selected = (selected + cols) % vis.length; markSelected(); beep(600, 400, 0.04);
-  } else if (e.code === 'Space' || e.code === 'Enter') {
-    insertCoin();
+  function thumb(cv) {
+    if (!thumbs.has(cv)) thumbs.set(cv, A.demo(cv.dataset.id, cv, { seed: cv.dataset.id.length * 97, loop: true }));
+    return thumbs.get(cv);
   }
-});
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver((ents) => {
+    for (const e of ents) if (e.isIntersecting && !e.target.dataset.done) { e.target.dataset.done = '1'; queue.push(e.target); pump(); io.unobserve(e.target); }
+  }, { rootMargin: '200px' }) : null;
+  function watch(root) {
+    root.querySelectorAll('canvas[data-id]').forEach((cv) => { if (io) io.observe(cv); else { queue.push(cv); pump(); } });
+    root.querySelectorAll('[data-live]').forEach((el) => {
+      const cv = el.querySelector('canvas');
+      el.addEventListener('mouseenter', () => { if (matchMedia('(hover: hover)').matches) { if (live) live.stop(); live = thumb(cv); live.play(); } });
+      el.addEventListener('mouseleave', () => { if (live) { live.stop(); live = null; } });
+    });
+  }
+
+  // ---------- 今日挑战
+  function paintDaily() {
+    const day = U.dayIndex();
+    const g = FEAT[day % FEAT.length];
+    const undone = g.missions.map((m, i) => i).filter((i) => !Save.hasMission(g.id, i));
+    const mi = undone.length ? undone[day % undone.length] : -1;
+    $('daily').innerHTML =
+      '<canvas data-id="' + g.id + '" data-frames="300" width="240" height="320"></canvas>' +
+      '<div><div class="lbl">今日挑战 · ' + (new Date().getMonth() + 1) + '月' + new Date().getDate() + '日</div>' +
+      '<h3>' + g.icon + ' ' + esc(g.title) + '</h3>' +
+      '<p>' + (mi >= 0 ? '任务：<b>' + esc(g.missions[mi].text) + '</b>，完成就收下一颗星。' : '这台的三颗星你都拿到了，去刷新一下最高分吧。') + '</p>' +
+      '<a class="btn primary sm" href="' + url(g.id) + '" data-go="' + g.id + '">接受挑战 ▶</a></div>';
+    $('daily').querySelector('[data-go]').onclick = (e) => { e.preventDefault(); go(g.id); };
+    watch($('daily'));
+    // 最近 / 最佳
+    const played = LIST.filter((x) => Save.plays(x.id) > 0).sort((a, b) => (b.id === Save.last()) - (a.id === Save.last()) || Save.plays(b.id) - Save.plays(a.id)).slice(0, 4);
+    $('recent').innerHTML = played.length
+      ? played.map((x) => '<a href="' + url(x.id) + '"><span>' + x.icon + ' ' + esc(x.title) + ' · ' + Save.plays(x.id) + ' 局</span><span>' + U.fmt(Save.best(x.id)) + '</span></a>').join('')
+      : '<div class="empty">还没玩过。挑一台，第一颗星很好拿。</div>';
+  }
+
+  // ---------- 精选
+  function paintRail() {
+    $('rail').innerHTML = FEAT.map((g) =>
+      '<a class="feat" data-live href="' + url(g.id) + '" data-go="' + g.id + '" style="--c:' + g.color + '">' +
+        '<div class="thumb"><span class="badge">重制</span><span class="play">▶</span><canvas data-id="' + g.id + '" width="240" height="320"></canvas></div>' +
+        '<div class="info"><h3>' + g.icon + ' ' + esc(g.title) + '</h3><div class="en">' + esc((g.en || '').toUpperCase()) + '</div>' +
+        '<p>' + esc(g.pitch) + '</p><div class="meta">' + starsHtml(g) + '<span>' + (Save.best(g.id) ? '最佳 ' + U.fmt(Save.best(g.id)) : CAT[g.cat]) + '</span></div></div>' +
+      '</a>').join('');
+    watch($('rail'));
+  }
+
+  // ---------- 游戏库
+  let cat = 'all', q = '';
+  function paintLib() {
+    $('chips').innerHTML = window.CATEGORIES.map((c) => {
+      const n = c.id === 'all' ? LIST.length : LIST.filter((g) => g.cat === c.id).length;
+      return n ? '<button type="button" data-c="' + c.id + '" class="' + (c.id === cat ? 'on' : '') + '">' + c.label + '<span>' + n + '</span></button>' : '';
+    }).join('');
+    const k = q.trim().toLowerCase();
+    const shown = LIST.filter((g) => (cat === 'all' || g.cat === cat) && (!k || (g.title + g.en + g.pitch + (CAT[g.cat] || '')).toLowerCase().includes(k)));
+    $('libCount').textContent = shown.length + ' 款';
+    $('grid').innerHTML = shown.length ? shown.map((g) =>
+      '<a class="card" data-live href="' + url(g.id) + '" data-go="' + g.id + '" style="--c:' + g.color + '">' +
+        '<div class="thumb">' + (g.remade ? '<span class="badge">重制</span>' : '') + '<canvas data-id="' + g.id + '" width="240" height="320"></canvas></div>' +
+        '<div class="body"><h4>' + g.icon + ' ' + esc(g.title) + '</h4><div class="pitch">' + esc(g.pitch) + '</div>' +
+        '<div class="meta">' + starsHtml(g) + '<span>' + (Save.best(g.id) ? U.fmt(Save.best(g.id)) : CAT[g.cat]) + '</span></div></div>' +
+      '</a>').join('') : '<div class="none">没有找到，换个词试试。</div>';
+    watch($('grid'));
+  }
+  $('chips').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cat = b.dataset.c; paintLib(); sfx.move(); } });
+  $('q').addEventListener('input', (e) => { q = e.target.value; paintLib(); });
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-go]');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault(); go(a.dataset.go);
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== $('q')) { e.preventDefault(); $('q').focus(); $('library').scrollIntoView(); }
+  });
+
+  // ---------- 吸引模式：轮播重制精选，真的在跑
+  const AT = FEAT.filter((g) => ['thunder', 'thunderracer', 'flydriver', 'flappy', 'match3', 'fishhunter', 'huddle', 'pawssprint', 'contra'].includes(g.id));
+  let ai = Math.floor(Math.random() * AT.length), attract = null, atTimer = 0;
+  $('dots').innerHTML = AT.map(() => '<b></b>').join('');
+  function showAttract(i) {
+    ai = (i + AT.length) % AT.length;
+    const g = AT[ai], cv = $('attractCv');
+    cv.style.opacity = 0;
+    setTimeout(() => {
+      if (attract) attract.stop();
+      attract = A.demo(g.id, cv, { seed: Date.now() % 9999, loop: true });
+      attract.snapshot(200);
+      attract.play();
+      cv.style.opacity = 1;
+    }, 300);
+    $('attractName').textContent = g.icon + ' ' + g.title;
+    $('attractEn').textContent = (g.en || '').toUpperCase();
+    [...$('dots').children].forEach((d, k) => d.classList.toggle('on', k === ai));
+    clearTimeout(atTimer); atTimer = setTimeout(() => showAttract(ai + 1), 8000);
+  }
+  $('attract').onclick = () => go(AT[ai].id);
+  $('attract').onkeydown = (e) => { if (e.key === 'Enter') go(AT[ai].id); };
+  $('dots').onclick = (e) => { const i = [...$('dots').children].indexOf(e.target); if (i >= 0) showAttract(i); };
+  document.addEventListener('visibilitychange', () => { if (!attract) return; if (document.hidden) attract.stop(); else attract.play(); });
+
+  paintStats(); paintMute(); paintDaily(); paintRail(); paintLib();
+  if (AT.length) showAttract(ai);
+})();
 </script>
 </body>
 </html>

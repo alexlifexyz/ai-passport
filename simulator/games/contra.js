@@ -260,7 +260,7 @@
           const b = g.ebul[i];
           b.x += b.vx; b.y += b.vy;
           if (b.x < g.cam - 10 || b.x > g.cam + VW + 10 || b.y < -10 || b.y > VH) { g.ebul.splice(i, 1); continue; }
-          if (p.dead === 0 && b.x > pb.x && b.x < pb.x + pb.w && b.y > pb.y && b.y < pb.y + pb.h) { g.ebul.splice(i, 1); hurt(); }
+          if (p.dead === 0 && b.x > pb.x && b.x < pb.x + pb.w && b.y > pb.y && b.y < pb.y + pb.h) { g.ebul.splice(i, 1); hurt(); break; }
         }
 
         // BOSS

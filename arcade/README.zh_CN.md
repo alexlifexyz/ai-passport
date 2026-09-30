@@ -4,27 +4,34 @@
 
 # Alex Arcade
 
-AI Passport 游戏合集的公开游乐场。大厅里十三台柜机，休息室还有一只世界钟。每款都沿用掌机的三颗键：UP、DOWN、OK。
+AI Passport 游戏合集的公开游乐场：26 款游戏在浏览器里直接玩，全部沿用掌机的三颗键 UP、DOWN、OK。所有游戏都在 2026 年基于同一套引擎重制，每款都有明确目标、三个任务和 S/A/B/C 评级。
 
 ## 目录
 
 ```text
 arcade/                 对外主页（本目录）
-  index.html            大厅 / 柜机墙
-  assets/               厅堂照片、金币、柜机吸引画面
+  index.html            大厅：实时吸引画面、今日挑战、重制精选、游戏库
+  assets/               厅堂照片、金币、掌机照片
 simulator/              可玩页面
-  hub.html              HD 像素桌面（冒险岛、魂斗罗、飞车、飞鸟、乒乓、仙女棒、坦克、世界钟）
-  thunder.html          雷霆战机
-  flysaber.html         果蝇光剑
-  flydriver.html        果蝇超跑
-  game.html             独立柜机（鱼、轮盘、赛博消消乐）
-  games-engine.js       共用音效、特效与目录
-  games-impl.js         鱼 / 轮盘 / 消消乐实现
+  play.html             唯一的游戏页（所有游戏都从这里打开：play.html?id=<id>）
+  arcade-kit.js         共用引擎：60Hz 固定帧、输入、音效、特效、存档、标题/暂停/结算壳层、演示沙盒
+  catalog.js            唯一的游戏目录：名称、操作、技巧、任务、评级门槛
+  games/*.js            每款游戏一个文件
+  games-engine.js、games-impl.js、games-new-impl.js、games/legacy.js
+                        2026 年以前的旧实现，已经没有页面加载，可以删除
+  game.html、hub.html、thunder.html、flysaber.html、flydriver.html、paws-sprint.html
+                        跳转到 play.html，旧链接继续可用
 ```
 
-把 `arcade/index.html` 和旁边的 `simulator/` 一起打开（本地静态服务，或把 GitHub Pages 指到仓库根目录）。柜机打开对应的 HD 桌面，不走精简的 `game.html`。
+把 `arcade/index.html` 和旁边的 `simulator/` 一起用静态服务打开。大厅的缩略图和吸引画面都是游戏本身在静音沙盒里实时运行，不需要维护截图文件。
 
-大厅是数据驱动的：柜机墙、今晚主打、跑马灯和台数都来自同一份清单。键盘 `←` `→` 选柜机，空格投币。高分和上次玩的那台存在这台浏览器里。
+## 加一款游戏
+
+1. 在 `simulator/catalog.js` 里加一条（id、名称、操作、任务、评级）。
+2. 新建 `simulator/games/<名字>.js`，调用 `Arcade.define({ id, create(api) { return { update(input), draw(ctx) } } })`。实时数据写进 `api.stats`，一局结束时调用 `api.end()`；标题页、暂停、结算卡、任务和最高分都由壳层处理。
+3. 在 `simulator/play.html` 和 `arcade/index.html` 里各加一行 `<script>`。
+
+分数、星星、本机前五名和上次玩的游戏都存在这台浏览器里（`localStorage`）。
 
 ## GitHub Pages 与域名
 
@@ -32,7 +39,7 @@ simulator/              可玩页面
 2. 根目录的 `index.html` 会跳进 `arcade/`。
 3. 以后有域名时，在 `arcade/`（若 Pages 发布的是 `/` 则放仓库根）放一个内容为域名的 `CNAME`，再把 DNS 指到 GitHub。
 
-没有构建步骤。站点是静态 HTML、CSS 和少量 JavaScript。
+没有构建步骤。站点是静态 HTML、CSS 和 JavaScript。
 
 ## 本地预览
 

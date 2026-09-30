@@ -8,7 +8,7 @@
 <link rel="icon" href="../arcade/assets/coin.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Silkscreen:wght@400;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0b0910;
@@ -23,7 +23,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--text); }
   body {
-    font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     min-height: 100vh; min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
   }
@@ -192,7 +192,8 @@
     border: 1px solid var(--line); border-radius: 14px; padding: 8px; background: rgba(255,255,255,.03); transition: .15s;
   }
   .tile:hover, .tile.cur { border-color: var(--c); transform: translateY(-2px); }
-  .tile .th { aspect-ratio: 3/4; border-radius: 8px; background: #000 center/cover no-repeat; image-rendering: pixelated; position: relative; }
+  .tile .th { aspect-ratio: 3/4; border-radius: 8px; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--c) 35%, #000), #07060b 75%); position: relative; overflow: hidden; display: grid; place-items: center; font-size: 34px; }
+  .tile .th canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
   .tile .th i { position: absolute; left: 6px; top: 6px; font-style: normal; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 99px; background: var(--c); color: #120c06; }
   .tile b { font-size: 13px; }
   .tile small { font-size: 11px; color: var(--sub); display: flex; justify-content: space-between; }
@@ -308,15 +309,8 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="games-engine.js"></script>
 <script src="catalog.js"></script>
 <script src="arcade-kit.js"></script>
-<script src="games-impl.js"></script>
-<script src="games-new-impl.js"></script>
-<script src="games/legacy.js"></script>
-<script src="games/flydriver.js"></script>
-<script src="games/flysaber.js"></script>
-<script src="games/roulette.js"></script>
 <script src="games/thunder.js"></script>
 <script src="games/racer.js"></script>
 <script src="games/tank.js"></script>
@@ -331,6 +325,18 @@
 <script src="games/bouncy.js"></script>
 <script src="games/splasher.js"></script>
 <script src="games/lasercat.js"></script>
+<script src="games/roulette.js"></script>
+<script src="games/gear.js"></script>
+<script src="games/flydriver.js"></script>
+<script src="games/flysaber.js"></script>
+<script src="games/wave.js"></script>
+<script src="games/wind.js"></script>
+<script src="games/bubble.js"></script>
+<script src="games/huddle.js"></script>
+<script src="games/smash.js"></script>
+<script src="games/shyfish.js"></script>
+<script src="games/sparkler.js"></script>
+<script src="games/worldtime.js"></script>
 <script>
 (function () {
   'use strict';
@@ -340,7 +346,6 @@
   const list = window.CATALOG.filter((c) => A.games[c.id]);
   const STAR = '<svg class="st" viewBox="0 0 20 20"><path fill="currentColor" d="M10 1.5l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6L1.4 7.8l6-.8z"/></svg>';
   const STAR_O = '<svg class="st" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.4" d="M10 1.5l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6L1.4 7.8l6-.8z"/></svg>';
-  const cover = (id) => '../arcade/assets/shots/' + id + '.png';
 
   const run = A.mount($('screen'), {
     onLoad: paint,
@@ -419,21 +424,31 @@
     $('grid').innerHTML = list.filter((g) => (cat === 'all' || g.cat === cat) &&
       (!k || (g.title + g.en + g.pitch + (CAT[g.cat] || '')).toLowerCase().includes(k)))
       .map((g) => '<button type="button" class="tile' + (d && g.id === d.id ? ' cur' : '') + '" data-id="' + g.id + '" style="--c:' + g.color + '">' +
-        '<span class="th" style="background-image:url(' + cover(g.id) + ')">' + (g.remade ? '<i>重制</i>' : '') + '</span>' +
+        '<span class="th">' + (A.games[g.id].legacy ? g.icon : '<canvas data-id="' + g.id + '" width="240" height="320"></canvas>') + (g.remade ? '<i>重制</i>' : '') + '</span>' +
         '<b>' + g.icon + ' ' + esc(g.title) + '</b>' +
         '<small><span>' + (CAT[g.cat] || '') + '</span><span>' + (g.missions.length ? Save.stars(g.id) + '/' + g.missions.length + '★' : '') + '</span></small></button>').join('') ||
       '<p style="color:var(--sub);padding:20px">没有找到，换个词试试。</p>';
   }
+  function snapGrid() {
+    const cvs = [...document.querySelectorAll('#grid canvas[data-id]')].filter((c) => !c.dataset.done);
+    let i = 0;
+    (function next() {
+      const cv = cvs[i++]; if (!cv || !$('sheet').classList.contains('open')) return;
+      cv.dataset.done = '1';
+      try { A.demo(cv.dataset.id, cv, { seed: cv.dataset.id.length * 97 }).snapshot(260); } catch (e) { /* ignore */ }
+      setTimeout(next, 10);
+    })();
+  }
   function openSheet(v) {
     $('sheet').classList.toggle('open', v);
     $('sheet').setAttribute('aria-hidden', v ? 'false' : 'true');
-    if (v) { run.pause(true); paintGrid(); setTimeout(() => $('q').focus(), 30); }
+    if (v) { run.pause(true); paintGrid(); snapGrid(); setTimeout(() => $('q').focus(), 30); }
   }
   $('bSwitch').onclick = () => openSheet(true);
   $('bClose').onclick = () => openSheet(false);
   $('sheet').addEventListener('click', (e) => { if (e.target === $('sheet')) openSheet(false); });
-  $('cats').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cat = b.dataset.c; paintGrid(); } });
-  $('q').addEventListener('input', (e) => { q = e.target.value; paintGrid(); });
+  $('cats').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cat = b.dataset.c; paintGrid(); snapGrid(); } });
+  $('q').addEventListener('input', (e) => { q = e.target.value; paintGrid(); snapGrid(); });
   $('grid').addEventListener('click', (e) => {
     const b = e.target.closest('.tile'); if (!b) return;
     openSheet(false); run.load(b.dataset.id);

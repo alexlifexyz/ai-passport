@@ -173,6 +173,7 @@
     burst(x, y, count, colors, o) {
       count = count || 12; colors = colors || ['#00e5ff', '#ff0055', '#ffd700']; o = o || {};
       const sp = o.speed || 3.2;
+      if (this.particles.length > 500) this.particles.splice(0, this.particles.length - 400);
       for (let i = 0; i < count; i++) {
         const a = o.angle != null ? o.angle + (Math.random() - 0.5) * (o.spread || 1) : Math.random() * Math.PI * 2;
         const s = (0.35 + Math.random() * 0.65) * sp;
@@ -433,7 +434,7 @@
     function resize() {
       const r = canvas.getBoundingClientRect();
       const dpr = G.devicePixelRatio || 1;
-      const want = U.clamp(Math.round(((r.width || 240) * dpr) / W), 2, 4);
+      const want = U.clamp(Math.round(((r.width || 240) * dpr) / W), 2, 3);
       if (want !== S || canvas.width !== W * want) { S = want; canvas.width = W * S; canvas.height = H * S; }
     }
     resize();
@@ -510,7 +511,7 @@
     }
     function rankOf(score) {
       const r = R.def.ranks;
-      if (!r) return null;
+      if (!r || score <= 0) return null;
       if (score >= r[0]) return 'S';
       if (score >= r[1]) return 'A';
       if (score >= r[2]) return 'B';
@@ -759,5 +760,59 @@
     };
   }
 
-  G.Arcade = { W, H, STEP, U, D, FX, Sfx, Input, Save, define, legacy, games, order, mount };
+
+  // ---------------------------------------------------------------- demo（大厅缩略图 / 吸引画面）
+  // 在独立沙盒里跑一个游戏：静音、随机机器人输入、不写存档。旧玩法共享全局状态，同一时刻只跑一个。
+  const silent = new Sfx(); silent.muted = true;
+  function demo(id, canvas, opts) {
+    opts = opts || {};
+    const def = games[id];
+    if (!def) return null;
+    const ctx = canvas.getContext('2d');
+    const input = new Input();
+    const fx = new FX();
+    let api, game, t = 0, hold = { up: 0, down: 0, ok: 0 }, done = false, raf = 0;
+    const seed = U.seeded(opts.seed || 7);
+    function fresh() {
+      fx.reset(); done = false;
+      api = { W, H, U, D, fx, sfx: silent, input, stats: { score: 0 }, id, best: 0, demo: true,
+        frame: () => t, toast() {}, daily: () => U.dayIndex(), end() { done = true; } };
+      try { game = def.create(api); } catch (e) { game = null; }
+    }
+    fresh();
+    function botStep() {
+      for (const k of ['up', 'down', 'ok']) {
+        if (hold[k] > 0) hold[k]--;
+        else if (seed() < (k === 'ok' ? 0.05 : 0.035)) hold[k] = Math.floor(seed() * (k === 'ok' ? 8 : 30)) + 2;
+        input.set(k, hold[k] > 0);
+      }
+      input.step();
+    }
+    function tick(n) {
+      for (let i = 0; i < n && game; i++) {
+        t++; botStep();
+        try { game.update(input); } catch (e) { game = null; break; }
+        fx.update();
+        if (done) { if (opts.loop) fresh(); else break; }
+      }
+    }
+    function draw() {
+      const r = canvas.getBoundingClientRect();
+      const s = Math.max(1, Math.min(3, Math.round(((r.width || 120) * (G.devicePixelRatio || 1)) / W * 2) / 2));
+      if (canvas.width !== Math.round(W * s)) { canvas.width = Math.round(W * s); canvas.height = Math.round(H * s); }
+      ctx.setTransform(s, 0, 0, s, 0, 0); ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#07060b'; ctx.fillRect(0, 0, W, H);
+      if (!game) return;
+      try { ctx.save(); game.draw(ctx, t); ctx.restore(); fx.render(ctx); } catch (e) { /* 缩略图失败不影响页面 */ }
+    }
+    function loop() { tick(1); draw(); raf = requestAnimationFrame(loop); }
+    return {
+      snapshot(frames) { tick(frames == null ? 240 : frames); draw(); },
+      play() { if (!raf) raf = requestAnimationFrame(loop); },
+      stop() { cancelAnimationFrame(raf); raf = 0; },
+      get running() { return !!raf; }
+    };
+  }
+
+  G.Arcade = { W, H, STEP, U, D, FX, Sfx, Input, Save, define, legacy, games, order, mount, demo };
 })(window);
