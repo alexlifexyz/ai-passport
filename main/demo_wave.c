@@ -29,8 +29,6 @@ static lv_obj_t    *s_hud_score = NULL;
 static lv_obj_t    *s_hud_dist = NULL;
 static lv_obj_t    *s_hud_combo = NULL;
 static lv_obj_t    *s_hint = NULL;
-static bool         s_leave_queued = false;
-static float        s_ok_hold_ms = 0.0f;
 
 // 游戏结束浮层
 static lv_obj_t    *s_gameover_box = NULL;
@@ -385,28 +383,10 @@ static void on_draw_playfield(lv_event_t *e)
     draw_otter(layer, s_game.x, s_game.y, s_game.board_angle, dazed, pumping);
 }
 
-// 起跳要按住 OK 对齐浪面，1.5 秒的菜单长按不能打断。按住满 8 秒才离开。
-static void wave_leave_async(void *unused)
-{
-    (void)unused;
-    bsp_demo_return_to_menu();
-}
-
 // 40 FPS 核心帧循环
 static void on_timer(lv_timer_t *t)
 {
     (void)t;
-
-    if (s_game.ok_leveling) {
-        s_ok_hold_ms += 25.0f;
-    } else {
-        s_ok_hold_ms = 0.0f;
-    }
-    if (!s_leave_queued && s_ok_hold_ms >= 8000.0f) {
-        s_leave_queued = true;
-        lv_async_call(wave_leave_async, NULL);
-        return;
-    }
 
     // 单步物理迭代 (25ms)
     wave_step(&s_game, 25);
@@ -465,8 +445,6 @@ static void on_timer(lv_timer_t *t)
 void demo_wave_enter(void)
 {
     // 初始化核心状态机
-    s_leave_queued = false;
-    s_ok_hold_ms = 0.0f;
     wave_init(&s_game, 0x20260920);
 
     // 启动后台音效合成队列与任务
