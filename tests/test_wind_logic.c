@@ -149,6 +149,42 @@ static void test_pitch_adjustment(void)
     printf("  ✓ UP/DOWN pitch trim control OK\n");
 }
 
+static void test_pitch_hold_and_late_release(void)
+{
+    printf("[TEST 5b] Testing held pitch and dive release after a long press...\n");
+    wind_game_t g;
+    wind_init(&g, 0x5151);
+    g.y = 80.0f;
+    g.vy = 0.0f;
+    g.vx = WIND_CRUISE_SPEED_X;
+    wind_input_pitch_hold(&g, 1);
+
+    float y0 = g.y;
+    wind_step(&g, 200);
+    assert(g.pitch_hold == 1);
+    assert(g.pitch_trim > 5.0f);
+    assert(g.y < y0);
+
+    wind_input_pitch_hold(&g, 0);
+    assert(g.pitch_hold == 0);
+
+    // 长于菜单长按阈值的俯冲，松开后必须退出俯冲，不能卡在收翼状态。
+    wind_init(&g, 0x5152);
+    g.y = 70.0f;
+    g.vx = 200.0f;
+    g.vy = 0.0f;
+    wind_input_ok(&g, true);
+    wind_step(&g, 400);
+    wind_step(&g, 400);
+    wind_step(&g, 400);
+    assert(g.is_ok_holding);
+    assert(g.dive_charge_ms >= 1000.0f);
+    wind_input_ok(&g, false);
+    assert(!g.is_ok_holding);
+
+    printf("  ✓ Held nose-up and late dive release OK\n");
+}
+
 static void test_never_crash_ground_glide(void)
 {
     printf("[TEST 6] Testing Never-Crash Safe Ground Glide Mechanics...\n");
@@ -360,6 +396,7 @@ int main(void)
     test_dive_acceleration();
     test_soar_lift();
     test_pitch_adjustment();
+    test_pitch_hold_and_late_release();
     test_never_crash_ground_glide();
     test_wind_ring_burst();
     test_collectibles();

@@ -133,6 +133,7 @@ typedef struct {
     float vy;                // 垂直升降速度 (px/s, 负为上升，正为下降)
     float pitch_deg;         // 机身俯仰角 (-60度 ~ +60度, 负为俯冲低头, 正为仰冲抬头)
     float pitch_trim;        // UP/DOWN 按键输入的俯仰微调偏移量
+    int8_t pitch_hold;       // -1 按住低头, 0 未按, +1 按住抬头
     wind_stance_t stance;    // 当前飞行姿态
     bool is_ok_holding;      // OK 键是否保持按下 (收拢双翼下潜蓄力)
     bool on_ground;          // 是否正贴着草地滑行
@@ -190,6 +191,9 @@ void wind_input_pitch_up(wind_game_t *g);
 
 // 输入响应：DOWN 键微调低头俯角 (+微量下切角，换取前向重力加速度)
 void wind_input_pitch_down(wind_game_t *g);
+
+// 按住抬头/低头。dir 为 +1、0 或 -1，按住期间每帧持续给舵，松开传 0。
+void wind_input_pitch_hold(wind_game_t *g, int dir);
 
 // 核心物理与状态机步进 (dt_ms: 步进毫秒数，通常为 16ms 或 20ms)
 void wind_step(wind_game_t *g, uint32_t dt_ms);

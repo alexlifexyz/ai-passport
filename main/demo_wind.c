@@ -28,6 +28,8 @@ static lv_obj_t    *s_playfield = NULL;
 static lv_obj_t    *s_hud_dist = NULL;
 static lv_obj_t    *s_hud_spd = NULL;
 static lv_obj_t    *s_hud_combo = NULL;
+static lv_obj_t    *s_hint = NULL;
+static bool         s_leave_queued = false;
 
 static lv_timer_t  *s_game_timer = NULL;
 
@@ -296,6 +298,13 @@ static void on_draw_playfield(lv_event_t *e)
     draw_paper_plane(layer, WIND_PLAYER_SCREEN_X, s_game.y, s_game.pitch_deg);
 }
 
+// 按住 OK 俯冲时，1.5 秒的菜单长按不能打断。按住满 8 秒才离开。
+static void wind_leave_async(void *unused)
+{
+    (void)unused;
+    bsp_demo_return_to_menu();
+}
+
 // 40 FPS 核心循环
 static void on_timer(lv_timer_t *t)
 {
@@ -303,6 +312,12 @@ static void on_timer(lv_timer_t *t)
 
     // 单步物理迭代 (25ms)
     wind_step(&s_game, 25);
+
+    if (!s_leave_queued && s_game.is_ok_holding && s_game.dive_charge_ms >= 8000.0f) {
+        s_leave_queued = true;
+        lv_async_call(wind_leave_async, NULL);
+        return;
+    }
 
     // 捕获并派发音效事件
     wind_sound_t snd = wind_consume_sound(&s_game);
@@ -327,6 +342,10 @@ static void on_timer(lv_timer_t *t)
         }
     }
 
+    if (s_hint && s_game.flight_time_s > 4.0f) {
+        lv_obj_add_flag(s_hint, LV_OBJ_FLAG_HIDDEN);
+    }
+
     // 请求重绘
     if (s_playfield) {
         lv_obj_invalidate(s_playfield);
@@ -337,6 +356,7 @@ static void on_timer(lv_timer_t *t)
 void demo_wind_enter(void)
 {
     // 初始化算法引擎
+    s_leave_queued = false;
     wind_init(&s_game, 0x20260921);
 
     // 启动音频队列与任务
@@ -378,6 +398,12 @@ void demo_wind_enter(void)
     lv_label_set_text(s_hud_combo, "");
     lv_obj_add_flag(s_hud_combo, LV_OBJ_FLAG_HIDDEN);
 
+    s_hint = lv_label_create(s_scr);
+    lv_obj_set_style_text_font(s_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_hint, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(s_hint, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_label_set_text(s_hint, "HOLD OK DIVE   UP/DN NOSE");
+
     // 载入主屏
     lv_screen_load(s_scr);
 
@@ -407,6 +433,7 @@ void demo_wind_exit(void)
     s_hud_dist = NULL;
     s_hud_spd = NULL;
     s_hud_combo = NULL;
+    s_hint = NULL;
 
     if (s_scr) {
         lv_obj_del(s_scr);
@@ -414,24 +441,32 @@ void demo_wind_exit(void)
     }
 }
 
-// 三键按键分发：
-// OK 按下：收翼下潜俯冲；OK 抬起：展翼乘风冲云
-// UP / DOWN：微调机头仰俯角，草地上按 UP 直接迎风起飞！
+// OK 按下收翼俯冲，手指离开的同一刻展翼。CLICK 比松手晚一个连击窗口，长按后根本不发。
+// UP / DOWN 按住才持续改俯仰，松手回中。
 void demo_wind_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
     if (btn == BSP_BTN_OK) {
         if (ev == BSP_BTN_PRESS) {
+            wind_input_pitch_hold(&s_game, 0);
             wind_input_ok(&s_game, true);
-        } else if (ev == BSP_BTN_CLICK) {
+        } else if (ev == BSP_BTN_RELEASE) {
             wind_input_ok(&s_game, false);
         }
     } else if (btn == BSP_BTN_UP) {
         if (ev == BSP_BTN_PRESS) {
+            wind_input_ok(&s_game, false);
             wind_input_pitch_up(&s_game);
+            wind_input_pitch_hold(&s_game, 1);
+        } else if (ev == BSP_BTN_RELEASE) {
+            wind_input_pitch_hold(&s_game, 0);
         }
     } else if (btn == BSP_BTN_DOWN) {
         if (ev == BSP_BTN_PRESS) {
+            wind_input_ok(&s_game, false);
             wind_input_pitch_down(&s_game);
+            wind_input_pitch_hold(&s_game, -1);
+        } else if (ev == BSP_BTN_RELEASE) {
+            wind_input_pitch_hold(&s_game, 0);
         }
     }
 }

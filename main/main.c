@@ -102,8 +102,11 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
     if (!bsp_lvgl_lock(500)) return;
 
     if (s_active >= 0) {
-        // 仅 OK 键长按全局拦截返回主菜单；中间键(DOWN)和上键(UP)的长按与事件正常传递给运行中的 demo
-        if (btn == BSP_BTN_OK && ev == BSP_BTN_LONG) {
+        // OK 长按返回菜单。纸飞机用 OK 俯冲，海獭用 OK 按住保持板面，
+        // 1.5 秒的长按会把这两下直接打断，所以这两款自己计时，按住满 8 秒再退出。
+        if (btn == BSP_BTN_OK && ev == BSP_BTN_LONG
+            && DEMOS[s_active].key != demo_wind_key
+            && DEMOS[s_active].key != demo_wave_key) {
             bsp_demo_return_to_menu();
         } else {
             DEMOS[s_active].key(btn, ev);

@@ -200,6 +200,7 @@ void wind_init(wind_game_t *g, uint32_t seed)
     g->vy = -40.0f;                              // 起步微仰起飞
     g->pitch_deg = 5.0f;
     g->pitch_trim = 0.0f;
+    g->pitch_hold = 0;
     g->stance = WIND_STANCE_SOAR;
     g->is_ok_holding = false;
     g->on_ground = false;
@@ -264,7 +265,8 @@ void wind_input_ok(wind_game_t *g, bool pressed)
     }
 
     if (pressed && !g->is_ok_holding) {
-        // 首次按下 OK：收紧双翼，进入下潜俯冲
+        // 首次按下 OK：收紧双翼，进入下潜俯冲。俯冲优先于之前没松开的抬头。
+        g->pitch_hold = 0;
         g->is_ok_holding = true;
         g->dive_charge_ms = 0.0f;
         if (!g->on_ground) {
@@ -325,6 +327,20 @@ void wind_input_pitch_down(wind_game_t *g)
     if (!g->on_ground) {
         g->vy += 22.0f;
         g->vx = fminf(g->vx + 15.0f, WIND_MAX_SPEED_X);
+    }
+}
+
+void wind_input_pitch_hold(wind_game_t *g, int dir)
+{
+    if (!g) {
+        return;
+    }
+    if (dir > 0) {
+        g->pitch_hold = 1;
+    } else if (dir < 0) {
+        g->pitch_hold = -1;
+    } else {
+        g->pitch_hold = 0;
     }
 }
 
@@ -415,6 +431,14 @@ static void wind_step_sub(wind_game_t *g, uint32_t dt_ms)
         // 贴地速度矢量贴合斜坡切线
         g->vy = g->vx * slope;
 
+        // 按住 UP：草地上持续迎风抬头，速度够就离地。
+        if (g->pitch_hold > 0 && !g->is_ok_holding && g->vx > WIND_MIN_SPEED_X + 15.0f) {
+            g->on_ground = false;
+            g->vy = fminf(-160.0f, -g->vx * 0.75f);
+            g->stance = WIND_STANCE_SOAR;
+            g->pending_sound = WIND_SND_SOAR;
+        }
+
         // 自动起飞判定：
         // 在上坡段 (slope < -0.08) 且未按住 OK，拥有足够速度时，借势呼啸起飞冲天！
         if (!g->is_ok_holding && slope < -0.10f && g->vx > 130.0f) {
@@ -499,8 +523,19 @@ static void wind_step_sub(wind_game_t *g, uint32_t dt_ms)
         }
         g->pitch_deg += (target_pitch - g->pitch_deg) * (1.0f - expf(-8.0f * dt));
 
-        // 玩家按键微调逐渐自动回中
-        g->pitch_trim *= (1.0f - 1.2f * dt);
+        // 按住 UP/DOWN 时舵面持续给力；松开后微调才回中。
+        if (g->pitch_hold > 0 && !g->is_ok_holding) {
+            g->pitch_trim = fminf(25.0f, g->pitch_trim + 70.0f * dt);
+            if (g->vy > -220.0f) {
+                g->vy -= 140.0f * dt;
+            }
+        } else if (g->pitch_hold < 0 && !g->is_ok_holding) {
+            g->pitch_trim = fmaxf(-25.0f, g->pitch_trim - 70.0f * dt);
+            g->vy += 90.0f * dt;
+            g->vx = fminf(WIND_MAX_SPEED_X, g->vx + 50.0f * dt);
+        } else {
+            g->pitch_trim *= (1.0f - 1.2f * dt);
+        }
     }
 
     // 全局水平速度极值不变量约束 (确保永不卡滞与数值安全)

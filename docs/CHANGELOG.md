@@ -6,6 +6,8 @@
 
 ## Unreleased
 
+- Wind Rider and Wave Walker follow the finger for the whole press. The paper plane dives while OK is held and opens its wings the moment OK is released, including holds longer than the 1.5 s menu shortcut. UP and DOWN hold the nose up or down. The hillside surf pumps only while DOWN is held and releases immediately, and holding OK through a jump keeps the board level for a clean landing. Holding OK for 8 s in either game returns to the arcade menu.
+
 - Added Wind Rider: Soaring Breeze, an origami paper plane gliding and soaring game designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features a crash-proof continuous rolling hill mathematical terrain, fluid aerodynamic lift mechanics (hold OK to dive into slopes, release OK to soar into clouds, UP/DOWN pitch trim and ground take-off lift), soaring wind rings with sonic speed bursts, dandelion and wind crystal collectibles, a 5-phase day-night sky flow cycle, 40 FPS zero-malloc vector rendering, 16kHz wind and chime audio synthesis, 100% host unit test coverage, and an Alex Arcade browser cabinet.
 
 - Added Wave Walker: Lo-Fi Surf, a cute, zero-frustration surfing title designed for the 3-button (UP/DOWN/OK) AI Passport handheld. Features a dual-harmonic continuous sine wave mathematical model, 3-button surfing mechanics (down-slope pump boost, crest launch leap, mid-air 360° stunt flips, and perfect clean entry alignment assist with secondary speed burst), dynamic floating obstacles (crabs, driftwood, and jellyfish), starfish and shell collectibles, 40 FPS zero-malloc vector rendering, 16kHz ocean wave audio synthesis, 100% host unit test coverage, and an Alex Arcade browser cabinet.

@@ -28,6 +28,9 @@ static lv_obj_t    *s_playfield = NULL;
 static lv_obj_t    *s_hud_score = NULL;
 static lv_obj_t    *s_hud_dist = NULL;
 static lv_obj_t    *s_hud_combo = NULL;
+static lv_obj_t    *s_hint = NULL;
+static bool         s_leave_queued = false;
+static float        s_ok_hold_ms = 0.0f;
 
 // 游戏结束浮层
 static lv_obj_t    *s_gameover_box = NULL;
@@ -382,10 +385,28 @@ static void on_draw_playfield(lv_event_t *e)
     draw_otter(layer, s_game.x, s_game.y, s_game.board_angle, dazed, pumping);
 }
 
+// 起跳要按住 OK 对齐浪面，1.5 秒的菜单长按不能打断。按住满 8 秒才离开。
+static void wave_leave_async(void *unused)
+{
+    (void)unused;
+    bsp_demo_return_to_menu();
+}
+
 // 40 FPS 核心帧循环
 static void on_timer(lv_timer_t *t)
 {
     (void)t;
+
+    if (s_game.ok_leveling) {
+        s_ok_hold_ms += 25.0f;
+    } else {
+        s_ok_hold_ms = 0.0f;
+    }
+    if (!s_leave_queued && s_ok_hold_ms >= 8000.0f) {
+        s_leave_queued = true;
+        lv_async_call(wave_leave_async, NULL);
+        return;
+    }
 
     // 单步物理迭代 (25ms)
     wave_step(&s_game, 25);
@@ -430,6 +451,10 @@ static void on_timer(lv_timer_t *t)
         }
     }
 
+    if (s_hint && s_game.time_sec > 4.0f) {
+        lv_obj_add_flag(s_hint, LV_OBJ_FLAG_HIDDEN);
+    }
+
     // 请求重绘
     if (s_playfield) {
         lv_obj_invalidate(s_playfield);
@@ -440,6 +465,8 @@ static void on_timer(lv_timer_t *t)
 void demo_wave_enter(void)
 {
     // 初始化核心状态机
+    s_leave_queued = false;
+    s_ok_hold_ms = 0.0f;
     wave_init(&s_game, 0x20260920);
 
     // 启动后台音效合成队列与任务
@@ -508,6 +535,12 @@ void demo_wave_enter(void)
     lv_obj_align(s_gameover_hint, LV_ALIGN_BOTTOM_MID, 0, -30);
     lv_label_set_text(s_gameover_hint, "PRESS OK TO SURF AGAIN");
 
+    s_hint = lv_label_create(s_scr);
+    lv_obj_set_style_text_font(s_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(s_hint, lv_color_hex(0x0F172A), 0);
+    lv_obj_align(s_hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_label_set_text(s_hint, "HOLD DN PUMP   HOLD OK JUMP");
+
     // 载入主屏
     lv_screen_load(s_scr);
 
@@ -541,6 +574,7 @@ void demo_wave_exit(void)
     s_gameover_title = NULL;
     s_gameover_score = NULL;
     s_gameover_hint = NULL;
+    s_hint = NULL;
 
     if (s_scr) {
         lv_obj_del(s_scr);
@@ -548,22 +582,30 @@ void demo_wave_exit(void)
     }
 }
 
-// 三键按键分发 (响应 PRESS 与 CLICK，低延迟无死角)
+// DOWN 压板跟手指走：按下加速，松开立刻收力。CLICK 在长按后不会再来，板会一直压着。
+// OK 按下起跳，按住则空中把板面对齐浪面。
 void demo_wave_key(bsp_btn_t btn, bsp_btn_ev_t ev)
 {
     if (btn == BSP_BTN_UP) {
         if (ev == BSP_BTN_PRESS) {
+            wave_input_ok_hold(&s_game, false);
+            wave_input_down_release(&s_game);
             wave_input_up(&s_game);
         }
     } else if (btn == BSP_BTN_DOWN) {
         if (ev == BSP_BTN_PRESS) {
+            wave_input_ok_hold(&s_game, false);
             wave_input_down(&s_game);
-        } else if (ev == BSP_BTN_CLICK) {
+        } else if (ev == BSP_BTN_RELEASE) {
             wave_input_down_release(&s_game);
         }
     } else if (btn == BSP_BTN_OK) {
         if (ev == BSP_BTN_PRESS) {
+            wave_input_down_release(&s_game);
             wave_input_ok(&s_game);
+            wave_input_ok_hold(&s_game, true);
+        } else if (ev == BSP_BTN_RELEASE) {
+            wave_input_ok_hold(&s_game, false);
         }
     }
 }

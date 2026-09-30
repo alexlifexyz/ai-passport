@@ -173,6 +173,7 @@ typedef struct {
 
     // 控制输入状态
     bool is_down_pressed;    // DOWN 键当前是否按住
+    bool ok_leveling;        // OK 按住时，空中持续把板面对齐浪面
 
     // 属性与计分
     int hp;                  // 当前生命值 (初始 3)
@@ -215,6 +216,7 @@ void wave_input_down(wave_game_t *game);
 void wave_input_down_press(wave_game_t *game);
 void wave_input_down_release(wave_game_t *game);
 void wave_input_ok(wave_game_t *game);
+void wave_input_ok_hold(wave_game_t *game, bool held);
 
 // 音效事件读取与清除
 wave_sound_t wave_consume_sound(wave_game_t *game);

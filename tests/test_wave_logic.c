@@ -208,6 +208,32 @@ int main(void) {
         printf("  ✓ Mid-air board alignment snap OK\n");
     }
 
+    // [TEST 6b] 按住 OK 时每一帧都把板面对齐当前浪面
+    printf("[TEST 6b] Testing held OK keeps the board on the wave...\n");
+    {
+        wave_game_t game;
+        wave_init(&game, 0x5656);
+        wave_input_ok(&game);
+        game.board_angle = 170.0f;
+        game.air_rot_vel = 400.0f;
+        wave_input_ok_hold(&game, true);
+
+        wave_step(&game, 30);
+
+        float wave_ang = wave_get_game_tangent_angle(&game, game.x);
+        assert(fabsf(game.board_angle - wave_ang) < 0.001f);
+        assert(fabsf(game.air_rot_vel) < 0.001f);
+
+        wave_input_ok_hold(&game, false);
+        game.board_angle = 170.0f;
+        game.air_rot_vel = 0.0f;
+        wave_step(&game, 30);
+        assert(wave_angle_difference(game.board_angle,
+                                    wave_get_game_tangent_angle(&game, game.x)) > 45.0f);
+
+        printf("  ✓ Held OK levels the board, release stops forcing it OK\n");
+    }
+
     // [TEST 7] 完美切水入浪 (Clean Entry) 与彩虹二次冲刺
     printf("[TEST 7] Testing Perfect Clean Entry & Secondary Boost...\n");
     {

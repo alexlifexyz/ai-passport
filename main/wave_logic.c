@@ -200,6 +200,11 @@ void wave_input_down_release(wave_game_t *game) {
     }
 }
 
+void wave_input_ok_hold(wave_game_t *game, bool held) {
+    if (!game) return;
+    game->ok_leveling = held;
+}
+
 // 按键操作：OK
 void wave_input_ok(wave_game_t *game) {
     if (!game) return;
@@ -419,6 +424,12 @@ void wave_step(wave_game_t *game, uint32_t dt_ms) {
         }
 
         case WAVE_OTTER_AIRBORNE: {
+            // 按住 OK：板面跟着浪面走，松手落地就是干净入水。
+            if (game->ok_leveling) {
+                game->board_angle = wave_angle;
+                game->air_rot_vel = 0.0f;
+            }
+
             // 空中抛物线运动
             game->vy += WAVE_GRAVITY * dt;
             game->y += game->vy * dt;
